@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Incheon 119 Fire Aviation Unit - AW139 W&B</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @font-face {
+            font-family: 'Pretendard';
+            src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/pretendard@v1.3.8/dist/web/static/pretendard.css');
+        }
+        body { font-family: 'Pretendard', sans-serif; -webkit-print-color-adjust: exact; overflow-x: hidden; }
+        
+        @media print {
+            @page { size: A4 landscape; margin: 5mm; }
+            .no-print { display: none !important; }
+            body { background-color: white !important; padding: 0 !important; }
+            .shadow-lg, .shadow-md, .shadow-xl, .shadow-2xl { box-shadow: none !important; }
+            .rounded-2xl, .rounded-3xl { border-radius: 0 !important; border: 1px solid #e2e8f0 !important; }
+            .print-grid-layout { display: grid !important; grid-template-columns: 1.2fr 0.8fr !important; gap: 15px !important; }
+            main { padding: 0 !important; max-width: 100% !important; }
+            section { page-break-inside: avoid; }
+            .chart-container { height: 380px !important; }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .modal-enter { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+        const { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } = Recharts;
+
+        const Icon = ({ name, size = 16, className = "" }) => {
+            useEffect(() => { if (window.lucide) lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        const AIRCRAFT_DEFAULTS = {
+            HL9277: { 
+                name: "HL9277(6400Kg)", 
+                bew: 4551, 
+                bewArm: 5.3314, 
+                maxTow: 6400,
+                emsWeight: 110.8,
+                emsArm: 4.271
+            },
+            HL9695: { 
+                name: "HL9695(7000Kg)", 
+                bew: 4683.3, 
+                bewArm: 5.3435, 
+                maxTow: 7000,
+                emsWeight: 54.5,
+                emsArm: 4.271
+            }
+        };
+
+        const WATER_TANK_OPTIONS = [
+            { label: "미장착", weight: 0, arm: 0 },
+            { label: "EMPTY", weight: 225.9, arm: 4.82 },
+            { label: "WATER - FULL", weight: 1813.5, arm: 5.28 },
+            { label: "WATER - 3/4 (6° Hover)", weight: 1360.3, arm: 5.422 },
+            { label: "WATER - 3/4", weight: 1360.3, arm: 5.267 },
+            { label: "WATER - 1/2 (6° Hover)", weight: 906.7, arm: 5.478 },
+            { label: "WATER - 1/2", weight: 906.7, arm: 5.226 },
+            { label: "WATER - 1/4 (6° Hover)", weight: 453.6, arm: 5.596 },
+            { label: "WATER - 1/4", weight: 453.6, arm: 5.157 },
+        ];
+
+        const ENVELOPE_DATA = {
+            HL9277: [
+                { id: '1', x: 5.000, y: 4660, coord: "(5.0, 4660)" }, { id: '2', x: 5.000, y: 5170, coord: "(5.0, 5170)" },
+                { id: '4', x: 5.180, y: 6400, coord: "(5.18, 6400)" }, { id: '10', x: 5.504, y: 6400, coord: "(5.504, 6400)" },
+                { id: '11', x: 5.595, y: 4850, coord: "(5.595, 4850)" }, { id: '12', x: 5.536, y: 4400, coord: "(5.536, 4400)" },
+                { id: '13', x: 5.071, y: 4400, coord: "(5.071, 4400)" }, { id: '1', x: 5.000, y: 4660, coord: "" }
+            ],
+            HL9695: [
+                { id: '6', x: 5.266, y: 7000, coord: "(5.266, 7000)" }, { id: '8', x: 5.469, y: 7000, coord: "(5.469, 7000)" },
+                { id: '9', x: 5.480, y: 6800, coord: "(5.48, 6800)" }, { id: '10', x: 5.504, y: 6400, coord: "(5.504, 6400)" },
+                { id: '11', x: 5.595, y: 4850, coord: "(5.595, 4850)" }, { id: '12', x: 5.536, y: 4400, coord: "(5.536, 4400)" },
+                { id: '13', x: 5.071, y: 4400, coord: "(5.071, 4400)" }, { id: '1', x: 5.000, y: 4660, coord: "(5.0, 4660)" },
+                { id: '2', x: 5.000, y: 5170, coord: "(5.0, 5170)" }, { id: '4', x: 5.180, y: 6400, coord: "(5.18, 6400)" },
+                { id: '5', x: 5.238, y: 6800, coord: "(5.238, 6800)" }, { id: '6', x: 5.266, y: 7000, coord: "" }
+            ]
+        };
+
+        const App = () => {
+            const [selectedAc, setSelectedAc] = useState('HL9695');
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
+            
+            const [items, setItems] = useState([
+                { id: 'bew', label: 'B.E.W (자중)', weight: 4683.3, arm: 5.3435, isFuel: false, isOptional: false, isActive: true, isFixed: true },
+                { id: 'pilot', label: 'Pilot/Copilot', weight: 160, arm: 2.82, isFuel: false, isOptional: false, isActive: true },
+                { id: 'pax1', label: '1 ROW PAX', weight: 0, arm: 3.415, isFuel: false, isOptional: false, isActive: true },
+                { id: 'pax2', label: '2 ROW PAX', weight: 0, arm: 4.789, isFuel: false, isOptional: false, isActive: true },
+                { id: 'pax3', label: '3 ROW PAX', weight: 0, arm: 5.6, isFuel: false, isOptional: false, isActive: true },
+                { id: 'bag', label: 'Bag Comp', weight: 0, arm: 7.2, isFuel: false, isOptional: false, isActive: true },
+                { id: 'ems', label: 'EMS KIT', weight: 54.5, arm: 4.271, isFuel: false, isOptional: true, isActive: true },
+                { id: 'fuel', label: 'FUEL', weight: 820, arm: 6.217, isFuel: true, isOptional: false, isActive: true },
+                { id: 'hoist', label: 'HOIST', weight: 0, arm: 4.25, isFuel: false, isOptional: false, isActive: true },
+                { id: 'cargo', label: 'CARGO', weight: 0, arm: 5.3, isFuel: false, isOptional: false, isActive: true },
+                { id: 'watertank', label: 'WATER TANK', weight: 0, arm: 0, isFuel: false, isOptional: true, isActive: false, isDropdown: true, selectedIndex: 0 },
+                { id: 'pump', label: 'REFILL PUMP', weight: 44.9, arm: 6.595, isFuel: false, isOptional: true, isActive: false },
+            ]);
+
+            useEffect(() => {
+                const def = AIRCRAFT_DEFAULTS[selectedAc];
+                setItems(prev => prev.map(item => {
+                    if (item.id === 'bew') return { ...item, weight: def.bew, arm: def.bewArm };
+                    if (item.id === 'ems') return { ...item, weight: def.emsWeight, arm: def.emsArm };
+                    return item;
+                }));
+            }, [selectedAc]);
+
+            const stats = useMemo(() => {
+                const activeItems = items.filter(i => i.isActive).map(item => {
+                    if (item.isDropdown) {
+                        const opt = WATER_TANK_OPTIONS[item.selectedIndex];
+                        return { ...item, weight: opt.weight, arm: opt.arm, label: `WATER TANK (${opt.label})` };
+                    }
+                    return item;
+                });
+                const totalWeight = activeItems.reduce((sum, i) => sum + i.weight, 0);
+                const totalMoment = activeItems.reduce((sum, i) => sum + (i.weight * i.arm), 0);
+                const cgString = totalWeight > 0 ? (totalMoment / totalWeight).toFixed(4) : "0";
+                const zeroFuelWeight = activeItems.filter(i => !i.isFuel).reduce((sum, i) => sum + i.weight, 0);
+                const zeroFuelMoment = activeItems.filter(i => !i.isFuel).reduce((sum, i) => sum + (i.weight * i.arm), 0);
+                const zeroFuelCG = zeroFuelWeight > 0 ? (zeroFuelMoment / zeroFuelWeight).toFixed(4) : "0";
+                const isWeightSafe = totalWeight <= AIRCRAFT_DEFAULTS[selectedAc].maxTow;
+                const cgSafe = parseFloat(cgString) >= 4.9 && parseFloat(cgString) <= 5.7 && isWeightSafe;
+                return { totalWeight, cg: cgString, zeroFuelWeight, zeroFuelCG, isWeightSafe, cgSafe, tableData: activeItems, totalMoment };
+            }, [items, selectedAc]);
+
+            const updateItem = (id, field, value) => {
+                setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
+            };
+
+            const moveItem = (index, direction) => {
+                const newItems = [...items];
+                const targetIndex = direction === 'up' ? index - 1 : index + 1;
+                if (targetIndex < 0 || targetIndex >= newItems.length || newItems[index].isFixed || newItems[targetIndex].isFixed) return;
+                [newItems[index], newItems[targetIndex]] = [newItems[targetIndex], newItems[index]];
+                setItems(newItems);
+            };
+
+            const addNewItem = () => {
+                setItems([...items, { id: `custom-${Date.now()}`, label: 'NEW ITEM', weight: 0, arm: 0, isFuel: false, isOptional: false, isActive: true }]);
+            };
+
+            const deleteItem = (id) => {
+                if (id === 'bew') return;
+                setItems(items.filter(item => item.id !== id));
+            };
+
+            const envelope = ENVELOPE_DATA[selectedAc];
+            const dottedLines = useMemo(() => {
+                const p4 = envelope.find(p => p.id === '4');
+                const p5 = envelope.find(p => p.id === '5');
+                const p9 = envelope.find(p => p.id === '9');
+                const p10 = envelope.find(p => p.id === '10');
+                return { line59: p5 && p9 ? [p5, p9] : [], line410: p4 && p10 ? [p4, p10] : [] };
+            }, [selectedAc, envelope]);
+
+            return (
+                <div className="min-h-screen flex flex-col relative overflow-x-hidden">
+                    {/* 관리 모달 */}
+                    {isModalOpen && (
+                        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-2 sm:p-4 backdrop-blur-md no-print">
+                            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden modal-enter">
+                                <div className="bg-slate-900 text-white px-5 sm:px-8 py-4 flex justify-between items-center">
+                                    <div>
+                                        <h3 className="font-black uppercase text-sm sm:text-base flex items-center gap-2">
+                                            <Icon name="settings-2" className="text-blue-400" /> 리스트 제원 및 순서 수정
+                                        </h3>
+                                    </div>
+                                    <button onClick={() => setIsModalOpen(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all">
+                                        <Icon name="x" size={20} />
+                                    </button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50 custom-scrollbar space-y-3">
+                                    {items.map((item, idx) => (
+                                        <div key={item.id} className={`grid grid-cols-12 gap-2 sm:gap-3 items-center p-2 sm:p-3 rounded-xl border shadow-sm ${item.id === 'bew' ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'}`}>
+                                            <div className="col-span-1 flex flex-col items-center gap-1">
+                                                <button onClick={() => moveItem(idx, 'up')} disabled={idx === 0 || item.isFixed} className="text-slate-400 hover:text-blue-600 disabled:opacity-20"><Icon name="chevron-up" size={18} /></button>
+                                                <button onClick={() => moveItem(idx, 'down')} disabled={idx === items.length - 1 || item.isFixed} className="text-slate-400 hover:text-blue-600 disabled:opacity-20"><Icon name="chevron-down" size={18} /></button>
+                                            </div>
+                                            <div className="col-span-11 sm:col-span-5">
+                                                <input type="text" value={item.label} onChange={e => updateItem(item.id, 'label', e.target.value)} disabled={item.id === 'bew' || item.isDropdown} className={`w-full bg-transparent border-none rounded-lg px-2 py-1 text-sm font-bold focus:ring-1 focus:ring-blue-500 outline-none ${item.id === 'bew' ? 'text-blue-700' : ''}`} />
+                                            </div>
+                                            <div className="col-span-5 sm:col-span-2">
+                                                <input type="number" value={item.weight} onChange={e => updateItem(item.id, 'weight', parseFloat(e.target.value) || 0)} disabled={item.isDropdown} className="w-full bg-slate-100/50 border-none rounded-lg px-2 py-1 text-xs sm:text-sm font-mono text-center focus:ring-1 focus:ring-blue-500 outline-none" />
+                                            </div>
+                                            <div className="col-span-5 sm:col-span-2">
+                                                <input type="number" value={item.arm} onChange={e => updateItem(item.id, 'arm', parseFloat(e.target.value) || 0)} step="0.001" disabled={item.isDropdown} className="w-full bg-slate-100/50 border-none rounded-lg px-2 py-1 text-xs sm:text-sm font-mono text-center focus:ring-1 focus:ring-blue-500 outline-none" />
+                                            </div>
+                                            <div className="col-span-2 flex justify-end gap-2 pr-1">
+                                                {!item.isFixed && <button onClick={() => deleteItem(item.id)} className="text-rose-400 p-1"><Icon name="trash-2" size={16} /></button>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <button onClick={addNewItem} className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-400 font-black text-xs hover:bg-white transition-all uppercase tracking-widest">+ 신규 항목 추가</button>
+                                </div>
+                                <div className="bg-white px-5 py-4 border-t flex justify-end">
+                                    <button onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-12 py-3 bg-slate-900 text-white rounded-xl text-xs font-black shadow-lg">수정 완료</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <header className="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50 print:relative print:bg-white print:text-black print:shadow-none print:border-b-2 print:border-slate-800">
+                        <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                <div className="p-2 bg-blue-600 rounded-lg print:hidden"><Icon name="helicopter" size={24} /></div>
+                                <div>
+                                    <h1 className="text-base sm:text-xl font-black tracking-tight uppercase leading-none">Incheon 119 Fire Aviation Unit</h1>
+                                    <div className="flex items-center gap-3 mt-1.5 font-bold">
+                                        <select value={selectedAc} onChange={(e) => setSelectedAc(e.target.value)} className="bg-slate-800 text-[10px] px-2 py-0.5 rounded print:hidden outline-none">
+                                            <option value="HL9695">HL9695(7000Kg)</option>
+                                            <option value="HL9277">HL9277(6400Kg)</option>
+                                        </select>
+                                        <span className="hidden print:block font-bold text-lg tracking-tighter">{AIRCRAFT_DEFAULTS[selectedAc].name}</span>
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-tighter font-bold"><Icon name="calendar" size={10} className="inline mr-1"/>{currentDate}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto no-print">
+                                <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border ${stats.isWeightSafe && stats.cgSafe ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-rose-500 text-rose-400 animate-pulse'}`}>
+                                    {stats.isWeightSafe && stats.cgSafe ? 'MISSION READY' : 'LIMIT EXCEEDED'}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setIsModalOpen(true)} className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="settings-2" size={18} /></button>
+                                    <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4 sm:space-y-6 print:p-0 print:space-y-4">
+                        {/* 1. Quick Load Entry 섹션 수정: 제목 양식 통일 및 카드 레이아웃 조정 */}
+                        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 no-print overflow-hidden">
+                            <div className="px-5 py-3 bg-slate-50 border-b">
+                                <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
+                                    <Icon name="weight" size={18} className="text-blue-600" /> 1. Quick Load Entry
+                                </h2>
+                            </div>
+                            <div className="p-4 sm:p-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+                                {items.filter(i => i.id !== 'bew').map(item => (
+                                    <div key={item.id} className={`p-2 sm:p-3 rounded-xl border transition-all ${item.isActive ? 'bg-slate-50 border-blue-100' : 'bg-white border-slate-100 opacity-60'}`}>
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <label className="text-[9px] font-black text-slate-500 uppercase truncate pr-1">{item.label}</label>
+                                            {item.isOptional && <input type="checkbox" checked={item.isActive} onChange={e => updateItem(item.id, 'isActive', e.target.checked)} className="w-3.5 h-4 text-blue-600 cursor-pointer" />}
+                                        </div>
+                                        {item.isDropdown ? (
+                                            <select value={item.selectedIndex} onChange={e => { const idx = parseInt(e.target.value); setItems(items.map(it => it.id === item.id ? { ...it, selectedIndex: idx, isActive: idx !== 0 } : it)); }} className="w-full px-1 py-1 bg-white border border-slate-200 rounded text-[10px] font-bold outline-none cursor-pointer">
+                                                {WATER_TANK_OPTIONS.map((opt, idx) => <option key={idx} value={idx}>{opt.label}</option>)}
+                                            </select>
+                                        ) : (
+                                            <div className="relative flex items-center group">
+                                                <input type="number" value={item.weight} onChange={e => updateItem(item.id, 'weight', parseFloat(e.target.value) || 0)} disabled={!item.isActive} className="w-full pl-2 pr-6 sm:pr-8 py-1 bg-white border border-slate-200 rounded text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:bg-slate-50" />
+                                                <span className="absolute right-1.5 text-[8px] font-bold text-slate-300">kg</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start print-grid-layout">
+                            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border print:shadow-none h-full">
+                                <div className="px-5 py-3 bg-slate-50 border-b print:bg-white print:py-2">
+                                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
+                                        <Icon name="file-text" size={18} className="text-blue-600" /> 2. Weight & Moment Data
+                                    </h2>
+                                </div>
+                                <div className="overflow-x-auto custom-scrollbar">
+                                    <table className="w-full text-left border-collapse min-w-[300px]">
+                                        <thead className="bg-slate-50 print:bg-white text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                            <tr className="border-b border-slate-100">
+                                                <th className="px-4 py-2">Item Description</th>
+                                                <th className="px-4 py-2 text-right">Weight</th>
+                                                <th className="px-4 py-2 text-right">ARM (m)</th>
+                                                <th className="px-4 py-2 text-right">Moment</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-[10px] sm:text-[11px]">
+                                            {stats.tableData.map(item => (
+                                                <tr key={item.id} className="border-b border-slate-50">
+                                                    <td className="px-4 py-2 font-bold text-slate-700 whitespace-nowrap print:py-1.5 tracking-tight">{item.label}</td>
+                                                    <td className="px-4 py-2 text-right font-mono text-slate-600 print:py-1.5">{item.weight.toLocaleString()}</td>
+                                                    <td className="px-4 py-2 text-right font-mono text-slate-600 print:py-1.5">{item.arm.toFixed(3)}</td>
+                                                    <td className="px-4 py-2 text-right font-mono text-blue-600 font-bold print:py-1.5">{(item.weight * item.arm).toFixed(1)}</td>
+                                                </tr>
+                                            ))}
+                                            <tr className={`font-black border-t-2 border-slate-200 ${stats.isWeightSafe ? 'bg-blue-50/50' : 'bg-rose-50'}`}>
+                                                <td className="px-4 py-3 text-slate-900 uppercase print:py-3 tracking-tighter">TOTAL GROSS</td>
+                                                <td className="px-4 py-3 text-right text-sm print:py-3">{stats.totalWeight.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-right text-slate-500 italic whitespace-nowrap uppercase print:py-3 tracking-tighter tracking-tight">CG: {stats.cg}m</td>
+                                                <td className="px-4 py-3 text-right text-blue-800 print:py-3">{(stats.totalMoment).toFixed(1)}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <section className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 print:border print:shadow-none h-full flex flex-col">
+                                <div className="flex justify-between items-center mb-4 border-b pb-2 print:mb-2 print:pb-1">
+                                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
+                                        <Icon name="activity" size={18} className="text-blue-600" /> 3. CG ENVELOPE
+                                    </h2>
+                                    <div className="flex gap-4">
+                                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm" /> <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Actual</span></div>
+                                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm" /> <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Zero Fuel</span></div>
+                                    </div>
+                                </div>
+                                <div className="flex-1 min-h-[350px] sm:min-h-[420px] relative chart-container">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 10 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.4} />
+                                            <XAxis type="number" dataKey="x" domain={[4.9, 5.7]} unit="m" fontSize={10} tick={{ fill: '#64748b', fontWeight: 'bold' }} />
+                                            <YAxis type="number" dataKey="y" domain={[4200, 7200]} fontSize={10} tick={{ fill: '#64748b', fontWeight: 'bold' }} />
+                                            <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                                            <Scatter name="Limits" data={envelope} fill="#cbd5e1" line stroke="#94a3b8" strokeWidth={2} shape="circle">
+                                                <LabelList dataKey="coord" position="top" style={{ fontSize: '7px', fontWeight: 'black', fill: '#475569' }} />
+                                            </Scatter>
+                                            <Scatter name="L6800" data={dottedLines.line59} line={{ strokeDasharray: '5 5', stroke: '#94a3b8', strokeWidth: 1 }} shape="none" />
+                                            <Scatter name="L6400" data={dottedLines.line410} line={{ strokeDasharray: '5 5', stroke: '#94a3b8', strokeWidth: 1 }} shape="none" />
+                                            <Scatter name="Fuel Path" data={[{ x: parseFloat(stats.cg), y: stats.totalWeight }, { x: parseFloat(stats.zeroFuelCG), y: stats.zeroFuelWeight }]} line={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '4 4' }} shape="none" />
+                                            <Scatter name="Actual" data={[{ x: parseFloat(stats.cg), y: stats.totalWeight }]} fill={stats.cgSafe && stats.isWeightSafe ? "#10b981" : "#ef4444"} shape="circle" />
+                                            <Scatter name="Zero Fuel" data={[{ x: parseFloat(stats.zeroFuelCG), y: stats.zeroFuelWeight }]} fill="#fb923c" shape="diamond" />
+                                        </ScatterChart>
+                                    </ResponsiveContainer>
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-500 uppercase tracking-widest">STA Location (m)</div>
+                                </div>
+                                <div className="mt-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex items-start gap-3 print:bg-white print:border-none print:px-0 print:mt-1">
+                                    <div className="p-1.5 bg-blue-100 rounded text-blue-600 print:hidden"><Icon name="info" size={16} /></div>
+                                    <div className="flex-1">
+                                        <p className="text-[10px] font-black text-slate-800 uppercase mb-1 tracking-tighter">Analysis Summary</p>
+                                        <p className="text-[11px] text-slate-500 leading-tight italic font-medium">
+                                            이륙 중량 {stats.totalWeight.toLocaleString()}kg, 이륙 CG {stats.cg}m 입니다. 
+                                            비행 종료 시(연료 0kg) 예상 무게 중심은 {stats.zeroFuelCG}m ({stats.zeroFuelWeight.toLocaleString()}kg) 입니다.
+                                        </p>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
