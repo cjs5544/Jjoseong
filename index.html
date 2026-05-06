@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Incheon 119 Fire Aviation Unit - AW139 W&B</title>
+    <title>Incheon 119 Fire Aviation Unit - AW139 W&B / PA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -17,31 +17,44 @@
             src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/pretendard@v1.3.8/dist/web/static/pretendard.css');
         }
         body { font-family: 'Pretendard', sans-serif; -webkit-print-color-adjust: exact; overflow-x: hidden; }
-        
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { opacity: 1; }
+        .canvas-container { touch-action: none; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         @media print {
             @page { size: A4 landscape; margin: 5mm; }
             .no-print { display: none !important; }
             body { background-color: white !important; padding: 0 !important; }
-            .shadow-lg, .shadow-md, .shadow-xl, .shadow-2xl { box-shadow: none !important; }
+            html, body { overflow: visible !important; height: auto !important; }
+            .shadow-lg, .shadow-md, .shadow-xl, .shadow-2xl, .shadow-sm, .shadow { box-shadow: none !important; }
             .rounded-2xl, .rounded-3xl { border-radius: 0 !important; border: 1px solid #e2e8f0 !important; }
             .print-grid-layout { display: grid !important; grid-template-columns: 1.2fr 0.8fr !important; gap: 15px !important; }
-            main { padding: 0 !important; max-width: 100% !important; }
+            main { padding: 0 !important; max-width: 100% !important; overflow: visible !important; height: auto !important; flex: none !important; }
             section { page-break-inside: avoid; }
             .chart-container { height: 380px !important; }
+            #root > div { height: auto !important; min-height: unset !important; }
+            .print-chart-area { overflow: visible !important; height: auto !important; padding: 0 !important; background: white !important; align-items: flex-start !important; justify-content: center !important; page-break-inside: avoid !important; }
+            .print-chart-container { width: auto !important; max-width: 100% !important; max-height: 135mm !important; box-shadow: none !important; border: none !important; }
+            .print-chart-container > img { width: auto !important; height: 135mm !important; max-width: 100% !important; display: block !important; }
+            .print-chart-container > canvas { width: 100% !important; height: 100% !important; }
+            canvas { display: block !important; }
         }
 
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .modal-enter { animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useMemo, useEffect } = React;
+        const { useState, useMemo, useEffect, useRef } = React;
         const { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } = Recharts;
 
         const Icon = ({ name, size = 16, className = "" }) => {
@@ -49,19 +62,20 @@
             return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
         };
 
+        // ======================= CG (W&B) 데이터 =======================
         const AIRCRAFT_DEFAULTS = {
-            HL9277: { 
-                name: "HL9277(6400Kg)", 
-                bew: 4551, 
-                bewArm: 5.3314, 
+            HL9277: {
+                name: "HL9277(6400Kg)",
+                bew: 4551,
+                bewArm: 5.3314,
                 maxTow: 6400,
                 emsWeight: 110.8,
                 emsArm: 4.271
             },
-            HL9695: { 
-                name: "HL9695(7000Kg)", 
-                bew: 4683.3, 
-                bewArm: 5.3435, 
+            HL9695: {
+                name: "HL9695(7000Kg)",
+                bew: 4683.3,
+                bewArm: 5.3435,
                 maxTow: 7000,
                 emsWeight: 54.5,
                 emsArm: 4.271
@@ -97,11 +111,19 @@
             ]
         };
 
-        const App = () => {
+        // ======================= PA 데이터 (보정값 절대 변경 금지) =======================
+        const PA_VALUES = [-1000, 0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000];
+        const PA_COLORS = PA_VALUES.map((_, i) => `hsl(${(i * 360) / 16}, 80%, 45%)`);
+
+        const MASTER_CALIB_DEFAULTS = {"tq_left":0.008275709797688798,"tq_right":0.2529056914173697,"itt_left":0.25720906051216785,"itt_right":0.6746358627075908,"ng_left":0.6779461466266663,"ng_right":0.9924231189388406,"pa_top":0.3874847526765543,"pa_bottom":0.997238187774585,"paLines":{"0":{"l":0.9692045262184721,"r":0.8750341810226961},"1000":{"l":0.9475370131645767,"r":0.8533666679688009},"2000":{"l":0.927536231884058,"r":0.8266989595947758},"3000":{"l":0.9033686211700978,"r":0.8016979829941274},"4000":{"l":0.8808677422295141,"r":0.7741969087334141},"5000":{"l":0.8575334974022423,"r":0.7466958344727007},"6000":{"l":0.833365886688282,"r":0.7166946625519226},"7000":{"l":0.8041980806541922,"r":0.6841933929710796},"8000":{"l":0.7775303722801672,"r":0.6508587575035483},"9000":{"l":0.7483625662460773,"r":0.6191908538093936},"10000":{"l":0.7175280284386109,"r":0.5841894865684858},"11000":{"l":0.6850267588577679,"r":0.5458546557808248},"12000":{"l":0.6516921233902366,"r":0.5083531908798521},"13000":{"l":0.617524122036017,"r":0.46751826243212624},"14000":{"l":0.5808560230217327,"r":0.4250166022110239},"-1000":{"l":0.986705209838926,"r":0.8980739342408881}}};
+
+        // ======================= CG (W&B) APP =======================
+        const CGApp = ({ onSwitchMode }) => {
             const [selectedAc, setSelectedAc] = useState('HL9695');
             const [isModalOpen, setIsModalOpen] = useState(false);
+            const [showCoords, setShowCoords] = useState(true);
             const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
-            
+
             const [items, setItems] = useState([
                 { id: 'bew', label: 'B.E.W (자중)', weight: 4683.3, arm: 5.3435, isFuel: false, isOptional: false, isActive: true, isFixed: true },
                 { id: 'pilot', label: 'Pilot/Copilot', weight: 160, arm: 2.82, isFuel: false, isOptional: false, isActive: true },
@@ -177,7 +199,6 @@
 
             return (
                 <div className="min-h-screen flex flex-col relative overflow-x-hidden">
-                    {/* 관리 모달 */}
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-2 sm:p-4 backdrop-blur-md no-print">
                             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden modal-enter">
@@ -226,7 +247,7 @@
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                                 <div className="p-2 bg-blue-600 rounded-lg print:hidden"><Icon name="helicopter" size={24} /></div>
                                 <div>
-                                    <h1 className="text-base sm:text-xl font-black tracking-tight uppercase leading-none">Incheon 119 Fire Aviation Unit</h1>
+                                    <h1 className="text-base sm:text-xl font-black tracking-tight uppercase leading-none">AW139 Weight & Balance</h1>
                                     <div className="flex items-center gap-3 mt-1.5 font-bold">
                                         <select value={selectedAc} onChange={(e) => setSelectedAc(e.target.value)} className="bg-slate-800 text-[10px] px-2 py-0.5 rounded print:hidden outline-none">
                                             <option value="HL9695">HL9695(7000Kg)</option>
@@ -234,10 +255,17 @@
                                         </select>
                                         <span className="hidden print:block font-bold text-lg tracking-tighter">{AIRCRAFT_DEFAULTS[selectedAc].name}</span>
                                         <span className="text-[10px] text-slate-400 uppercase tracking-tighter font-bold"><Icon name="calendar" size={10} className="inline mr-1"/>{currentDate}</span>
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-tighter font-bold">Incheon 119 Fire Aviation Unit</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto no-print">
+                                <div className="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+                                    <button className="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow">W&B</button>
+                                    <button onClick={onSwitchMode} className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">
+                                        <Icon name="gauge" size={12} /> Engine PA
+                                    </button>
+                                </div>
                                 <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border ${stats.isWeightSafe && stats.cgSafe ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-rose-500 text-rose-400 animate-pulse'}`}>
                                     {stats.isWeightSafe && stats.cgSafe ? 'MISSION READY' : 'LIMIT EXCEEDED'}
                                 </div>
@@ -250,7 +278,6 @@
                     </header>
 
                     <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4 sm:space-y-6 print:p-0 print:space-y-4">
-                        {/* 1. Quick Load Entry 섹션 수정: 제목 양식 통일 및 카드 레이아웃 조정 */}
                         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 no-print overflow-hidden">
                             <div className="px-5 py-3 bg-slate-50 border-b">
                                 <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
@@ -321,9 +348,15 @@
                                     <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
                                         <Icon name="activity" size={18} className="text-blue-600" /> 3. CG ENVELOPE
                                     </h2>
-                                    <div className="flex gap-4">
-                                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm" /> <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Actual</span></div>
-                                        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm" /> <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Zero Fuel</span></div>
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={() => setShowCoords(v => !v)} title="좌표값 표시 ON/OFF" className={`no-print px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter border transition-all flex items-center gap-1 ${showCoords ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                                            <Icon name={showCoords ? 'eye' : 'eye-off'} size={11} />
+                                            좌표
+                                        </button>
+                                        <div className="flex gap-3">
+                                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm" /> <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Actual</span></div>
+                                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm" /> <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Zero Fuel</span></div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex-1 min-h-[350px] sm:min-h-[420px] relative chart-container">
@@ -334,13 +367,13 @@
                                             <YAxis type="number" dataKey="y" domain={[4200, 7200]} fontSize={10} tick={{ fill: '#64748b', fontWeight: 'bold' }} />
                                             <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                                             <Scatter name="Limits" data={envelope} fill="#cbd5e1" line stroke="#94a3b8" strokeWidth={2} shape="circle">
-                                                <LabelList dataKey="coord" position="top" style={{ fontSize: '7px', fontWeight: 'black', fill: '#475569' }} />
+                                                {showCoords && <LabelList dataKey="coord" position="top" style={{ fontSize: '7px', fontWeight: 'black', fill: '#475569' }} />}
                                             </Scatter>
                                             <Scatter name="L6800" data={dottedLines.line59} line={{ strokeDasharray: '5 5', stroke: '#94a3b8', strokeWidth: 1 }} shape="none" />
                                             <Scatter name="L6400" data={dottedLines.line410} line={{ strokeDasharray: '5 5', stroke: '#94a3b8', strokeWidth: 1 }} shape="none" />
                                             <Scatter name="Fuel Path" data={[{ x: parseFloat(stats.cg), y: stats.totalWeight }, { x: parseFloat(stats.zeroFuelCG), y: stats.zeroFuelWeight }]} line={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '4 4' }} shape="none" />
                                             <Scatter name="Actual" data={[{ x: parseFloat(stats.cg), y: stats.totalWeight }]} fill={stats.cgSafe && stats.isWeightSafe ? "#10b981" : "#ef4444"} shape="circle" />
-                                            <Scatter name="Zero Fuel" data={[{ x: parseFloat(stats.zeroFuelCG), y: stats.zeroFuelWeight }]} fill="#fb923c" shape="diamond" />
+                                            <Scatter name="Zero Fuel" data={[{ x: parseFloat(stats.zeroFuelCG), y: stats.zeroFuelWeight }]} fill="#fb923c" shape="circle" />
                                         </ScatterChart>
                                     </ResponsiveContainer>
                                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-500 uppercase tracking-widest">STA Location (m)</div>
@@ -350,7 +383,7 @@
                                     <div className="flex-1">
                                         <p className="text-[10px] font-black text-slate-800 uppercase mb-1 tracking-tighter">Analysis Summary</p>
                                         <p className="text-[11px] text-slate-500 leading-tight italic font-medium">
-                                            이륙 중량 {stats.totalWeight.toLocaleString()}kg, 이륙 CG {stats.cg}m 입니다. 
+                                            이륙 중량 {stats.totalWeight.toLocaleString()}kg, 이륙 CG {stats.cg}m 입니다.
                                             비행 종료 시(연료 0kg) 예상 무게 중심은 {stats.zeroFuelCG}m ({stats.zeroFuelWeight.toLocaleString()}kg) 입니다.
                                         </p>
                                     </div>
@@ -362,9 +395,579 @@
             );
         };
 
+        // ======================= PA APP (보정값/계산 로직 절대 변경 금지) =======================
+        const PAApp = ({ onSwitchMode }) => {
+            const [imgSrc] = useState("./pa_chart.png");
+            const [imgLoaded, setImgLoaded] = useState(false);
+            const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+            const [dragging, setDragging] = useState(null);
+            const [zoom, setZoom] = useState(100);
+            const [isCalibMode, setIsCalibMode] = useState(false);
+            const [isPanelCalibMode, setIsPanelCalibMode] = useState(false);
+            const [activePaIdx, setActivePaIdx] = useState(0);
+            const [userDefault, setUserDefault] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('aw139_calib_default');
+                    return saved ? JSON.parse(saved) : MASTER_CALIB_DEFAULTS;
+                } catch {
+                    return MASTER_CALIB_DEFAULTS;
+                }
+            });
+            const [calib, setCalib] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('aw139_calib');
+                    return saved ? JSON.parse(saved) : MASTER_CALIB_DEFAULTS;
+                } catch {
+                    return MASTER_CALIB_DEFAULTS;
+                }
+            });
+
+            const handleTqInput = (val) => {
+                const tq = parseFloat(val);
+                if (isNaN(tq)) return;
+                const x = calib.tq_left + (tq - 90) / (105 - 90) * (calib.tq_right - calib.tq_left);
+                setLines(p => ({ ...p, tq: Math.max(calib.tq_left, Math.min(calib.tq_right, x)) }));
+            };
+
+            const handlePaInput = (val) => {
+                const pa = parseFloat(val);
+                if (isNaN(pa)) return;
+                const xRatio = (lines.tq - calib.tq_left) / (calib.tq_right - calib.tq_left);
+                const yPoints = PA_VALUES.map(v => getYAtTQ(v, xRatio));
+                for (let i = 0; i < PA_VALUES.length - 1; i++) {
+                    if (pa >= PA_VALUES[i] && pa <= PA_VALUES[i + 1]) {
+                        const t = (pa - PA_VALUES[i]) / (PA_VALUES[i + 1] - PA_VALUES[i]);
+                        const y = yPoints[i] - t * (yPoints[i] - yPoints[i + 1]);
+                        setLines(p => ({ ...p, pa: Math.max(0, Math.min(1, y)) }));
+                        return;
+                    }
+                }
+                if (pa <= PA_VALUES[0]) setLines(p => ({ ...p, pa: yPoints[0] }));
+                else setLines(p => ({ ...p, pa: yPoints[PA_VALUES.length - 1] }));
+            };
+
+            const saveAsDefault = async () => {
+                localStorage.setItem('aw139_calib_default', JSON.stringify(calib));
+                setUserDefault(calib);
+
+                const newDefaults = `const MASTER_CALIB_DEFAULTS = ${JSON.stringify(calib)};`;
+                let html;
+                try {
+                    const res = await fetch(location.href);
+                    html = await res.text();
+                } catch (e) {
+                    html = document.documentElement.outerHTML;
+                }
+                const replaced = html.replace(/(?:const|var)\s+MASTER_CALIB_DEFAULTS\s*=\s*\{[\s\S]*?\};/g, newDefaults);
+                const blob = new Blob([replaced], { type: 'text/html' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                const currentName = (location.pathname.split('/').pop() || 'AW139.html');
+                a.download = decodeURIComponent(currentName);
+                a.click();
+                URL.revokeObjectURL(a.href);
+            };
+            const [activeEngine, setActiveEngine] = useState(1);
+            const eng1Checked = activeEngine === 1;
+            const eng2Checked = activeEngine === 2;
+            const [lines, setLines] = useState({ pa: 0.85, tq: 0.15, itt: 0.45, ng: 0.75, itt2: 0.50, ng2: 0.80 });
+            const [results, setResults] = useState({
+                pa: 0, oat: 15, tq: 95,
+                max_itt: 710, max_ng: 98.5,
+                max_itt2: 710, max_ng2: 98.5,
+                actual_itt1: 680, actual_ng1: 96.0,
+                actual_itt2: 680, actual_ng2: 96.0
+            });
+
+            const [lineWidth, setLineWidth] = useState(2);
+
+            const [aiAnalysis, setAiAnalysis] = useState("");
+            const [isAnalyzing, setIsAnalyzing] = useState(false);
+            const [showAiModal, setShowAiModal] = useState(false);
+
+            const canvasRef = useRef(null);
+            const imgRef = useRef(null);
+            const containerRef = useRef(null);
+            const chartAreaRef = useRef(null);
+            const pinchRef = useRef(null);
+            const zoomRef = useRef(zoom);
+            useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+
+            useEffect(() => {
+                const el = chartAreaRef.current;
+                if (!el) return;
+                const onTouchStart = (e) => {
+                    if (e.touches.length === 2) {
+                        e.preventDefault();
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        pinchRef.current = { dist: Math.hypot(dx, dy), zoom: zoomRef.current };
+                    }
+                };
+                const onTouchMove = (e) => {
+                    if (e.touches.length === 2 && pinchRef.current) {
+                        e.preventDefault();
+                        const dx = e.touches[0].clientX - e.touches[1].clientX;
+                        const dy = e.touches[0].clientY - e.touches[1].clientY;
+                        const ratio = Math.hypot(dx, dy) / pinchRef.current.dist;
+                        setZoom(Math.round(Math.max(50, Math.min(150, pinchRef.current.zoom * ratio))));
+                    }
+                };
+                const onTouchEnd = (e) => { if (e.touches.length < 2) pinchRef.current = null; };
+                el.addEventListener('touchstart', onTouchStart, { passive: false });
+                el.addEventListener('touchmove', onTouchMove, { passive: false });
+                el.addEventListener('touchend', onTouchEnd);
+                return () => {
+                    el.removeEventListener('touchstart', onTouchStart);
+                    el.removeEventListener('touchmove', onTouchMove);
+                    el.removeEventListener('touchend', onTouchEnd);
+                };
+            }, [imgLoaded]);
+
+            const handleImgLoad = () => {
+                if (imgRef.current) {
+                    setDimensions({ width: imgRef.current.clientWidth, height: imgRef.current.clientHeight });
+                    setImgLoaded(true);
+                }
+            };
+
+            useEffect(() => {
+                const img = imgRef.current;
+                if (img && img.complete && img.naturalWidth > 0) handleImgLoad();
+            }, []);
+
+            useEffect(() => {
+                const handleResize = () => {
+                    if (imgRef.current) setDimensions({ width: imgRef.current.clientWidth, height: imgRef.current.clientHeight });
+                };
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, [zoom, imgLoaded]);
+
+            const getYAtTQ = (paVal, xRatio) => {
+                const line = calib.paLines[paVal];
+                return line ? line.l + xRatio * (line.r - line.l) : 0;
+            };
+
+            const calculatePA = (x, y) => {
+                const xRatio = (x - calib.tq_left) / (calib.tq_right - calib.tq_left);
+                const yPoints = PA_VALUES.map(v => getYAtTQ(v, xRatio));
+                for (let i = 0; i < yPoints.length - 1; i++) {
+                    if (y <= yPoints[i] && y >= yPoints[i+1]) {
+                        return PA_VALUES[i] + ((yPoints[i] - y) / (yPoints[i] - yPoints[i+1])) * (PA_VALUES[i+1] - PA_VALUES[i]);
+                    }
+                }
+                return y > yPoints[0] ? PA_VALUES[0] : PA_VALUES[15];
+            };
+
+            useEffect(() => {
+                if (!imgLoaded) return;
+                const mapVal = (val, inMin, inMax, outMin, outMax) => outMin + (val - inMin) * (outMax - outMin) / (inMax - inMin);
+                setResults(prev => ({
+                    ...prev,
+                    tq: Math.round(mapVal(lines.tq, calib.tq_left, calib.tq_right, 90, 105)),
+                    pa: Math.round(calculatePA(lines.tq, lines.pa)),
+                    max_itt:  Math.round(mapVal(lines.itt,  calib.itt_left, calib.itt_right, 450, 850)),
+                    max_ng:   parseFloat(mapVal(lines.ng,   calib.ng_left,  calib.ng_right,  80, 105).toFixed(1)),
+                    max_itt2: Math.round(mapVal(lines.itt2, calib.itt_left, calib.itt_right, 450, 850)),
+                    max_ng2:  parseFloat(mapVal(lines.ng2,  calib.ng_left,  calib.ng_right,  80, 105).toFixed(1)),
+                }));
+                draw();
+            }, [lines, calib, dimensions, imgLoaded, lineWidth, eng1Checked, eng2Checked]);
+
+            const draw = () => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const { width, height } = dimensions;
+                ctx.clearRect(0, 0, width, height);
+                const paY = lines.pa * height;
+                ctx.lineWidth = 2;
+
+                const drawLineInternal = (x1, y1, x2, y2, color, widthLine = lineWidth) => {
+                    ctx.strokeStyle = color; ctx.lineWidth = widthLine; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+                };
+
+                drawLineInternal(lines.tq * width, calib.pa_top * height, lines.tq * width, paY, '#8b5cf6');
+                drawLineInternal(lines.tq * width, paY, width * calib.ng_right, paY, '#f43f5e');
+
+                if (eng1Checked) {
+                    ctx.globalAlpha = 1.0;
+                    ctx.setLineDash([]);
+                    drawLineInternal(lines.itt * width, calib.pa_top * height, lines.itt * width, calib.pa_bottom * height, '#10b981');
+                    drawLineInternal(lines.ng * width,  calib.pa_top * height, lines.ng * width,  calib.pa_bottom * height, '#eab308');
+                }
+
+                if (eng2Checked) {
+                    ctx.globalAlpha = 1.0;
+                    ctx.setLineDash([]);
+                    drawLineInternal(lines.itt2 * width, calib.pa_top * height, lines.itt2 * width, calib.pa_bottom * height, '#06b6d4');
+                    drawLineInternal(lines.ng2 * width,  calib.pa_top * height, lines.ng2 * width,  calib.pa_bottom * height, '#f97316');
+                }
+                ctx.globalAlpha = 1.0;
+
+                ctx.fillStyle = '#f43f5e';
+                ctx.beginPath(); ctx.arc(lines.tq * width, paY, 5, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+
+                if (isPanelCalibMode) {
+                    ctx.setLineDash([5, 5]); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2;
+                    ctx.strokeRect(calib.tq_left * width, calib.pa_top * height, (calib.tq_right - calib.tq_left) * width, (calib.pa_bottom - calib.pa_top) * height);
+                    ctx.strokeRect(calib.itt_left * width, calib.pa_top * height, (calib.itt_right - calib.itt_left) * width, (calib.pa_bottom - calib.pa_top) * height);
+                    ctx.strokeRect(calib.ng_left * width, calib.pa_top * height, (calib.ng_right - calib.ng_left) * width, (calib.pa_bottom - calib.pa_top) * height);
+                    ctx.setLineDash([]);
+                }
+
+                if (isCalibMode) {
+                    PA_VALUES.forEach((v, idx) => {
+                        const isActive = idx === activePaIdx;
+                        ctx.strokeStyle = PA_COLORS[idx];
+                        ctx.lineWidth = isActive ? 4.0 : 2.0;
+                        ctx.setLineDash(isActive ? [] : [6, 4]);
+                        ctx.globalAlpha = isActive ? 1.0 : 0.95;
+                        ctx.beginPath();
+                        ctx.moveTo(calib.tq_left * width, calib.paLines[v].l * height);
+                        ctx.lineTo(calib.tq_right * width, calib.paLines[v].r * height);
+                        ctx.stroke();
+                        if (isActive) {
+                            ctx.fillStyle = PA_COLORS[idx];
+                            ctx.beginPath(); ctx.arc(calib.tq_left * width, calib.paLines[v].l * height, 9, 0, Math.PI * 2); ctx.fill();
+                            ctx.beginPath(); ctx.arc(calib.tq_right * width, calib.paLines[v].r * height, 9, 0, Math.PI * 2); ctx.fill();
+                        }
+                    });
+                    ctx.globalAlpha = 1.0; ctx.setLineDash([]);
+                }
+            };
+
+            const handleStart = (e) => {
+                if (!imgLoaded) return;
+                const rect = containerRef.current.getBoundingClientRect();
+                const x = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) / rect.width;
+                const y = ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) / rect.height;
+                const t = 0.05;
+
+                if (isPanelCalibMode) {
+                    if (Math.abs(x - calib.tq_left) < t) { setDragging('p_tql'); return; }
+                    if (Math.abs(x - calib.tq_right) < t) { setDragging('p_tqr'); return; }
+                    if (Math.abs(x - calib.itt_left) < t) { setDragging('p_ittl'); return; }
+                    if (Math.abs(x - calib.itt_right) < t) { setDragging('p_ittr'); return; }
+                    if (Math.abs(x - calib.ng_left) < t) { setDragging('p_ngl'); return; }
+                    if (Math.abs(x - calib.ng_right) < t) { setDragging('p_ngr'); return; }
+                    if (Math.abs(y - calib.pa_top) < t) { setDragging('p_pat'); return; }
+                    if (Math.abs(y - calib.pa_bottom) < t) { setDragging('p_pab'); return; }
+                }
+
+                if (isCalibMode) {
+                    const v = PA_VALUES[activePaIdx], line = calib.paLines[v];
+                    if (Math.sqrt(Math.pow(x - calib.tq_left, 2) + Math.pow(y - line.l, 2)) < t) { setDragging('active_l'); return; }
+                    if (Math.sqrt(Math.pow(x - calib.tq_right, 2) + Math.pow(y - line.r, 2)) < t) { setDragging('active_r'); return; }
+                }
+                if (Math.abs(y - lines.pa) < t) setDragging('pa');
+                else if (Math.abs(x - lines.tq) < t) setDragging('tq');
+                else if (eng1Checked && Math.abs(x - lines.itt) < t)  setDragging('itt');
+                else if (eng1Checked && Math.abs(x - lines.ng) < t)   setDragging('ng');
+                else if (eng2Checked && Math.abs(x - lines.itt2) < t) setDragging('itt2');
+                else if (eng2Checked && Math.abs(x - lines.ng2) < t)  setDragging('ng2');
+            };
+
+            const handleMove = (e) => {
+                if (!dragging) return;
+                const rect = containerRef.current.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) / rect.width));
+                const y = Math.max(0, Math.min(1, ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) / rect.height));
+
+                if (isPanelCalibMode) {
+                    const key = dragging.replace('p_', '');
+                    const fieldMap = { tql: 'tq_left', tqr: 'tq_right', ittl: 'itt_left', ittr: 'itt_right', ngl: 'ng_left', ngr: 'ng_right', pat: 'pa_top', pab: 'pa_bottom' };
+                    setCalib(p => ({ ...p, [fieldMap[key]]: dragging.endsWith('t') || dragging.endsWith('b') ? y : x }));
+                } else if (isCalibMode && dragging.startsWith('active')) {
+                    const v = PA_VALUES[activePaIdx];
+                    setCalib(p => ({ ...p, paLines: { ...p.paLines, [v]: { ...p.paLines[v], [dragging === 'active_l' ? 'l' : 'r']: y } } }));
+                } else {
+                    let clampedX = x;
+                    if (dragging === 'tq')   clampedX = Math.max(calib.tq_left,  Math.min(calib.tq_right,  x));
+                    if (dragging === 'itt')  clampedX = Math.max(calib.itt_left, Math.min(calib.itt_right, x));
+                    if (dragging === 'ng')   clampedX = Math.max(calib.ng_left,  Math.min(calib.ng_right,  x));
+                    if (dragging === 'itt2') clampedX = Math.max(calib.itt_left, Math.min(calib.itt_right, x));
+                    if (dragging === 'ng2')  clampedX = Math.max(calib.ng_left,  Math.min(calib.ng_right,  x));
+                    setLines(p => ({ ...p, [dragging]: dragging === 'pa' ? y : clampedX }));
+                }
+            };
+
+            const isModified = (v) => Math.abs(calib.paLines[v].l - MASTER_CALIB_DEFAULTS.paLines[v].l) > 0.001;
+            const isAbnormal1 = (results.max_itt  - results.actual_itt1) < 0 || (results.max_ng  - results.actual_ng1) < 0;
+            const isAbnormal2 = (results.max_itt2 - results.actual_itt2) < 0 || (results.max_ng2 - results.actual_ng2) < 0;
+            const isAbnormal = isAbnormal1 || isAbnormal2;
+
+            const analyzeWithGemini = async () => {
+                setIsAnalyzing(true);
+                setAiAnalysis("");
+                setShowAiModal(true);
+                const apiKey = "";
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+                const statusStr = isAbnormal ? "비정상(ABNORMAL)" : "정상(NORMAL)";
+                const prompt = `당신은 Leonardo AW139 정비 전문가입니다. 다음 PA 체크 결과를 분석해주세요.
+                고도: ${results.pa}ft, 외기온도: ${results.oat}°C, 토크: ${results.tq}%.
+                #1엔진 - ITT 실제: ${results.actual_itt1}°C (최대허용: ${results.max_itt}), NG 실제: ${results.actual_ng1}% (최대허용: ${results.max_ng}).
+                #2엔진 - ITT 실제: ${results.actual_itt2}°C (최대허용: ${results.max_itt}), NG 실제: ${results.actual_ng2}% (최대허용: ${results.max_ng}).
+                현재 판정은 ${statusStr}입니다. 정비사의 관점에서 각 엔진별 성능 요약과 필요한 조치 사항을 한국어로 3-4문장 이내로 전문적으로 설명해주세요.`;
+
+                const fetchWithRetry = async (retries = 0) => {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                        });
+                        if (!response.ok) throw new Error('API Error');
+                        const data = await response.json();
+                        return data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    } catch (err) {
+                        if (retries < 5) {
+                            const delay = Math.pow(2, retries) * 1000;
+                            await new Promise(res => setTimeout(res, delay));
+                            return fetchWithRetry(retries + 1);
+                        }
+                        throw err;
+                    }
+                };
+
+                try {
+                    const text = await fetchWithRetry();
+                    setAiAnalysis(text || "분석 결과를 생성할 수 없습니다.");
+                } catch (error) {
+                    setAiAnalysis("AI 분석 도중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+                } finally {
+                    setIsAnalyzing(false);
+                }
+            };
+
+            useEffect(() => { localStorage.setItem('aw139_calib', JSON.stringify(calib)); }, [calib]);
+
+            useEffect(() => { lucide.createIcons(); }, [isCalibMode, isPanelCalibMode, showAiModal]);
+
+            return (
+                <div className="flex flex-col h-screen">
+                    {/* Header (CG와 통일된 다크 테마, 동일 높이) */}
+                    <header className="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg z-30 shrink-0 print:relative print:bg-white print:text-black print:shadow-none print:border-b-2 print:border-slate-800">
+                        <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                <div className="p-2 bg-blue-600 rounded-lg print:hidden"><Icon name="gauge" size={24} /></div>
+                                <div>
+                                    <h1 className="text-base sm:text-xl font-black tracking-tight uppercase leading-none">AW139 Engine Performance</h1>
+                                    <div className="flex items-center gap-3 mt-1.5 font-bold">
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-tighter font-bold">AI Integrated v3.6</span>
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-tighter font-bold">Incheon 119 Fire Aviation Unit</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto no-print">
+                                <div className="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+                                    <button onClick={onSwitchMode} className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">
+                                        <Icon name="helicopter" size={12} /> W&B
+                                    </button>
+                                    <button className="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow">Engine PA</button>
+                                </div>
+                                <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border ${!isAbnormal ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-rose-500 text-rose-400 animate-pulse'}`}>
+                                    {!isAbnormal ? 'NORMAL' : 'ABNORMAL'}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={saveAsDefault} title="기본값 저장 — 패널 보정 및 PA 보정으로 조정한 값을 새 기본값으로 저장합니다. (보정 작업을 마친 후 사용하세요)" className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
+                                    <button onClick={() => setCalib(userDefault)} title="기본값으로 초기화" className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
+                                    <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* 보정 도구 바 (헤더 외부, 라이트 배경) */}
+                    <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2 shrink-0 no-print">
+                        <div className="max-w-7xl mx-auto w-full flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                            <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-slate-200 shrink-0">
+                                <Icon name="zoom-in" size={12} className="text-slate-400" />
+                                <input type="range" min="50" max="150" value={zoom} onChange={(e) => setZoom(parseInt(e.target.value))} className="w-14 h-1 accent-blue-500" />
+                                <span className="text-[9px] font-bold text-slate-500 w-7">{zoom}%</span>
+                            </div>
+                            <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-slate-200 shrink-0">
+                                <span className="text-[9px] font-bold text-slate-400">굵기</span>
+                                <button onClick={() => setLineWidth(w => Math.max(1, w - 1))} className="w-5 h-5 flex items-center justify-center bg-white border border-slate-300 rounded text-xs font-bold text-slate-700">−</button>
+                                <span className="text-[11px] font-black text-slate-600 w-4 text-center">{lineWidth}</span>
+                                <button onClick={() => setLineWidth(w => Math.min(8, w + 1))} className="w-5 h-5 flex items-center justify-center bg-white border border-slate-300 rounded text-xs font-bold text-slate-700">+</button>
+                            </div>
+                            <button onClick={() => { setIsPanelCalibMode(!isPanelCalibMode); setIsCalibMode(false); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all shadow shrink-0 ${isPanelCalibMode ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>패널 보정</button>
+                            <button onClick={() => { setIsCalibMode(!isCalibMode); setIsPanelCalibMode(false); }} className={`px-2 py-1 rounded text-[10px] font-bold transition-all shadow shrink-0 ${isCalibMode ? 'bg-orange-500 text-white' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>PA 보정</button>
+                            {isCalibMode && (
+                                <select value={activePaIdx} onChange={e => setActivePaIdx(parseInt(e.target.value))}
+                                    className="px-2 py-1 rounded text-[10px] font-bold border border-orange-400 bg-orange-50 text-orange-700 shadow shrink-0">
+                                    {PA_VALUES.map((v, i) => (
+                                        <option key={v} value={i}>{v >= 0 ? '+' : ''}{v} ft</option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                    </div>
+
+                    <main className="flex-1 overflow-hidden flex flex-col relative">
+                        <div ref={chartAreaRef} className="flex-1 relative overflow-auto p-2 flex items-start justify-center bg-slate-200/40 print-chart-area">
+                            <div ref={containerRef} className={`relative inline-block select-none bg-white shadow-xl rounded border print-chart-container ${(isCalibMode || isPanelCalibMode) ? 'border-orange-400 border-2' : 'border-slate-300'}`}
+                                style={{ width: `${zoom * 0.6}%`, transformOrigin: 'top center' }}
+                                onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={() => setDragging(null)} onMouseLeave={() => setDragging(null)}
+                                onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={() => setDragging(null)}>
+                                <img ref={imgRef} src={imgSrc} alt="PA Chart" className="w-full block pointer-events-none" onLoad={handleImgLoad} />
+                                <canvas ref={canvasRef} width={dimensions.width} height={dimensions.height} className="absolute top-0 left-0 w-full h-full pointer-events-none" />
+                            </div>
+                        </div>
+
+                        <div className="bg-white border-t px-3 py-2 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] shrink-0">
+                            <div className="max-w-6xl mx-auto flex gap-3 items-stretch">
+                                {/* 좌측: TQ / PA / OAT 수직 */}
+                                <div className="flex flex-col gap-1 w-44 shrink-0">
+                                    <EditableInputCard label="토크 (TQ)" value={results.tq} unit="%" color="border-purple-400" onCommit={handleTqInput} min={90} max={105} step={0.1} />
+                                    <EditableInputCard label="기압고도 (PA)" value={results.pa} unit="ft" color="border-red-400" onCommit={handlePaInput} min={-1000} max={14000} step={100} />
+                                    <EditableInputCard label="외기온도 (OAT)" value={results.oat} unit="°C" color="border-slate-400" onCommit={v => setResults(p => ({...p, oat: v}))} min={-50} max={60} step={1} />
+                                </div>
+                                {/* 중앙: #1 / #2 엔진 좌우 (각 토글 옆에 상태 표시) */}
+                                <div className="flex-1 grid grid-cols-2 gap-3">
+                                    <div className="flex flex-col gap-1 border-l pl-3 border-slate-100">
+                                        <div className="flex items-center gap-1.5">
+                                            <button onClick={() => setActiveEngine(v => v === 1 ? null : 1)} className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${eng1Checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-300 text-slate-400'}`}>
+                                                <span className={`w-2 h-2 rounded-full ${eng1Checked ? 'bg-white' : 'bg-slate-300'}`}></span>
+                                                #1 Engine
+                                            </button>
+                                            <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${!isAbnormal1 ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-red-50 border-red-300 text-red-700 animate-pulse'}`}>
+                                                {!isAbnormal1 ? '정상' : '이상'}
+                                            </div>
+                                        </div>
+                                        <ComparisonRow label="ITT" actual={results.actual_itt1} max={results.max_itt} margin={(results.max_itt - results.actual_itt1).toFixed(1)} unit="°C" isAbnormal={isAbnormal1} onChangeActual={v => setResults(p => ({...p, actual_itt1: v}))} />
+                                        <ComparisonRow label="NG" actual={results.actual_ng1} max={results.max_ng} margin={(results.max_ng - results.actual_ng1).toFixed(1)} unit="%" isAbnormal={isAbnormal1} onChangeActual={v => setResults(p => ({...p, actual_ng1: v}))} />
+                                    </div>
+                                    <div className="flex flex-col gap-1 border-l pl-3 border-slate-100">
+                                        <div className="flex items-center gap-1.5">
+                                            <button onClick={() => setActiveEngine(v => v === 2 ? null : 2)} className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${eng2Checked ? 'bg-cyan-500 border-cyan-500 text-white' : 'bg-white border-slate-300 text-slate-400'}`}>
+                                                <span className={`w-2 h-2 rounded-full ${eng2Checked ? 'bg-white' : 'bg-slate-300'}`}></span>
+                                                #2 Engine
+                                            </button>
+                                            <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${!isAbnormal2 ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-red-50 border-red-300 text-red-700 animate-pulse'}`}>
+                                                {!isAbnormal2 ? '정상' : '이상'}
+                                            </div>
+                                        </div>
+                                        <ComparisonRow label="ITT" actual={results.actual_itt2} max={results.max_itt2} margin={(results.max_itt2 - results.actual_itt2).toFixed(1)} unit="°C" onChangeActual={v => setResults(p => ({...p, actual_itt2: v}))} />
+                                        <ComparisonRow label="NG"  actual={results.actual_ng2}  max={results.max_ng2}  margin={(results.max_ng2  - results.actual_ng2).toFixed(1)}  unit="%" onChangeActual={v => setResults(p => ({...p, actual_ng2: v}))} />
+                                    </div>
+                                </div>
+                                {/* 우측: AI 분석 버튼 */}
+                                <button onClick={analyzeWithGemini} className="shrink-0 w-20 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow flex flex-col items-center justify-center gap-1 transition-all group">
+                                    <Icon name="sparkles" size={20} className="group-hover:scale-110 transition-transform" />
+                                    <span className="text-[10px] font-black">AI 분석</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {showAiModal && (
+                            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                                <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden fade-in">
+                                    <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
+                                        <div className="flex items-center gap-2">
+                                            <Icon name="sparkles" className="text-blue-400" />
+                                            <span className="font-bold">✨ Smart AI Maintenance Insights</span>
+                                        </div>
+                                        <button onClick={() => setShowAiModal(false)} className="hover:bg-white/20 p-1 rounded-full"><Icon name="x" /></button>
+                                    </div>
+                                    <div className="p-6">
+                                        {isAnalyzing ? (
+                                            <div className="flex flex-col items-center gap-4 py-8">
+                                                <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+                                                <p className="text-sm font-medium text-slate-500 animate-pulse">차트 데이터를 바탕으로 정밀 분석 중...</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm leading-relaxed text-slate-700">
+                                                    {aiAnalysis}
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 text-center uppercase tracking-tighter">*이 분석은 참고용이며, 최종 정비 판단은 공식 AMM 및 기종 정비사의 지침을 따르십시오.</p>
+                                                <button onClick={() => setShowAiModal(false)} className="w-full py-2.5 bg-slate-800 text-white rounded-lg font-bold text-sm hover:bg-slate-900 transition-all">확인</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const EditableInputCard = ({ label, value, unit, color, onCommit, min, max, step }) => {
+            const [draft, setDraft] = React.useState(String(value));
+            const focused = React.useRef(false);
+            React.useEffect(() => { if (!focused.current) setDraft(String(value)); }, [value]);
+            const commit = () => { const n = parseFloat(draft); if (!isNaN(n)) onCommit(n); };
+            return (
+                <div className={`bg-slate-50 rounded border-l-4 ${color} px-3 py-1 flex justify-between items-center h-7 shadow-sm`}>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase truncate">{label}</span>
+                    <div className="flex items-baseline gap-0.5">
+                        <input type="number" value={draft} min={min} max={max} step={step}
+                            onChange={e => setDraft(e.target.value)}
+                            onFocus={() => { focused.current = true; }}
+                            onBlur={() => { focused.current = false; commit(); }}
+                            onKeyDown={e => e.key === 'Enter' && commit()}
+                            className="text-sm font-black text-slate-700 bg-transparent w-16 text-right outline-none border-b-2 border-transparent focus:border-blue-400 transition-colors" />
+                        <span className="text-[8px] font-bold text-slate-300">{unit}</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const InputCard = ({ label, value, unit, color }) => (
+            <div className={`bg-slate-50 rounded border-l-4 ${color} px-3 py-1 flex justify-between items-center h-7 shadow-sm`}>
+                <span className="text-[9px] font-bold text-slate-400 uppercase truncate">{label}</span>
+                <div className="flex items-baseline gap-0.5"><span className="text-sm font-black text-slate-700">{value}</span><span className="text-[8px] font-bold text-slate-300">{unit}</span></div>
+            </div>
+        );
+
+        const ComparisonRow = ({ label, actual, max, margin, unit, onChangeActual }) => {
+            const [draft, setDraft] = React.useState(String(actual));
+            const focused = React.useRef(false);
+            React.useEffect(() => { if (!focused.current) setDraft(String(actual)); }, [actual]);
+            const commit = () => { const n = parseFloat(draft); if (!isNaN(n) && onChangeActual) onChangeActual(n); };
+            return (
+                <div className="grid grid-cols-12 gap-1 items-center bg-slate-50/50 p-1 rounded-lg border border-slate-100 h-9">
+                    <div className="col-span-1 flex items-center justify-center font-black text-slate-400 text-[10px]">{label}</div>
+                    <div className="col-span-4 bg-white rounded border border-slate-200 px-1.5 py-0.5 flex flex-col justify-center shadow-sm">
+                        <label className="text-[7px] font-bold text-slate-400 uppercase leading-none">측정값</label>
+                        <div className="flex items-center h-4">
+                            <input type="number" value={draft}
+                                onChange={e => setDraft(e.target.value)}
+                                onFocus={() => { focused.current = true; }}
+                                onBlur={() => { focused.current = false; commit(); }}
+                                onKeyDown={e => e.key === 'Enter' && commit()}
+                                className="text-xs font-black text-slate-700 bg-transparent w-full outline-none border-b border-transparent focus:border-blue-400 transition-colors" />
+                            <span className="text-[8px] font-bold text-slate-300 shrink-0">{unit}</span>
+                        </div>
+                    </div>
+                    <div className="col-span-4 bg-emerald-50/20 rounded border border-emerald-100 px-1.5 py-0.5 flex flex-col justify-center shadow-sm">
+                        <label className="text-[7px] font-bold text-slate-400 uppercase leading-none">허용치</label>
+                        <div className="flex items-center h-4 text-xs font-black text-emerald-600">{max}<span className="text-[8px] font-bold text-slate-300 ml-1">{unit}</span></div>
+                    </div>
+                    <div className={`col-span-3 rounded flex flex-col items-center justify-center h-full ${margin >= 0 ? 'bg-emerald-500' : 'bg-red-500'} text-white shadow-inner`}>
+                        <span className="text-[7px] font-black leading-none opacity-80 uppercase tracking-tighter">Margin</span>
+                        <span className="text-xs font-black">{margin >= 0 ? `+${margin}` : margin}</span>
+                    </div>
+                </div>
+            );
+        };
+
+        // ======================= ROOT (모드 전환) =======================
+        const Root = () => {
+            const [mode, setMode] = useState('cg');
+            return mode === 'cg'
+                ? <CGApp onSwitchMode={() => setMode('pa')} />
+                : <PAApp onSwitchMode={() => setMode('cg')} />;
+        };
+
         const container = document.getElementById('root');
         const root = ReactDOM.createRoot(container);
-        root.render(<App />);
+        root.render(<Root />);
     </script>
 </body>
 </html>
