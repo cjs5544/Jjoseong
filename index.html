@@ -65,7 +65,7 @@
         // ======================= CG (W&B) 데이터 =======================
         const AIRCRAFT_DEFAULTS = {
             HL9277: {
-                name: "HL9277(6400Kg)",
+                name: "HL9277(6,400Kg)",
                 bew: 4551,
                 bewArm: 5.3314,
                 maxTow: 6400,
@@ -73,7 +73,7 @@
                 emsArm: 4.271
             },
             HL9695: {
-                name: "HL9695(7000Kg)",
+                name: "HL9695(7,000Kg)",
                 bew: 4683.3,
                 bewArm: 5.3435,
                 maxTow: 7000,
@@ -92,6 +92,21 @@
             { label: "WATER - 1/2", weight: 906.7, arm: 5.226 },
             { label: "WATER - 1/4 (6° Hover)", weight: 453.6, arm: 5.596 },
             { label: "WATER - 1/4", weight: 453.6, arm: 5.157 },
+        ];
+
+        const DEFAULT_WB_ITEMS = [
+            { id: 'bew', label: 'B.E.W (자중)', weight: 4683.3, arm: 5.3435, isFuel: false, isOptional: false, isActive: true, isFixed: true },
+            { id: 'pilot', label: 'Pilot/Copilot', weight: 160, arm: 2.82, isFuel: false, isOptional: false, isActive: true },
+            { id: 'pax1', label: '1 ROW PAX', weight: 0, arm: 3.415, isFuel: false, isOptional: false, isActive: true },
+            { id: 'pax2', label: '2 ROW PAX', weight: 0, arm: 4.789, isFuel: false, isOptional: false, isActive: true },
+            { id: 'pax3', label: '3 ROW PAX', weight: 0, arm: 5.6, isFuel: false, isOptional: false, isActive: true },
+            { id: 'bag', label: 'Bag Comp', weight: 0, arm: 7.2, isFuel: false, isOptional: false, isActive: true },
+            { id: 'ems', label: 'EMS KIT', weight: 54.5, arm: 4.271, isFuel: false, isOptional: true, isActive: true },
+            { id: 'fuel', label: 'FUEL', weight: 820, arm: 6.217, isFuel: true, isOptional: false, isActive: true },
+            { id: 'hoist', label: 'HOIST', weight: 0, arm: 4.25, isFuel: false, isOptional: false, isActive: true },
+            { id: 'cargo', label: 'CARGO', weight: 0, arm: 5.3, isFuel: false, isOptional: false, isActive: true },
+            { id: 'watertank', label: 'WATER TANK', weight: 0, arm: 0, isFuel: false, isOptional: true, isActive: false, isDropdown: true, selectedIndex: 0 },
+            { id: 'pump', label: 'REFILL PUMP', weight: 44.9, arm: 6.595, isFuel: false, isOptional: true, isActive: false },
         ];
 
         const ENVELOPE_DATA = {
@@ -124,20 +139,32 @@
             const [showCoords, setShowCoords] = useState(true);
             const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
 
-            const [items, setItems] = useState([
-                { id: 'bew', label: 'B.E.W (자중)', weight: 4683.3, arm: 5.3435, isFuel: false, isOptional: false, isActive: true, isFixed: true },
-                { id: 'pilot', label: 'Pilot/Copilot', weight: 160, arm: 2.82, isFuel: false, isOptional: false, isActive: true },
-                { id: 'pax1', label: '1 ROW PAX', weight: 0, arm: 3.415, isFuel: false, isOptional: false, isActive: true },
-                { id: 'pax2', label: '2 ROW PAX', weight: 0, arm: 4.789, isFuel: false, isOptional: false, isActive: true },
-                { id: 'pax3', label: '3 ROW PAX', weight: 0, arm: 5.6, isFuel: false, isOptional: false, isActive: true },
-                { id: 'bag', label: 'Bag Comp', weight: 0, arm: 7.2, isFuel: false, isOptional: false, isActive: true },
-                { id: 'ems', label: 'EMS KIT', weight: 54.5, arm: 4.271, isFuel: false, isOptional: true, isActive: true },
-                { id: 'fuel', label: 'FUEL', weight: 820, arm: 6.217, isFuel: true, isOptional: false, isActive: true },
-                { id: 'hoist', label: 'HOIST', weight: 0, arm: 4.25, isFuel: false, isOptional: false, isActive: true },
-                { id: 'cargo', label: 'CARGO', weight: 0, arm: 5.3, isFuel: false, isOptional: false, isActive: true },
-                { id: 'watertank', label: 'WATER TANK', weight: 0, arm: 0, isFuel: false, isOptional: true, isActive: false, isDropdown: true, selectedIndex: 0 },
-                { id: 'pump', label: 'REFILL PUMP', weight: 44.9, arm: 6.595, isFuel: false, isOptional: true, isActive: false },
-            ]);
+            const [items, setItems] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('aw139_wb_items');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                    }
+                } catch {}
+                return DEFAULT_WB_ITEMS.map(it => ({ ...it }));
+            });
+
+            const saveItemsToLocal = () => {
+                localStorage.setItem('aw139_wb_items', JSON.stringify(items));
+                alert('현재 W&B 값이 이 브라우저에 저장되었습니다.\n다음 접속 시 자동으로 불러옵니다.');
+            };
+
+            const resetWbToDefaults = () => {
+                if (!confirm('저장된 값을 삭제하고 기본값으로 되돌립니다.\n계속하시겠습니까?')) return;
+                localStorage.removeItem('aw139_wb_items');
+                const def = AIRCRAFT_DEFAULTS[selectedAc];
+                setItems(DEFAULT_WB_ITEMS.map(item => {
+                    if (item.id === 'bew') return { ...item, weight: def.bew, arm: def.bewArm };
+                    if (item.id === 'ems') return { ...item, weight: def.emsWeight, arm: def.emsArm };
+                    return { ...item };
+                }));
+            };
 
             useEffect(() => {
                 const def = AIRCRAFT_DEFAULTS[selectedAc];
@@ -250,8 +277,8 @@
                                     <h1 className="text-base sm:text-xl font-black tracking-tight uppercase leading-none">AW139 Weight & Balance</h1>
                                     <div className="flex items-center gap-3 mt-1.5 font-bold">
                                         <select value={selectedAc} onChange={(e) => setSelectedAc(e.target.value)} className="bg-slate-800 text-[10px] px-2 py-0.5 rounded print:hidden outline-none">
-                                            <option value="HL9695">HL9695(7000Kg)</option>
-                                            <option value="HL9277">HL9277(6400Kg)</option>
+                                            <option value="HL9695">HL9695(7,000Kg)</option>
+                                            <option value="HL9277">HL9277(6,400Kg)</option>
                                         </select>
                                         <span className="hidden print:block font-bold text-lg tracking-tighter">{AIRCRAFT_DEFAULTS[selectedAc].name}</span>
                                         <span className="text-[10px] text-slate-400 uppercase tracking-tighter font-bold"><Icon name="calendar" size={10} className="inline mr-1"/>{currentDate}</span>
@@ -266,10 +293,9 @@
                                         <Icon name="gauge" size={12} /> Engine PA
                                     </button>
                                 </div>
-                                <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border ${stats.isWeightSafe && stats.cgSafe ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-rose-500 text-rose-400 animate-pulse'}`}>
-                                    {stats.isWeightSafe && stats.cgSafe ? 'MISSION READY' : 'LIMIT EXCEEDED'}
-                                </div>
                                 <div className="flex gap-2">
+                                    <button onClick={saveItemsToLocal} title="현재 입력된 모든 웨이트/암 값을 이 브라우저에 저장합니다. 다음 접속 시 자동으로 불러옵니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
+                                    <button onClick={resetWbToDefaults} title="저장된 값을 삭제하고 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
                                     <button onClick={() => setIsModalOpen(true)} className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="settings-2" size={18} /></button>
                                     <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
                                 </div>
@@ -332,9 +358,16 @@
                                                     <td className="px-4 py-2 text-right font-mono text-blue-600 font-bold print:py-1.5">{(item.weight * item.arm).toFixed(1)}</td>
                                                 </tr>
                                             ))}
-                                            <tr className={`font-black border-t-2 border-slate-200 ${stats.isWeightSafe ? 'bg-blue-50/50' : 'bg-rose-50'}`}>
-                                                <td className="px-4 py-3 text-slate-900 uppercase print:py-3 tracking-tighter">TOTAL GROSS</td>
-                                                <td className="px-4 py-3 text-right text-sm print:py-3">{stats.totalWeight.toLocaleString()}</td>
+                                            <tr className={`font-black border-t-2 border-slate-200 text-[10px] sm:text-[11px] ${stats.isWeightSafe && stats.cgSafe ? 'bg-blue-50/50' : 'bg-rose-50'}`}>
+                                                <td className="px-4 py-3 text-slate-900 uppercase print:py-3 tracking-tighter">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span>TOTAL GROSS</span>
+                                                        <span className={`px-2 py-0.5 rounded-full font-black border tracking-tighter ${stats.isWeightSafe && stats.cgSafe ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-rose-500 text-rose-700 bg-rose-50 animate-pulse'}`}>
+                                                            {stats.isWeightSafe && stats.cgSafe ? 'MISSION READY' : 'LIMIT EXCEEDED'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-right print:py-3">{stats.totalWeight.toLocaleString()}</td>
                                                 <td className="px-4 py-3 text-right text-slate-500 italic whitespace-nowrap uppercase print:py-3 tracking-tighter tracking-tight">CG: {stats.cg}m</td>
                                                 <td className="px-4 py-3 text-right text-blue-800 print:py-3">{(stats.totalMoment).toFixed(1)}</td>
                                             </tr>
@@ -470,11 +503,10 @@
             const [activeEngine, setActiveEngine] = useState(1);
             const eng1Checked = activeEngine === 1;
             const eng2Checked = activeEngine === 2;
-            const [lines, setLines] = useState({ pa: 0.85, tq: 0.15, itt: 0.45, ng: 0.75, itt2: 0.50, ng2: 0.80 });
+            const [lines, setLines] = useState({ pa: 0.85, tq: 0.15, itt: 0.45, ng: 0.75 });
             const [results, setResults] = useState({
                 pa: 0, oat: 15, tq: 95,
                 max_itt: 710, max_ng: 98.5,
-                max_itt2: 710, max_ng2: 98.5,
                 actual_itt1: 680, actual_ng1: 96.0,
                 actual_itt2: 680, actual_ng2: 96.0
             });
@@ -569,8 +601,6 @@
                     pa: Math.round(calculatePA(lines.tq, lines.pa)),
                     max_itt:  Math.round(mapVal(lines.itt,  calib.itt_left, calib.itt_right, 450, 850)),
                     max_ng:   parseFloat(mapVal(lines.ng,   calib.ng_left,  calib.ng_right,  80, 105).toFixed(1)),
-                    max_itt2: Math.round(mapVal(lines.itt2, calib.itt_left, calib.itt_right, 450, 850)),
-                    max_ng2:  parseFloat(mapVal(lines.ng2,  calib.ng_left,  calib.ng_right,  80, 105).toFixed(1)),
                 }));
                 draw();
             }, [lines, calib, dimensions, imgLoaded, lineWidth, eng1Checked, eng2Checked]);
@@ -590,20 +620,11 @@
                 drawLineInternal(lines.tq * width, calib.pa_top * height, lines.tq * width, paY, '#8b5cf6');
                 drawLineInternal(lines.tq * width, paY, width * calib.ng_right, paY, '#f43f5e');
 
-                if (eng1Checked) {
-                    ctx.globalAlpha = 1.0;
-                    ctx.setLineDash([]);
-                    drawLineInternal(lines.itt * width, calib.pa_top * height, lines.itt * width, calib.pa_bottom * height, '#10b981');
-                    drawLineInternal(lines.ng * width,  calib.pa_top * height, lines.ng * width,  calib.pa_bottom * height, '#eab308');
-                }
-
-                if (eng2Checked) {
-                    ctx.globalAlpha = 1.0;
-                    ctx.setLineDash([]);
-                    drawLineInternal(lines.itt2 * width, calib.pa_top * height, lines.itt2 * width, calib.pa_bottom * height, '#06b6d4');
-                    drawLineInternal(lines.ng2 * width,  calib.pa_top * height, lines.ng2 * width,  calib.pa_bottom * height, '#f97316');
-                }
+                // ITT / NG 제한선 — 양 엔진 공유 (패널당 1개)
                 ctx.globalAlpha = 1.0;
+                ctx.setLineDash([]);
+                drawLineInternal(lines.itt * width, calib.pa_top * height, lines.itt * width, calib.pa_bottom * height, '#10b981');
+                drawLineInternal(lines.ng * width,  calib.pa_top * height, lines.ng * width,  calib.pa_bottom * height, '#eab308');
 
                 ctx.fillStyle = '#f43f5e';
                 ctx.beginPath(); ctx.arc(lines.tq * width, paY, 5, 0, Math.PI * 2); ctx.fill();
@@ -663,10 +684,8 @@
                 }
                 if (Math.abs(y - lines.pa) < t) setDragging('pa');
                 else if (Math.abs(x - lines.tq) < t) setDragging('tq');
-                else if (eng1Checked && Math.abs(x - lines.itt) < t)  setDragging('itt');
-                else if (eng1Checked && Math.abs(x - lines.ng) < t)   setDragging('ng');
-                else if (eng2Checked && Math.abs(x - lines.itt2) < t) setDragging('itt2');
-                else if (eng2Checked && Math.abs(x - lines.ng2) < t)  setDragging('ng2');
+                else if (Math.abs(x - lines.itt) < t) setDragging('itt');
+                else if (Math.abs(x - lines.ng) < t)  setDragging('ng');
             };
 
             const handleMove = (e) => {
@@ -687,15 +706,13 @@
                     if (dragging === 'tq')   clampedX = Math.max(calib.tq_left,  Math.min(calib.tq_right,  x));
                     if (dragging === 'itt')  clampedX = Math.max(calib.itt_left, Math.min(calib.itt_right, x));
                     if (dragging === 'ng')   clampedX = Math.max(calib.ng_left,  Math.min(calib.ng_right,  x));
-                    if (dragging === 'itt2') clampedX = Math.max(calib.itt_left, Math.min(calib.itt_right, x));
-                    if (dragging === 'ng2')  clampedX = Math.max(calib.ng_left,  Math.min(calib.ng_right,  x));
                     setLines(p => ({ ...p, [dragging]: dragging === 'pa' ? y : clampedX }));
                 }
             };
 
             const isModified = (v) => Math.abs(calib.paLines[v].l - MASTER_CALIB_DEFAULTS.paLines[v].l) > 0.001;
             const isAbnormal1 = (results.max_itt  - results.actual_itt1) < 0 || (results.max_ng  - results.actual_ng1) < 0;
-            const isAbnormal2 = (results.max_itt2 - results.actual_itt2) < 0 || (results.max_ng2 - results.actual_ng2) < 0;
+            const isAbnormal2 = (results.max_itt - results.actual_itt2) < 0 || (results.max_ng - results.actual_ng2) < 0;
             const isAbnormal = isAbnormal1 || isAbnormal2;
 
             const analyzeWithGemini = async () => {
@@ -824,7 +841,7 @@
                                 <div className="flex flex-col gap-1 w-44 shrink-0">
                                     <EditableInputCard label="토크 (TQ)" value={results.tq} unit="%" color="border-purple-400" onCommit={handleTqInput} min={90} max={105} step={0.1} />
                                     <EditableInputCard label="기압고도 (PA)" value={results.pa} unit="ft" color="border-red-400" onCommit={handlePaInput} min={-1000} max={14000} step={100} />
-                                    <EditableInputCard label="외기온도 (OAT)" value={results.oat} unit="°C" color="border-slate-400" onCommit={v => setResults(p => ({...p, oat: v}))} min={-50} max={60} step={1} />
+                                    <EditableInputCard label="외기온도 (OAT)" value={results.oat} unit="°C" color="border-slate-400" onCommit={v => setResults(p => ({...p, oat: v}))} min={-50} max={60} step={1} tooltip="OAT 곡선은 함수 설정이 불가하여 자동 계산되지 않습니다. 차트의 OAT 곡선을 직접 참고하여 max 값을 구해 입력해 주세요." />
                                 </div>
                                 {/* 중앙: #1 / #2 엔진 좌우 (각 토글 옆에 상태 표시) */}
                                 <div className="flex-1 grid grid-cols-2 gap-3">
@@ -851,8 +868,8 @@
                                                 {!isAbnormal2 ? '정상' : '이상'}
                                             </div>
                                         </div>
-                                        <ComparisonRow label="ITT" actual={results.actual_itt2} max={results.max_itt2} margin={(results.max_itt2 - results.actual_itt2).toFixed(1)} unit="°C" onChangeActual={v => setResults(p => ({...p, actual_itt2: v}))} />
-                                        <ComparisonRow label="NG"  actual={results.actual_ng2}  max={results.max_ng2}  margin={(results.max_ng2  - results.actual_ng2).toFixed(1)}  unit="%" onChangeActual={v => setResults(p => ({...p, actual_ng2: v}))} />
+                                        <ComparisonRow label="ITT" actual={results.actual_itt2} max={results.max_itt} margin={(results.max_itt - results.actual_itt2).toFixed(1)} unit="°C" onChangeActual={v => setResults(p => ({...p, actual_itt2: v}))} />
+                                        <ComparisonRow label="NG"  actual={results.actual_ng2}  max={results.max_ng}  margin={(results.max_ng  - results.actual_ng2).toFixed(1)}  unit="%" onChangeActual={v => setResults(p => ({...p, actual_ng2: v}))} />
                                     </div>
                                 </div>
                                 {/* 우측: AI 분석 버튼 */}
@@ -897,14 +914,33 @@
             );
         };
 
-        const EditableInputCard = ({ label, value, unit, color, onCommit, min, max, step }) => {
+        const EditableInputCard = ({ label, value, unit, color, onCommit, min, max, step, tooltip }) => {
             const [draft, setDraft] = React.useState(String(value));
+            const [showTip, setShowTip] = React.useState(false);
             const focused = React.useRef(false);
             React.useEffect(() => { if (!focused.current) setDraft(String(value)); }, [value]);
             const commit = () => { const n = parseFloat(draft); if (!isNaN(n)) onCommit(n); };
             return (
                 <div className={`bg-slate-50 rounded border-l-4 ${color} px-3 py-1 flex justify-between items-center h-7 shadow-sm`}>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase truncate">{label}</span>
+                    <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase truncate">{label}</span>
+                        {tooltip && (
+                            <span
+                                onMouseEnter={() => setShowTip(true)}
+                                onMouseLeave={() => setShowTip(false)}
+                                onClick={() => setShowTip(v => !v)}
+                                className="relative text-amber-500 cursor-help shrink-0 flex items-center"
+                            >
+                                <Icon name="info" size={11} />
+                                {showTip && (
+                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-60 p-2.5 bg-slate-900 text-white text-[10px] font-medium leading-relaxed rounded-lg shadow-xl border border-slate-700 normal-case tracking-normal pointer-events-none whitespace-normal">
+                                        {tooltip}
+                                        <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-slate-900"></div>
+                                    </div>
+                                )}
+                            </span>
+                        )}
+                    </div>
                     <div className="flex items-baseline gap-0.5">
                         <input type="number" value={draft} min={min} max={max} step={step}
                             onChange={e => setDraft(e.target.value)}
