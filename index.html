@@ -785,9 +785,6 @@
                                     </button>
                                     <button className="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow">Engine PA</button>
                                 </div>
-                                <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border ${!isAbnormal ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10' : 'border-rose-500 text-rose-400 animate-pulse'}`}>
-                                    {!isAbnormal ? 'NORMAL' : 'ABNORMAL'}
-                                </div>
                                 <div className="flex gap-2">
                                     <button onClick={saveAsDefault} title="기본값 저장 — 패널 보정 및 PA 보정으로 조정한 값을 새 기본값으로 저장합니다. (보정 작업을 마친 후 사용하세요)" className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={() => setCalib(userDefault)} title="기본값으로 초기화" className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
@@ -836,17 +833,17 @@
                         </div>
 
                         <div className="bg-white border-t px-3 py-2 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] shrink-0">
-                            <div className="max-w-6xl mx-auto flex gap-3 items-stretch">
-                                {/* 좌측: TQ / PA / OAT 수직 */}
-                                <div className="flex flex-col gap-1 w-44 shrink-0">
+                            <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-2 lg:gap-3 lg:items-stretch">
+                                {/* 입력값: 모바일 한 줄(grid-cols-3) / 데스크탑 좌측 수직 */}
+                                <div className="grid grid-cols-3 lg:flex lg:flex-col gap-1 lg:w-44 lg:shrink-0">
                                     <EditableInputCard label="토크 (TQ)" value={results.tq} unit="%" color="border-purple-400" onCommit={handleTqInput} min={90} max={105} step={0.1} />
                                     <EditableInputCard label="기압고도 (PA)" value={results.pa} unit="ft" color="border-red-400" onCommit={handlePaInput} min={-1000} max={14000} step={100} />
                                     <EditableInputCard label="외기온도 (OAT)" value={results.oat} unit="°C" color="border-slate-400" onCommit={v => setResults(p => ({...p, oat: v}))} min={-50} max={60} step={1} tooltip="OAT 곡선은 함수 설정이 불가하여 자동 계산되지 않습니다. 차트의 OAT 곡선을 직접 참고하여 max 값을 구해 입력해 주세요." />
                                 </div>
-                                {/* 중앙: #1 / #2 엔진 좌우 (각 토글 옆에 상태 표시) */}
-                                <div className="flex-1 grid grid-cols-2 gap-3">
-                                    <div className="flex flex-col gap-1 border-l pl-3 border-slate-100">
-                                        <div className="flex items-center gap-1.5">
+                                {/* 엔진: 모바일/데스크탑 모두 #1 | #2 좌우 배치 */}
+                                <div className="flex-1 grid grid-cols-2 gap-2 lg:gap-3">
+                                    <div className="flex flex-col gap-1 lg:border-l lg:pl-3 border-slate-100">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
                                             <button onClick={() => setActiveEngine(v => v === 1 ? null : 1)} className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${eng1Checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-300 text-slate-400'}`}>
                                                 <span className={`w-2 h-2 rounded-full ${eng1Checked ? 'bg-white' : 'bg-slate-300'}`}></span>
                                                 #1 Engine
@@ -858,8 +855,8 @@
                                         <ComparisonRow label="ITT" actual={results.actual_itt1} max={results.max_itt} margin={(results.max_itt - results.actual_itt1).toFixed(1)} unit="°C" isAbnormal={isAbnormal1} onChangeActual={v => setResults(p => ({...p, actual_itt1: v}))} />
                                         <ComparisonRow label="NG" actual={results.actual_ng1} max={results.max_ng} margin={(results.max_ng - results.actual_ng1).toFixed(1)} unit="%" isAbnormal={isAbnormal1} onChangeActual={v => setResults(p => ({...p, actual_ng1: v}))} />
                                     </div>
-                                    <div className="flex flex-col gap-1 border-l pl-3 border-slate-100">
-                                        <div className="flex items-center gap-1.5">
+                                    <div className="flex flex-col gap-1 border-l pl-2 lg:pl-3 border-slate-100">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
                                             <button onClick={() => setActiveEngine(v => v === 2 ? null : 2)} className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${eng2Checked ? 'bg-cyan-500 border-cyan-500 text-white' : 'bg-white border-slate-300 text-slate-400'}`}>
                                                 <span className={`w-2 h-2 rounded-full ${eng2Checked ? 'bg-white' : 'bg-slate-300'}`}></span>
                                                 #2 Engine
@@ -872,9 +869,9 @@
                                         <ComparisonRow label="NG"  actual={results.actual_ng2}  max={results.max_ng}  margin={(results.max_ng  - results.actual_ng2).toFixed(1)}  unit="%" onChangeActual={v => setResults(p => ({...p, actual_ng2: v}))} />
                                     </div>
                                 </div>
-                                {/* 우측: AI 분석 버튼 */}
-                                <button onClick={analyzeWithGemini} className="shrink-0 w-20 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow flex flex-col items-center justify-center gap-1 transition-all group">
-                                    <Icon name="sparkles" size={20} className="group-hover:scale-110 transition-transform" />
+                                {/* AI 분석: 모바일 가로 풀폭 / 데스크탑 우측 세로 */}
+                                <button onClick={analyzeWithGemini} className="shrink-0 w-full h-9 lg:w-20 lg:h-auto bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow flex flex-row lg:flex-col items-center justify-center gap-2 lg:gap-1 transition-all group">
+                                    <Icon name="sparkles" size={16} className="group-hover:scale-110 transition-transform" />
                                     <span className="text-[10px] font-black">AI 분석</span>
                                 </button>
                             </div>
