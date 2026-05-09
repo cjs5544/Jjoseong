@@ -435,6 +435,18 @@
             const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
             const [dragging, setDragging] = useState(null);
             const [zoom, setZoom] = useState(100);
+            const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
+            useEffect(() => {
+                const mq = window.matchMedia('(max-width: 1023px)');
+                const handler = (e) => setIsMobile(e.matches);
+                if (mq.addEventListener) mq.addEventListener('change', handler);
+                else mq.addListener(handler);
+                return () => {
+                    if (mq.removeEventListener) mq.removeEventListener('change', handler);
+                    else mq.removeListener(handler);
+                };
+            }, []);
+            const zoomMax = isMobile ? 250 : 150;
             const [isCalibMode, setIsCalibMode] = useState(false);
             const [isPanelCalibMode, setIsPanelCalibMode] = useState(false);
             const [activePaIdx, setActivePaIdx] = useState(0);
@@ -542,7 +554,7 @@
                         const dx = e.touches[0].clientX - e.touches[1].clientX;
                         const dy = e.touches[0].clientY - e.touches[1].clientY;
                         const ratio = Math.hypot(dx, dy) / pinchRef.current.dist;
-                        setZoom(Math.round(Math.max(50, Math.min(150, pinchRef.current.zoom * ratio))));
+                        setZoom(Math.round(Math.max(50, Math.min(250, pinchRef.current.zoom * ratio))));
                     }
                 };
                 const onTouchEnd = (e) => { if (e.touches.length < 2) pinchRef.current = null; };
@@ -799,7 +811,7 @@
                         <div className="max-w-7xl mx-auto w-full flex items-center gap-2 overflow-x-auto scrollbar-hide">
                             <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-slate-200 shrink-0">
                                 <Icon name="zoom-in" size={12} className="text-slate-400" />
-                                <input type="range" min="50" max="150" value={zoom} onChange={(e) => setZoom(parseInt(e.target.value))} className="w-14 h-1 accent-blue-500" />
+                                <input type="range" min="50" max={zoomMax} value={zoom} onChange={(e) => setZoom(parseInt(e.target.value))} className="w-14 h-1 accent-blue-500" />
                                 <span className="text-[9px] font-bold text-slate-500 w-7">{zoom}%</span>
                             </div>
                             <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-slate-200 shrink-0">
