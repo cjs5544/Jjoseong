@@ -604,6 +604,20 @@
                 return y > yPoints[0] ? PA_VALUES[0] : PA_VALUES[15];
             };
 
+            const didInitRef = useRef(false);
+            useEffect(() => {
+                if (!imgLoaded || didInitRef.current) return;
+                didInitRef.current = true;
+                // 기본값: TQ = 95, PA = 0
+                const tqX = calib.tq_left + (95 - 90) / (105 - 90) * (calib.tq_right - calib.tq_left);
+                const newTq = Math.max(calib.tq_left, Math.min(calib.tq_right, tqX));
+                const xRatio = (newTq - calib.tq_left) / (calib.tq_right - calib.tq_left);
+                const yPoints = PA_VALUES.map(v => getYAtTQ(v, xRatio));
+                // PA_VALUES[1] === 0
+                const paY = yPoints[1];
+                setLines(p => ({ ...p, tq: newTq, pa: Math.max(0, Math.min(1, paY)) }));
+            }, [imgLoaded, calib]);
+
             useEffect(() => {
                 if (!imgLoaded) return;
                 const mapVal = (val, inMin, inMax, outMin, outMax) => outMin + (val - inMin) * (outMax - outMin) / (inMax - inMin);
