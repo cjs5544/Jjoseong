@@ -834,9 +834,9 @@
                     </div>
 
                     <main className="flex-1 overflow-hidden flex flex-col relative">
-                        <div ref={chartAreaRef} className="flex-1 relative overflow-auto p-2 flex items-start justify-center bg-slate-200/40 print-chart-area">
-                            <div ref={containerRef} className={`relative inline-block select-none bg-white shadow-xl rounded border print-chart-container ${(isCalibMode || isPanelCalibMode) ? 'border-orange-400 border-2' : 'border-slate-300'}`}
-                                style={{ width: `${zoom * 0.6}%`, transformOrigin: 'top center' }}
+                        <div ref={chartAreaRef} className="flex-1 relative overflow-auto p-2 bg-slate-200/40 print-chart-area text-center">
+                            <div ref={containerRef} className={`relative inline-block select-none bg-white shadow-xl rounded border print-chart-container mx-auto ${(isCalibMode || isPanelCalibMode) ? 'border-orange-400 border-2' : 'border-slate-300'}`}
+                                style={{ width: `${isMobile ? zoom : zoom * 0.6}%`, transformOrigin: 'top center' }}
                                 onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={() => setDragging(null)} onMouseLeave={() => setDragging(null)}
                                 onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={() => setDragging(null)}>
                                 <img ref={imgRef} src={imgSrc} alt="PA Chart" className="w-full block pointer-events-none" onLoad={handleImgLoad} />
