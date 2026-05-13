@@ -160,6 +160,22 @@
             return { left: d.lBot + t * (d.lTop - d.lBot), right: d.rBot + t * (d.rTop - d.rBot) };
         };
 
+        // ======================= Lateral CG 좌석 배치 데이터 =======================
+        const SEAT_CONFIG = {
+            A: { bl: 0.460, row: 0, col: 0 }, B: { bl: 0.152, row: 1, col: 0 },
+            C: { bl: -0.152, row: 2, col: 0 }, D: { bl: -0.460, row: 3, col: 0 },
+            E: { bl: 0.460, row: 0, col: 1 }, F: { bl: 0.152, row: 1, col: 1 },
+            G: { bl: -0.152, row: 2, col: 1 }, H: { bl: -0.460, row: 3, col: 1 },
+            I: { bl: 0.254, row: 0, col: 2 }, L: { bl: 0.085, row: 1, col: 2 },
+            M: { bl: -0.085, row: 2, col: 2 }, N: { bl: -0.254, row: 3, col: 2 },
+        };
+        const VARIABLE_SEATS = {
+            HL9277: ['A', 'B', 'C', 'D', 'G', 'I', 'M'],
+            HL9695: ['A', 'G', 'I', 'M', 'N']
+        };
+        const SEAT_COL_X = [175, 255, 345];
+        const SEAT_ROW_Y = [73, 118, 168, 213];
+
         // ======================= PA 데이터 (보정값 절대 변경 금지) =======================
         const PA_VALUES = [-1000, 0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000];
         const PA_COLORS = PA_VALUES.map((_, i) => `hsl(${(i * 360) / 16}, 80%, 45%)`);
@@ -176,6 +192,10 @@
             const [showCoords, setShowCoords] = useState(true);
             const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
             const [showLateral, setShowLateral] = useState(false);
+            const [seatWeights, setSeatWeights] = useState(() => {
+                try { const s = localStorage.getItem('aw139_seat_weights'); if (s) return JSON.parse(s); } catch {}
+                return {};
+            });
 
             const [items, setItems] = useState(() => {
                 try {
@@ -232,13 +252,22 @@
                 return { totalWeight, cg: cgString, zeroFuelWeight, zeroFuelCG, isWeightSafe, cgSafe, tableData: activeItems, totalMoment };
             }, [items, selectedAc]);
 
+            useEffect(() => {
+                localStorage.setItem('aw139_seat_weights', JSON.stringify(seatWeights));
+            }, [seatWeights]);
+
             const lateralStats = useMemo(() => {
-                const totalLateralMoment = stats.tableData.reduce((sum, i) => sum + (i.weight * (i.lateralArm || 0)), 0);
+                // 장비/구조물: items의 lateralArm 사용
+                const itemMoment = stats.tableData.reduce((sum, i) => sum + i.weight * (i.lateralArm || 0), 0);
+                // 탑승자: 좌석 다이어그램 입력값 사용
+                const varSeats = VARIABLE_SEATS[selectedAc] || [];
+                const seatMoment = varSeats.reduce((sum, id) => sum + (seatWeights[id] || 0) * (SEAT_CONFIG[id]?.bl || 0), 0);
+                const totalLateralMoment = itemMoment + seatMoment;
                 const lateralCG = stats.totalWeight > 0 ? totalLateralMoment / stats.totalWeight : 0;
                 const limits = getLateralLimits(stats.totalWeight, selectedAc);
                 const isWithinLimit = limits ? (lateralCG >= limits.left && lateralCG <= limits.right) : true;
-                return { totalLateralMoment, lateralCG, isWithinLimit, limits };
-            }, [stats, selectedAc]);
+                return { totalLateralMoment, lateralCG, isWithinLimit, limits, seatMoment, itemMoment };
+            }, [stats, selectedAc, seatWeights]);
 
             const updateItem = (id, field, value) => {
                 setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
@@ -487,7 +516,93 @@
 
                             {showLateral && (
                                 <div className="p-4 sm:p-6 space-y-4 fade-in">
-                                    <p className="text-[10px] text-slate-400 font-medium">+&nbsp;=&nbsp;우(Starboard) &nbsp;/&nbsp; −&nbsp;=&nbsp;좌(Port) &nbsp;·&nbsp; Lateral Arm 직접 입력 (AFM 값 기준)</p>
+                                    {/* ── 좌석 배치 다이어그램 ── */}
+                                    <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">좌석 배치도 — 변동 좌석(보라색)에 탑승자 중량 kg 입력</p>
+                                        <svg viewBox="0 0 490 265" className="w-full" style={{minWidth:'260px',maxHeight:'230px'}}>
+                                            {/* centerline */}
+                                            <line x1="58" y1="143" x2="460" y2="143" stroke="#22c55e" strokeDasharray="5 4" strokeWidth="1.2" opacity="0.6" />
+                                            <text x="54" y="143" textAnchor="end" dominantBaseline="middle" fontSize="7" fill="#22c55e">0.0</text>
+                                            {/* BL ±0.254 ref */}
+                                            <line x1="58" y1="104" x2="460" y2="104" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.5" />
+                                            <line x1="58" y1="182" x2="460" y2="182" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.5" />
+                                            <text x="54" y="104" textAnchor="end" dominantBaseline="middle" fontSize="6" fill="#94a3b8">+.254</text>
+                                            <text x="54" y="182" textAnchor="end" dominantBaseline="middle" fontSize="6" fill="#94a3b8">-.254</text>
+                                            {/* +/- BL labels */}
+                                            <text x="6" y="62" fontSize="7" fontWeight="bold" fill="#64748b">+BL</text>
+                                            <text x="4" y="71" fontSize="6" fill="#94a3b8">Stbd</text>
+                                            <text x="6" y="218" fontSize="7" fontWeight="bold" fill="#64748b">-BL</text>
+                                            <text x="4" y="227" fontSize="6" fill="#94a3b8">Port</text>
+                                            {/* nose curve */}
+                                            <path d="M 128 48 Q 64 48 46 143 Q 64 238 128 238" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
+                                            {/* cabin outline */}
+                                            <rect x="128" y="48" width="255" height="190" rx="2" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
+                                            {/* inner bay dashed outline */}
+                                            <rect x="308" y="70" width="75" height="150" rx="2" fill="none" stroke="#cbd5e1" strokeWidth="0.8" strokeDasharray="3 2" />
+                                            {/* column dividers */}
+                                            <line x1="215" y1="48" x2="215" y2="238" stroke="#e2e8f0" strokeWidth="0.8" />
+                                            <line x1="308" y1="48" x2="308" y2="238" stroke="#e2e8f0" strokeWidth="0.8" />
+                                            {/* crew seats */}
+                                            <rect x="72" y="35" width="38" height="26" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
+                                            <text x="91" y="52" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">CPT</text>
+                                            <text x="91" y="70" textAnchor="middle" fontSize="6" fill="#94a3b8">+0.55m</text>
+                                            <rect x="72" y="224" width="38" height="26" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
+                                            <text x="91" y="241" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">PLT</text>
+                                            <text x="91" y="222" textAnchor="middle" fontSize="6" fill="#94a3b8">-0.55m</text>
+                                            {/* STA labels */}
+                                            <text x="170" y="254" textAnchor="middle" fontSize="7" fill="#94a3b8">STA-1</text>
+                                            <text x="255" y="254" textAnchor="middle" fontSize="7" fill="#94a3b8">STA-2</text>
+                                            <text x="345" y="254" textAnchor="middle" fontSize="7" fill="#94a3b8">STA-3</text>
+                                            {/* ── 좌석 렌더링 ── */}
+                                            {Object.entries(SEAT_CONFIG).map(([id, cfg]) => {
+                                                const isVar = (VARIABLE_SEATS[selectedAc] || []).includes(id);
+                                                const xc = SEAT_COL_X[cfg.col];
+                                                const yc = SEAT_ROW_Y[cfg.row];
+                                                const w = seatWeights[id] || 0;
+                                                if (isVar) {
+                                                    return (
+                                                        <g key={id}>
+                                                            <rect x={xc-22} y={yc-19} width={44} height={38} rx="4"
+                                                                  fill={w > 0 ? "#faf5ff" : "#f5f3ff"}
+                                                                  stroke={w > 0 ? "#9333ea" : "#c084fc"} strokeWidth="1.5" />
+                                                            <text x={xc} y={yc-7} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#7c3aed">{id}</text>
+                                                            <foreignObject x={xc-19} y={yc-1} width={38} height={16}>
+                                                                <div xmlns="http://www.w3.org/1999/xhtml">
+                                                                    <input type="number" value={w || ''} placeholder="kg"
+                                                                           onChange={e => setSeatWeights(prev => ({...prev, [id]: parseFloat(e.target.value) || 0}))}
+                                                                           style={{width:'100%',height:'15px',fontSize:'9px',fontWeight:'bold',textAlign:'center',
+                                                                                   border:'1px solid #d8b4fe',borderRadius:'3px',outline:'none',background:'white',padding:'0',boxSizing:'border-box'}} />
+                                                                </div>
+                                                            </foreignObject>
+                                                            <text x={xc} y={yc+23} textAnchor="middle" fontSize="6" fill="#a78bfa">{cfg.bl>0?'+':''}{cfg.bl.toFixed(3)}</text>
+                                                        </g>
+                                                    );
+                                                }
+                                                return (
+                                                    <g key={id}>
+                                                        <rect x={xc-15} y={yc-13} width={30} height={26} rx="3"
+                                                              fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
+                                                        <text x={xc} y={yc-2} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#94a3b8">{id}</text>
+                                                        <text x={xc} y={yc+9} textAnchor="middle" fontSize="6" fill="#cbd5e1">{cfg.bl>0?'+':''}{cfg.bl.toFixed(3)}</text>
+                                                    </g>
+                                                );
+                                            })}
+                                        </svg>
+                                        {/* 입력된 좌석 모멘트 요약 */}
+                                        {(VARIABLE_SEATS[selectedAc] || []).some(id => seatWeights[id] > 0) && (
+                                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                                {(VARIABLE_SEATS[selectedAc] || []).filter(id => seatWeights[id] > 0).map(id => (
+                                                    <span key={id} className="px-1.5 py-0.5 bg-purple-50 border border-purple-200 rounded-full text-[8px] text-purple-700 font-bold">
+                                                        {id}: {seatWeights[id]}kg × {SEAT_CONFIG[id].bl>0?'+':''}{SEAT_CONFIG[id].bl.toFixed(3)}m = {(seatWeights[id]*SEAT_CONFIG[id].bl).toFixed(2)}
+                                                    </span>
+                                                ))}
+                                                <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded-full text-[8px] text-slate-600 font-bold">
+                                                    좌석 합계: {lateralStats.seatMoment.toFixed(2)} kg·m
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 font-medium">장비 Lateral Arm: +&nbsp;=&nbsp;우(Stbd) &nbsp;/&nbsp; −&nbsp;=&nbsp;좌(Port)</p>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
                                         {/* 좌: 테이블 */}
