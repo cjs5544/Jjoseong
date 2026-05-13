@@ -161,13 +161,14 @@
         };
 
         // ======================= Lateral CG 좌석 배치 데이터 =======================
+        // sta: 종방향 암 (AFM 기준, mm→m), bl: 횡방향 암 BL (m)
         const SEAT_CONFIG = {
-            A: { bl: 0.460, row: 0, col: 0 }, B: { bl: 0.152, row: 1, col: 0 },
-            C: { bl: -0.152, row: 2, col: 0 }, D: { bl: -0.460, row: 3, col: 0 },
-            E: { bl: 0.460, row: 0, col: 1 }, F: { bl: 0.152, row: 1, col: 1 },
-            G: { bl: -0.152, row: 2, col: 1 }, H: { bl: -0.460, row: 3, col: 1 },
-            I: { bl: 0.254, row: 0, col: 2 }, L: { bl: 0.085, row: 1, col: 2 },
-            M: { bl: -0.085, row: 2, col: 2 }, N: { bl: -0.254, row: 3, col: 2 },
+            A: { sta: 3.415, bl: 0.460, row: 0, col: 0 }, B: { sta: 3.415, bl: 0.152, row: 1, col: 0 },
+            C: { sta: 3.415, bl: -0.152, row: 2, col: 0 }, D: { sta: 3.415, bl: -0.460, row: 3, col: 0 },
+            E: { sta: 4.789, bl: 0.460, row: 0, col: 1 }, F: { sta: 4.789, bl: 0.152, row: 1, col: 1 },
+            G: { sta: 4.789, bl: -0.152, row: 2, col: 1 }, H: { sta: 4.789, bl: -0.460, row: 3, col: 1 },
+            I: { sta: 5.600, bl: 0.254, row: 0, col: 2 }, L: { sta: 5.600, bl: 0.085, row: 1, col: 2 },
+            M: { sta: 5.600, bl: -0.085, row: 2, col: 2 }, N: { sta: 5.600, bl: -0.254, row: 3, col: 2 },
         };
         const VARIABLE_SEATS = {
             HL9277: ['A', 'B', 'C', 'D', 'G', 'I', 'M'],
@@ -371,7 +372,6 @@
                                 <div className="flex gap-2">
                                     <button onClick={saveItemsToLocal} title="현재 입력된 모든 웨이트/암 값을 이 브라우저에 저장합니다. 다음 접속 시 자동으로 불러옵니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={resetWbToDefaults} title="저장된 값을 삭제하고 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
-                                    <button onClick={() => setIsModalOpen(true)} className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="settings-2" size={18} /></button>
                                     <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
                                 </div>
                             </div>
@@ -380,10 +380,13 @@
 
                     <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4 sm:space-y-6 print:p-0 print:space-y-4">
                         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 no-print overflow-hidden">
-                            <div className="px-5 py-3 bg-slate-50 border-b">
+                            <div className="px-5 py-3 bg-slate-50 border-b flex items-center justify-between">
                                 <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
                                     <Icon name="weight" size={18} className="text-blue-600" /> 1. Quick Load Entry
                                 </h2>
+                                <button onClick={() => setIsModalOpen(true)} title="리스트 제원 및 순서 수정" className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[10px] font-black transition-all active:scale-95">
+                                    <Icon name="settings-2" size={13} /> 항목 수정
+                                </button>
                             </div>
                             <div className="p-4 sm:p-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
                                 {items.filter(i => i.id !== 'bew').map(item => (
@@ -549,10 +552,13 @@
                                             <rect x="72" y="224" width="38" height="26" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
                                             <text x="91" y="241" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">PLT</text>
                                             <text x="91" y="222" textAnchor="middle" fontSize="6" fill="#94a3b8">-0.55m</text>
-                                            {/* STA labels */}
-                                            <text x="170" y="254" textAnchor="middle" fontSize="7" fill="#94a3b8">STA-1</text>
-                                            <text x="255" y="254" textAnchor="middle" fontSize="7" fill="#94a3b8">STA-2</text>
-                                            <text x="345" y="254" textAnchor="middle" fontSize="7" fill="#94a3b8">STA-3</text>
+                                            {/* STA labels (AFM Station 값) */}
+                                            <text x="170" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 1</text>
+                                            <text x="170" y="258" textAnchor="middle" fontSize="6" fill="#94a3b8">3,415 mm</text>
+                                            <text x="255" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 2</text>
+                                            <text x="255" y="258" textAnchor="middle" fontSize="6" fill="#94a3b8">4,789 mm</text>
+                                            <text x="345" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 3</text>
+                                            <text x="345" y="258" textAnchor="middle" fontSize="6" fill="#94a3b8">5,600 mm</text>
                                             {/* ── 좌석 렌더링 ── */}
                                             {Object.entries(SEAT_CONFIG).map(([id, cfg]) => {
                                                 const isVar = (VARIABLE_SEATS[selectedAc] || []).includes(id);
