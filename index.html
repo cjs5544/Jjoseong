@@ -163,10 +163,10 @@
         // ======================= Lateral CG 좌석 배치 데이터 =======================
         // sta: 종방향 암 (AFM 기준, mm→m), bl: 횡방향 암 BL (m)
         const SEAT_CONFIG = {
-            A: { sta: 3.415, bl: 0.460, row: 0, col: 0 }, B: { sta: 3.415, bl: 0.152, row: 1, col: 0 },
-            C: { sta: 3.415, bl: -0.152, row: 2, col: 0 }, D: { sta: 3.415, bl: -0.460, row: 3, col: 0 },
-            E: { sta: 4.789, bl: 0.460, row: 0, col: 1 }, F: { sta: 4.789, bl: 0.152, row: 1, col: 1 },
-            G: { sta: 4.789, bl: -0.152, row: 2, col: 1 }, H: { sta: 4.789, bl: -0.460, row: 3, col: 1 },
+            A: { sta: 3.415, bl: 0.737, row: 0, col: 0 }, B: { sta: 3.415, bl: 0.254, row: 1, col: 0 },
+            C: { sta: 3.415, bl: -0.254, row: 2, col: 0 }, D: { sta: 3.415, bl: -0.737, row: 3, col: 0 },
+            E: { sta: 4.789, bl: 0.737, row: 0, col: 1 }, F: { sta: 4.789, bl: 0.254, row: 1, col: 1 },
+            G: { sta: 4.789, bl: -0.254, row: 2, col: 1 }, H: { sta: 4.789, bl: -0.737, row: 3, col: 1 },
             I: { sta: 5.600, bl: 0.254, row: 0, col: 2 }, L: { sta: 5.600, bl: 0.085, row: 1, col: 2 },
             M: { sta: 5.600, bl: -0.085, row: 2, col: 2 }, N: { sta: 5.600, bl: -0.254, row: 3, col: 2 },
         };
@@ -193,6 +193,7 @@
             const [showCoords, setShowCoords] = useState(true);
             const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
             const [showLateral, setShowLateral] = useState(false);
+            const [seatPopup, setSeatPopup] = useState(null); // { id, x, y }
             const [seatWeights, setSeatWeights] = useState(() => {
                 try { const s = localStorage.getItem('aw139_seat_weights'); if (s) return JSON.parse(s); } catch {}
                 return {};
@@ -547,10 +548,10 @@
                                             <line x1="308" y1="48" x2="308" y2="238" stroke="#e2e8f0" strokeWidth="0.8" />
                                             {/* crew seats */}
                                             <rect x="72" y="35" width="38" height="26" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
-                                            <text x="91" y="52" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">CPT</text>
+                                            <text x="91" y="52" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">PLT</text>
                                             <text x="91" y="70" textAnchor="middle" fontSize="6" fill="#94a3b8">+0.55m</text>
                                             <rect x="72" y="224" width="38" height="26" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
-                                            <text x="91" y="241" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">PLT</text>
+                                            <text x="91" y="241" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">CPT</text>
                                             <text x="91" y="222" textAnchor="middle" fontSize="6" fill="#94a3b8">-0.55m</text>
                                             {/* STA labels (AFM Station 값) */}
                                             <text x="170" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 1</text>
@@ -567,20 +568,18 @@
                                                 const w = seatWeights[id] || 0;
                                                 if (isVar) {
                                                     return (
-                                                        <g key={id}>
+                                                        <g key={id} style={{cursor:'pointer'}} onClick={e => {
+                                                            const rect = e.currentTarget.closest('svg').getBoundingClientRect();
+                                                            setSeatPopup({ id, svgX: xc, svgY: yc });
+                                                        }}>
                                                             <rect x={xc-22} y={yc-19} width={44} height={38} rx="4"
                                                                   fill={w > 0 ? "#faf5ff" : "#f5f3ff"}
                                                                   stroke={w > 0 ? "#9333ea" : "#c084fc"} strokeWidth="1.5" />
-                                                            <text x={xc} y={yc-7} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#7c3aed">{id}</text>
-                                                            <foreignObject x={xc-19} y={yc-1} width={38} height={16}>
-                                                                <div xmlns="http://www.w3.org/1999/xhtml">
-                                                                    <input type="number" value={w || ''} placeholder="kg"
-                                                                           onChange={e => setSeatWeights(prev => ({...prev, [id]: parseFloat(e.target.value) || 0}))}
-                                                                           style={{width:'100%',height:'15px',fontSize:'9px',fontWeight:'bold',textAlign:'center',
-                                                                                   border:'1px solid #d8b4fe',borderRadius:'3px',outline:'none',background:'white',padding:'0',boxSizing:'border-box'}} />
-                                                                </div>
-                                                            </foreignObject>
-                                                            <text x={xc} y={yc+23} textAnchor="middle" fontSize="6" fill="#a78bfa">{cfg.bl>0?'+':''}{cfg.bl.toFixed(3)}</text>
+                                                            <text x={xc} y={yc-5} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#7c3aed">{id}</text>
+                                                            <text x={xc} y={yc+8} textAnchor="middle" fontSize="8" fontWeight="bold" fill={w > 0 ? "#6d28d9" : "#c084fc"}>
+                                                                {w > 0 ? `${w}kg` : '탭'}
+                                                            </text>
+                                                            <text x={xc} y={yc+21} textAnchor="middle" fontSize="6" fill="#a78bfa">{cfg.bl>0?'+':''}{cfg.bl.toFixed(3)}</text>
                                                         </g>
                                                     );
                                                 }
@@ -594,6 +593,53 @@
                                                 );
                                             })}
                                         </svg>
+
+                                        {/* ── 좌석 무게 입력 팝업 ── */}
+                                        {seatPopup && (() => {
+                                            const cfg = SEAT_CONFIG[seatPopup.id];
+                                            const w = seatWeights[seatPopup.id] || 0;
+                                            return (
+                                                <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setSeatPopup(null)}>
+                                                    <div className="absolute inset-0 bg-black/30" />
+                                                    <div className="relative bg-white rounded-2xl shadow-2xl border border-purple-200 p-5 w-72 z-10"
+                                                         onClick={e => e.stopPropagation()}>
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <div>
+                                                                <span className="text-2xl font-black text-purple-700 mr-2">Seat {seatPopup.id}</span>
+                                                                <span className="text-xs font-bold text-slate-500">BL {cfg.bl>0?'+':''}{cfg.bl.toFixed(3)}m / STA {cfg.sta.toFixed(3)}m</span>
+                                                            </div>
+                                                            <button onClick={() => setSeatPopup(null)} className="text-slate-400 hover:text-slate-700 text-xl font-black">✕</button>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <input type="number" autoFocus
+                                                                   defaultValue={w || ''}
+                                                                   placeholder="0"
+                                                                   onKeyDown={e => { if (e.key === 'Enter') { setSeatWeights(prev => ({...prev, [seatPopup.id]: parseFloat(e.target.value) || 0})); setSeatPopup(null); }}}
+                                                                   id="seatPopupInput"
+                                                                   className="flex-1 text-2xl font-black text-center px-3 py-3 border-2 border-purple-300 rounded-xl outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-200" />
+                                                            <span className="text-sm font-bold text-slate-500">kg</span>
+                                                        </div>
+                                                        <div className="flex gap-2 mt-3">
+                                                            {w > 0 && (
+                                                                <button onClick={() => { setSeatWeights(prev => ({...prev, [seatPopup.id]: 0})); setSeatPopup(null); }}
+                                                                        className="flex-none px-3 py-2 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-black hover:bg-rose-100">
+                                                                    초기화
+                                                                </button>
+                                                            )}
+                                                            <button onClick={() => {
+                                                                const val = parseFloat(document.getElementById('seatPopupInput').value) || 0;
+                                                                setSeatWeights(prev => ({...prev, [seatPopup.id]: val}));
+                                                                setSeatPopup(null);
+                                                            }} className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-black transition-all active:scale-95">
+                                                                확인
+                                                            </button>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-400 text-center mt-2">Enter 키 또는 확인 버튼으로 저장</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
                                         {/* 입력된 좌석 모멘트 요약 */}
                                         {(VARIABLE_SEATS[selectedAc] || []).some(id => seatWeights[id] > 0) && (
                                             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -623,6 +669,7 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody className="text-[10px] sm:text-[11px]">
+                                                    {/* 장비/구조물 항목 */}
                                                     {stats.tableData.map(item => {
                                                         const lArm = item.lateralArm || 0;
                                                         const lMoment = item.weight * lArm;
@@ -645,6 +692,35 @@
                                                             </tr>
                                                         );
                                                     })}
+                                                    {/* 좌석 다이어그램 탑승자 항목 */}
+                                                    {(() => {
+                                                        const varSeats = VARIABLE_SEATS[selectedAc] || [];
+                                                        const filledSeats = varSeats.filter(id => seatWeights[id] > 0);
+                                                        if (filledSeats.length === 0) return null;
+                                                        return (
+                                                            <React.Fragment>
+                                                                <tr className="bg-purple-50/60 border-t border-purple-100">
+                                                                    <td colSpan={4} className="px-3 py-1 text-[9px] font-black text-purple-500 uppercase tracking-widest">탑승자 좌석 (다이어그램)</td>
+                                                                </tr>
+                                                                {filledSeats.map(id => {
+                                                                    const cfg = SEAT_CONFIG[id];
+                                                                    const w = seatWeights[id];
+                                                                    const m = w * cfg.bl;
+                                                                    return (
+                                                                        <tr key={`seat-${id}`} className="border-b border-purple-50 bg-purple-50/20 cursor-pointer hover:bg-purple-50/50"
+                                                                            onClick={() => setSeatPopup({ id, svgX: 0, svgY: 0 })}>
+                                                                            <td className="px-3 py-1.5 font-bold text-purple-700">Seat {id}</td>
+                                                                            <td className="px-3 py-1.5 text-right font-mono text-purple-600">{w}</td>
+                                                                            <td className="px-3 py-1.5 text-center font-mono text-purple-600">{cfg.bl>0?'+':''}{cfg.bl.toFixed(3)}</td>
+                                                                            <td className={`px-3 py-1.5 text-right font-mono font-bold ${m < -0.005 ? 'text-blue-600' : m > 0.005 ? 'text-rose-500' : 'text-slate-300'}`}>
+                                                                                {m.toFixed(2)}
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                            </React.Fragment>
+                                                        );
+                                                    })()}
                                                     <tr className={`font-black text-[10px] sm:text-[11px] border-t-2 border-slate-200 ${lateralStats.isWithinLimit ? 'bg-purple-50/40' : 'bg-rose-50'}`}>
                                                         <td className="px-3 py-2.5 uppercase tracking-tighter text-slate-900">LATERAL CG</td>
                                                         <td className="px-3 py-2.5 text-right">{stats.totalWeight.toLocaleString()}</td>
