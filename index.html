@@ -175,7 +175,8 @@
             HL9695: ['A', 'G', 'I', 'M', 'N']
         };
         const SEAT_COL_X = [175, 255, 345];
-        const SEAT_ROW_Y = [73, 118, 168, 213];
+        // BL 값을 SVG Y 좌표로 변환 (Y_CENTER=143, SCALE=122px/m, max BL=±0.737m → y=53~233)
+        const blToSvgY = (bl) => Math.round(143 - bl * 122);
 
         // ======================= PA 데이터 (보정값 절대 변경 금지) =======================
         const PA_VALUES = [-1000, 0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000];
@@ -524,19 +525,25 @@
                                     <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">좌석 배치도 — 변동 좌석(보라색)에 탑승자 중량 kg 입력</p>
                                         <svg viewBox="0 0 490 265" className="w-full" style={{minWidth:'260px',maxHeight:'230px'}}>
-                                            {/* centerline */}
+                                            {/* BL 기준선 — 비례 좌표 (blToSvgY 기준) */}
+                                            {/* BL=0 centerline → y=143 */}
                                             <line x1="58" y1="143" x2="460" y2="143" stroke="#22c55e" strokeDasharray="5 4" strokeWidth="1.2" opacity="0.6" />
-                                            <text x="54" y="143" textAnchor="end" dominantBaseline="middle" fontSize="7" fill="#22c55e">0.0</text>
-                                            {/* BL ±0.254 ref */}
-                                            <line x1="58" y1="104" x2="460" y2="104" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.5" />
-                                            <line x1="58" y1="182" x2="460" y2="182" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.5" />
-                                            <text x="54" y="104" textAnchor="end" dominantBaseline="middle" fontSize="6" fill="#94a3b8">+.254</text>
-                                            <text x="54" y="182" textAnchor="end" dominantBaseline="middle" fontSize="6" fill="#94a3b8">-.254</text>
-                                            {/* +/- BL labels */}
-                                            <text x="6" y="62" fontSize="7" fontWeight="bold" fill="#64748b">+BL</text>
-                                            <text x="4" y="71" fontSize="6" fill="#94a3b8">Stbd</text>
-                                            <text x="6" y="218" fontSize="7" fontWeight="bold" fill="#64748b">-BL</text>
-                                            <text x="4" y="227" fontSize="6" fill="#94a3b8">Port</text>
+                                            <text x="54" y="143" textAnchor="end" dominantBaseline="middle" fontSize="6" fill="#22c55e">0</text>
+                                            {/* BL ±254mm → y=112 / y=174 */}
+                                            <line x1="58" y1="112" x2="460" y2="112" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.4" />
+                                            <line x1="58" y1="174" x2="460" y2="174" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.4" />
+                                            <text x="54" y="112" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#94a3b8">+254</text>
+                                            <text x="54" y="174" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#94a3b8">-254</text>
+                                            {/* BL ±550mm (crew) → y=76 / y=210 */}
+                                            <line x1="58" y1="76" x2="128" y2="76" stroke="#a5b4fc" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.5" />
+                                            <line x1="58" y1="210" x2="128" y2="210" stroke="#a5b4fc" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.5" />
+                                            <text x="54" y="76" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#a5b4fc">+550</text>
+                                            <text x="54" y="210" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#a5b4fc">-550</text>
+                                            {/* +/- BL axis labels */}
+                                            <text x="6" y="55" fontSize="7" fontWeight="bold" fill="#64748b">+BL</text>
+                                            <text x="3" y="64" fontSize="6" fill="#94a3b8">Stbd</text>
+                                            <text x="6" y="225" fontSize="7" fontWeight="bold" fill="#64748b">-BL</text>
+                                            <text x="3" y="234" fontSize="6" fill="#94a3b8">Port</text>
                                             {/* nose curve */}
                                             <path d="M 128 48 Q 64 48 46 143 Q 64 238 128 238" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
                                             {/* cabin outline */}
@@ -546,49 +553,42 @@
                                             {/* column dividers */}
                                             <line x1="215" y1="48" x2="215" y2="238" stroke="#e2e8f0" strokeWidth="0.8" />
                                             <line x1="308" y1="48" x2="308" y2="238" stroke="#e2e8f0" strokeWidth="0.8" />
-                                            {/* crew seats */}
-                                            <rect x="72" y="35" width="38" height="26" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
-                                            <text x="91" y="52" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">PLT</text>
-                                            <text x="91" y="70" textAnchor="middle" fontSize="6" fill="#94a3b8">+0.55m</text>
-                                            <rect x="72" y="224" width="38" height="26" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
-                                            <text x="91" y="241" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">CPT</text>
-                                            <text x="91" y="222" textAnchor="middle" fontSize="6" fill="#94a3b8">-0.55m</text>
-                                            {/* STA labels (AFM Station 값) */}
+                                            {/* 조종사 좌석 — BL 비례 위치: PLT +550→y=76, CPT -550→y=210 */}
+                                            <rect x="72" y="65" width="36" height="22" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
+                                            <text x="90" y="79" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">PLT</text>
+                                            <text x="90" y="91" textAnchor="middle" fontSize="5.5" fill="#a5b4fc">+550mm</text>
+                                            <rect x="72" y="199" width="36" height="22" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
+                                            <text x="90" y="213" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">CPT</text>
+                                            <text x="90" y="225" textAnchor="middle" fontSize="5.5" fill="#a5b4fc">-550mm</text>
+                                            {/* STA labels */}
                                             <text x="170" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 1</text>
                                             <text x="170" y="258" textAnchor="middle" fontSize="6" fill="#94a3b8">3,415 mm</text>
                                             <text x="255" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 2</text>
                                             <text x="255" y="258" textAnchor="middle" fontSize="6" fill="#94a3b8">4,789 mm</text>
                                             <text x="345" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 3</text>
                                             <text x="345" y="258" textAnchor="middle" fontSize="6" fill="#94a3b8">5,600 mm</text>
-                                            {/* ── 좌석 렌더링 ── */}
+                                            {/* ── 좌석 렌더링 (BL 비례 Y 좌표) ── */}
                                             {Object.entries(SEAT_CONFIG).map(([id, cfg]) => {
                                                 const isVar = (VARIABLE_SEATS[selectedAc] || []).includes(id);
                                                 const xc = SEAT_COL_X[cfg.col];
-                                                const yc = SEAT_ROW_Y[cfg.row];
+                                                const yc = blToSvgY(cfg.bl);
                                                 const w = seatWeights[id] || 0;
                                                 if (isVar) {
                                                     return (
-                                                        <g key={id} style={{cursor:'pointer'}} onClick={e => {
-                                                            const rect = e.currentTarget.closest('svg').getBoundingClientRect();
-                                                            setSeatPopup({ id, svgX: xc, svgY: yc });
-                                                        }}>
-                                                            <rect x={xc-22} y={yc-19} width={44} height={38} rx="4"
+                                                        <g key={id} style={{cursor:'pointer'}} onClick={() => setSeatPopup({ id })}>
+                                                            <rect x={xc-18} y={yc-12} width={36} height={24} rx="3"
                                                                   fill={w > 0 ? "#faf5ff" : "#f5f3ff"}
                                                                   stroke={w > 0 ? "#9333ea" : "#c084fc"} strokeWidth="1.5" />
-                                                            <text x={xc} y={yc-5} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#7c3aed">{id}</text>
-                                                            <text x={xc} y={yc+8} textAnchor="middle" fontSize="8" fontWeight="bold" fill={w > 0 ? "#6d28d9" : "#c084fc"}>
-                                                                {w > 0 ? `${w}kg` : '탭'}
-                                                            </text>
-                                                            <text x={xc} y={yc+21} textAnchor="middle" fontSize="6" fill="#a78bfa">{cfg.bl>0?'+':''}{cfg.bl.toFixed(3)}</text>
+                                                            <text x={xc} y={w > 0 ? yc-2 : yc+4} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#7c3aed">{id}</text>
+                                                            {w > 0 && <text x={xc} y={yc+9} textAnchor="middle" fontSize="7" fill="#6d28d9">{w}kg</text>}
                                                         </g>
                                                     );
                                                 }
                                                 return (
                                                     <g key={id}>
-                                                        <rect x={xc-15} y={yc-13} width={30} height={26} rx="3"
+                                                        <rect x={xc-12} y={yc-9} width={24} height={18} rx="2"
                                                               fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
-                                                        <text x={xc} y={yc-2} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#94a3b8">{id}</text>
-                                                        <text x={xc} y={yc+9} textAnchor="middle" fontSize="6" fill="#cbd5e1">{cfg.bl>0?'+':''}{cfg.bl.toFixed(3)}</text>
+                                                        <text x={xc} y={yc+4} textAnchor="middle" fontSize="8" fontWeight="bold" fill="#94a3b8">{id}</text>
                                                     </g>
                                                 );
                                             })}
@@ -783,41 +783,30 @@
                                             </div>
                                             <div className="flex-1 min-h-[300px] sm:min-h-[360px]">
                                                 <ResponsiveContainer width="100%" height="100%">
-                                                    <ScatterChart margin={{ top: 15, right: 20, bottom: 35, left: 15 }}>
-                                                        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.4} />
+                                                    <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 10 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.4} />
                                                         <XAxis type="number" dataKey="x"
                                                                domain={selectedAc === 'HL9695' ? [-0.14, 0.22] : [-0.13, 0.16]}
-                                                               tickCount={8} fontSize={9}
+                                                               tickCount={8} fontSize={10}
                                                                tickFormatter={v => `${(v*1000).toFixed(0)}`}
-                                                               label={{ value: 'BL (mm)', position: 'insideBottom', offset: -20, fontSize: 9, fill: '#64748b' }}
                                                                tick={{ fill: '#64748b', fontWeight: 'bold' }} />
                                                         <YAxis type="number" dataKey="y"
                                                                domain={[4200, selectedAc === 'HL9695' ? 7200 : 6600]}
-                                                               fontSize={9} tick={{ fill: '#64748b', fontWeight: 'bold' }}
-                                                               label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft', offset: 5, fontSize: 9, fill: '#64748b' }} />
-                                                        <Tooltip formatter={(v, n) => n === 'x' ? [`${(v*1000).toFixed(0)} mm`, 'BL'] : [`${v.toLocaleString()} kg`, 'Weight']} />
-                                                        {/* 현재 Lateral CG 포인트만 Scatter로 표시 */}
+                                                               fontSize={10} tick={{ fill: '#64748b', fontWeight: 'bold' }} />
+                                                        <Tooltip cursor={{ strokeDasharray: '3 3' }}
+                                                                 formatter={(v, n) => n === 'x' ? [`${(v*1000).toFixed(0)} mm`, 'BL'] : [`${v.toLocaleString()} kg`, 'Weight']} />
+                                                        {/* 인벨로프 (패널 3 스타일: line + circle) */}
+                                                        <Scatter name="Envelope" data={LATERAL_ENVELOPE[selectedAc].standard}
+                                                                 fill="#cbd5e1" line stroke="#94a3b8" strokeWidth={2} shape="circle" />
+                                                        {/* Hoist Ops 점선 (HL9695 전용) */}
+                                                        {selectedAc === 'HL9695' && (
+                                                            <Scatter name="HoistOps" data={LATERAL_ENVELOPE.HL9695.hoistOps}
+                                                                     line={{ strokeDasharray: '5 5', stroke: '#f87171', strokeWidth: 1.5 }} shape="none" />
+                                                        )}
+                                                        {/* 현재 Lateral CG */}
                                                         <Scatter name="Actual"
                                                                  data={[{ x: lateralStats.lateralCG, y: stats.totalWeight }]}
-                                                                 fill={lateralStats.isWithinLimit ? '#a855f7' : '#ef4444'}
-                                                                 r={6} />
-                                                        {/* 인벨로프 폴리곤: Customized SVG */}
-                                                        <Customized component={(props) => {
-                                                            const xAxis = props.xAxisMap && Object.values(props.xAxisMap)[0];
-                                                            const yAxis = props.yAxisMap && Object.values(props.yAxisMap)[0];
-                                                            if (!xAxis || !yAxis || !xAxis.scale || !yAxis.scale) return null;
-                                                            const toXY = p => `${xAxis.scale(p.x).toFixed(1)},${yAxis.scale(p.y).toFixed(1)}`;
-                                                            const stdPts = LATERAL_ENVELOPE[selectedAc].standard.map(toXY).join(' ');
-                                                            const hoistPts = selectedAc === 'HL9695'
-                                                                ? LATERAL_ENVELOPE.HL9695.hoistOps.map(toXY).join(' ')
-                                                                : null;
-                                                            return (
-                                                                <g>
-                                                                    <polyline points={stdPts} fill="none" stroke="#475569" strokeWidth="2" />
-                                                                    {hoistPts && <polyline points={hoistPts} fill="none" stroke="#f87171" strokeWidth="1.5" strokeDasharray="6 3" />}
-                                                                </g>
-                                                            );
-                                                        }} />
+                                                                 fill={lateralStats.isWithinLimit ? '#10b981' : '#ef4444'} shape="circle" />
                                                     </ScatterChart>
                                                 </ResponsiveContainer>
                                             </div>
