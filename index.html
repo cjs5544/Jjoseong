@@ -526,8 +526,10 @@
 
                             {showLateral && (
                                 <div className="p-3 sm:p-5 fade-in">
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-                                    {/* ── COL 1: 좌석 배치도 (90° CW 회전) ── */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                                    {/* ── LEFT: 배치도 + 테이블 ── */}
+                                    <div className="flex flex-col gap-3">
+                                    {/* ── 좌석 배치도 ── */}
                                     <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
                                         <div className="flex items-center justify-between mb-1">
                                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">좌석 배치도</p>
@@ -676,7 +678,7 @@
                                         );
                                     })()}
 
-                                    {/* ── COL 2: 테이블 ── */}
+                                    {/* ── 테이블 ── */}
                                     <div>
                                         <p className="text-[9px] text-slate-400 font-medium mb-2">+ = 우(Stbd) / − = 좌(Port)</p>
                                         <div className="overflow-x-auto">
@@ -709,27 +711,28 @@
                                                                 </tr>
                                                             );
                                                         }
-                                                        // 2. 조종사 (pilot 아이템을 PLT/CPT로 분리)
+                                                        // 2. 조종사 (항상 표시, 클릭으로 무게 입력)
                                                         const pilotItem = stats.tableData.find(i => i.id === 'pilot');
-                                                        if (pilotItem && pilotItem.weight > 0) {
-                                                            const hw = pilotItem.weight / 2;
-                                                            rows.push(
-                                                                <tr key="plt" className="border-b border-slate-50">
-                                                                    <td className="px-3 py-1.5 font-bold text-slate-700">PLT (부조종사)</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-500">{hw}</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-indigo-500">+550</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono font-bold text-rose-400">{(hw*0.550).toFixed(1)}</td>
-                                                                </tr>
-                                                            );
-                                                            rows.push(
-                                                                <tr key="cpt" className="border-b border-slate-50">
-                                                                    <td className="px-3 py-1.5 font-bold text-slate-700">CPT (기장)</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-500">{hw}</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-indigo-500">−550</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono font-bold text-blue-500">{(hw*-0.550).toFixed(1)}</td>
-                                                                </tr>
-                                                            );
-                                                        }
+                                                        const pilotTotalW = pilotItem?.weight || 0;
+                                                        const hw = pilotTotalW / 2;
+                                                        rows.push(
+                                                            <tr key="plt" className="border-b border-slate-50 cursor-pointer hover:bg-indigo-50/50"
+                                                                onClick={() => setSeatPopup({id:'_pilot'})}>
+                                                                <td className="px-3 py-1.5 font-bold text-indigo-700">PLT (부조종사)</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-500">{hw > 0 ? hw : <span className="text-slate-300">—</span>}</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-400">+550</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono font-bold text-rose-400">{(hw*0.550).toFixed(1)}</td>
+                                                            </tr>
+                                                        );
+                                                        rows.push(
+                                                            <tr key="cpt" className="border-b border-slate-50 cursor-pointer hover:bg-indigo-50/50"
+                                                                onClick={() => setSeatPopup({id:'_pilot'})}>
+                                                                <td className="px-3 py-1.5 font-bold text-indigo-700">CPT (기장)</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-500">{hw > 0 ? hw : <span className="text-slate-300">—</span>}</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-400">−550</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono font-bold text-blue-500">{(hw*-0.550).toFixed(1)}</td>
+                                                            </tr>
+                                                        );
                                                         // 3. 변동 좌석 (seat diagram 입력값)
                                                         const varSeats = VARIABLE_SEATS[selectedAc] || [];
                                                         varSeats.forEach(id => {
@@ -796,8 +799,9 @@
                                             </table>
                                         </div>
                                     </div>
+                                    </div>{/* end left wrapper */}
 
-                                    {/* ── COL 3: 인벨로프 차트 ── */}
+                                    {/* ── RIGHT: 인벨로프 차트 ── */}
                                     <div className="bg-slate-50 rounded-xl p-3 flex flex-col h-full">
                                             <div className="flex justify-between items-center mb-2">
                                                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Lateral CG Envelope</p>
@@ -815,7 +819,7 @@
                                             {/* 순수 SVG 인벨로프 차트 */}
                                             <div className="flex-1 min-h-0">
                                             {(() => {
-                                                const SW = 400, SH = 300;
+                                                const SW = 400, SH = 390;
                                                 const M = { t: 20, r: 25, b: 45, l: 52 };
                                                 const CW = SW - M.l - M.r, CH = SH - M.t - M.b;
                                                 const xMin = -0.12, xMax = 0.22;
