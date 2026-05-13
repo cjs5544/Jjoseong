@@ -174,9 +174,11 @@
             HL9277: ['A', 'B', 'C', 'D', 'G', 'I', 'M'],
             HL9695: ['A', 'G', 'I', 'M', 'N']
         };
-        const SEAT_COL_X = [175, 255, 345];
-        // BL 값을 SVG Y 좌표로 변환 (Y_CENTER=143, SCALE=122px/m, max BL=±0.737m → y=53~233)
-        const blToSvgY = (bl) => Math.round(143 - bl * 122);
+        // STA 비례 X 좌표: Row1=3415mm, Row2=4789mm(+1374), Row3=5600mm(+811)
+        // 170px / 2185mm = 0.0778px/mm. Row2 = 175 + 1374×0.0778 = 175+107 = 282
+        const SEAT_COL_X = [175, 282, 345];
+        // BL → SVG Y: 실제 STA 스케일(78px/m)로 통일, 동등 비율
+        const blToSvgY = (bl) => Math.round(143 - bl * 78);
 
         // ======================= PA 데이터 (보정값 절대 변경 금지) =======================
         const PA_VALUES = [-1000, 0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000];
@@ -524,71 +526,77 @@
                                     {/* ── 좌석 배치 다이어그램 ── */}
                                     <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">좌석 배치도 — 변동 좌석(보라색)에 탑승자 중량 kg 입력</p>
-                                        <svg viewBox="0 0 490 265" className="w-full" style={{minWidth:'260px',maxHeight:'230px'}}>
-                                            {/* BL 기준선 — 비례 좌표 (blToSvgY 기준) */}
-                                            {/* BL=0 centerline → y=143 */}
-                                            <line x1="58" y1="143" x2="460" y2="143" stroke="#22c55e" strokeDasharray="5 4" strokeWidth="1.2" opacity="0.6" />
+                                        <svg viewBox="0 0 490 255" className="w-full" style={{minWidth:'280px',maxHeight:'210px'}}>
+                                            {/* ── 기준선 (BL 비례 78px/m 스케일) ──
+                                                BL=0→y=143, ±254mm→y=123/163, ±550mm→y=100/186, ±737mm→y=86/200 */}
+                                            {/* centerline BL=0 */}
+                                            <line x1="58" y1="143" x2="460" y2="143" stroke="#22c55e" strokeDasharray="5 4" strokeWidth="1" opacity="0.6" />
                                             <text x="54" y="143" textAnchor="end" dominantBaseline="middle" fontSize="6" fill="#22c55e">0</text>
-                                            {/* BL ±254mm → y=112 / y=174 */}
-                                            <line x1="58" y1="112" x2="460" y2="112" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.4" />
-                                            <line x1="58" y1="174" x2="460" y2="174" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.4" />
-                                            <text x="54" y="112" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#94a3b8">+254</text>
-                                            <text x="54" y="174" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#94a3b8">-254</text>
-                                            {/* BL ±550mm (crew) → y=76 / y=210 */}
-                                            <line x1="58" y1="76" x2="128" y2="76" stroke="#a5b4fc" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.5" />
-                                            <line x1="58" y1="210" x2="128" y2="210" stroke="#a5b4fc" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.5" />
-                                            <text x="54" y="76" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#a5b4fc">+550</text>
-                                            <text x="54" y="210" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#a5b4fc">-550</text>
-                                            {/* +/- BL axis labels */}
-                                            <text x="6" y="55" fontSize="7" fontWeight="bold" fill="#64748b">+BL</text>
-                                            <text x="3" y="64" fontSize="6" fill="#94a3b8">Stbd</text>
-                                            <text x="6" y="225" fontSize="7" fontWeight="bold" fill="#64748b">-BL</text>
-                                            <text x="3" y="234" fontSize="6" fill="#94a3b8">Port</text>
-                                            {/* nose curve */}
-                                            <path d="M 128 48 Q 64 48 46 143 Q 64 238 128 238" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
-                                            {/* cabin outline */}
-                                            <rect x="128" y="48" width="255" height="190" rx="2" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
-                                            {/* inner bay dashed outline */}
-                                            <rect x="308" y="70" width="75" height="150" rx="2" fill="none" stroke="#cbd5e1" strokeWidth="0.8" strokeDasharray="3 2" />
-                                            {/* column dividers */}
-                                            <line x1="215" y1="48" x2="215" y2="238" stroke="#e2e8f0" strokeWidth="0.8" />
-                                            <line x1="308" y1="48" x2="308" y2="238" stroke="#e2e8f0" strokeWidth="0.8" />
-                                            {/* 조종사 좌석 — BL 비례 위치: PLT +550→y=76, CPT -550→y=210 */}
-                                            <rect x="72" y="65" width="36" height="22" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
-                                            <text x="90" y="79" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">PLT</text>
-                                            <text x="90" y="91" textAnchor="middle" fontSize="5.5" fill="#a5b4fc">+550mm</text>
-                                            <rect x="72" y="199" width="36" height="22" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
-                                            <text x="90" y="213" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">CPT</text>
-                                            <text x="90" y="225" textAnchor="middle" fontSize="5.5" fill="#a5b4fc">-550mm</text>
-                                            {/* STA labels */}
-                                            <text x="170" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 1</text>
-                                            <text x="170" y="258" textAnchor="middle" fontSize="6" fill="#94a3b8">3,415 mm</text>
-                                            <text x="255" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 2</text>
-                                            <text x="255" y="258" textAnchor="middle" fontSize="6" fill="#94a3b8">4,789 mm</text>
-                                            <text x="345" y="250" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 3</text>
-                                            <text x="345" y="258" textAnchor="middle" fontSize="6" fill="#94a3b8">5,600 mm</text>
-                                            {/* ── 좌석 렌더링 (BL 비례 Y 좌표) ── */}
+                                            {/* BL ±254mm */}
+                                            <line x1="58" y1="123" x2="460" y2="123" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.4" />
+                                            <line x1="58" y1="163" x2="460" y2="163" stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.4" />
+                                            <text x="54" y="123" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#94a3b8">+254</text>
+                                            <text x="54" y="163" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#94a3b8">−254</text>
+                                            {/* BL ±550mm (crew) — 캐빈 바깥 부분만 */}
+                                            <line x1="58" y1="100" x2="130" y2="100" stroke="#a5b4fc" strokeDasharray="2 4" strokeWidth="0.7" opacity="0.5" />
+                                            <line x1="58" y1="186" x2="130" y2="186" stroke="#a5b4fc" strokeDasharray="2 4" strokeWidth="0.7" opacity="0.5" />
+                                            <text x="54" y="100" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#a5b4fc">+550</text>
+                                            <text x="54" y="186" textAnchor="end" dominantBaseline="middle" fontSize="5.5" fill="#a5b4fc">−550</text>
+                                            {/* +/- BL labels */}
+                                            <text x="6" y="89" fontSize="7" fontWeight="bold" fill="#64748b">+BL</text>
+                                            <text x="3" y="98" fontSize="6" fill="#94a3b8">Stbd</text>
+                                            <text x="6" y="198" fontSize="7" fontWeight="bold" fill="#64748b">−BL</text>
+                                            <text x="3" y="207" fontSize="6" fill="#94a3b8">Port</text>
+                                            {/* 기체 외형 — 78px/m 기준: 캐빈 y=80~206 */}
+                                            <path d="M 128 80 Q 64 80 46 143 Q 64 206 128 206" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
+                                            <rect x="128" y="80" width="255" height="126" rx="2" fill="none" stroke="#94a3b8" strokeWidth="1.5" />
+                                            {/* Row 3 이너베이 점선 */}
+                                            <rect x="314" y="88" width="69" height="110" rx="2" fill="none" stroke="#cbd5e1" strokeWidth="0.8" strokeDasharray="3 2" />
+                                            {/* 열 구분선 — 비례 x: Row1=175, Row2=282, Row3=345 */}
+                                            <line x1="229" y1="80" x2="229" y2="206" stroke="#e2e8f0" strokeWidth="0.8" />
+                                            <line x1="314" y1="80" x2="314" y2="206" stroke="#e2e8f0" strokeWidth="0.8" />
+                                            {/* 조종사 좌석 — PLT:+550mm→y=100, CPT:-550mm→y=186 */}
+                                            <rect x="72" y="89" width="36" height="22" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
+                                            <text x="90" y="103" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">PLT</text>
+                                            <text x="90" y="82" textAnchor="middle" fontSize="5.5" fill="#a5b4fc">+550</text>
+                                            <rect x="72" y="175" width="36" height="22" rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5" />
+                                            <text x="90" y="189" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">CPT</text>
+                                            <text x="90" y="207" textAnchor="middle" fontSize="5.5" fill="#a5b4fc">−550</text>
+                                            {/* STA 레이블 */}
+                                            <text x="175" y="218" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 1</text>
+                                            <text x="175" y="226" textAnchor="middle" fontSize="6" fill="#94a3b8">3,415 mm</text>
+                                            <text x="282" y="218" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 2</text>
+                                            <text x="282" y="226" textAnchor="middle" fontSize="6" fill="#94a3b8">4,789 mm</text>
+                                            <text x="345" y="218" textAnchor="middle" fontSize="7" fontWeight="bold" fill="#64748b">Row 3</text>
+                                            <text x="345" y="226" textAnchor="middle" fontSize="6" fill="#94a3b8">5,600 mm</text>
+                                            {/* ── 좌석 렌더링 ── */}
                                             {Object.entries(SEAT_CONFIG).map(([id, cfg]) => {
                                                 const isVar = (VARIABLE_SEATS[selectedAc] || []).includes(id);
                                                 const xc = SEAT_COL_X[cfg.col];
                                                 const yc = blToSvgY(cfg.bl);
                                                 const w = seatWeights[id] || 0;
+                                                // Row 3 (col=2): 좌석이 밀집돼 박스를 작게
+                                                const isInner = cfg.col === 2;
+                                                const bw = isInner ? 28 : 34;
+                                                const bh = isInner ? 18 : 22;
                                                 if (isVar) {
                                                     return (
                                                         <g key={id} style={{cursor:'pointer'}} onClick={() => setSeatPopup({ id })}>
-                                                            <rect x={xc-18} y={yc-12} width={36} height={24} rx="3"
+                                                            <rect x={xc-bw/2} y={yc-bh/2} width={bw} height={bh} rx="3"
                                                                   fill={w > 0 ? "#faf5ff" : "#f5f3ff"}
                                                                   stroke={w > 0 ? "#9333ea" : "#c084fc"} strokeWidth="1.5" />
-                                                            <text x={xc} y={w > 0 ? yc-2 : yc+4} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#7c3aed">{id}</text>
-                                                            {w > 0 && <text x={xc} y={yc+9} textAnchor="middle" fontSize="7" fill="#6d28d9">{w}kg</text>}
+                                                            <text x={xc} y={w > 0 ? yc-1 : yc+3} textAnchor="middle"
+                                                                  fontSize={isInner ? 8 : 9} fontWeight="bold" fill="#7c3aed">{id}</text>
+                                                            {w > 0 && <text x={xc} y={yc+bh/2-2} textAnchor="middle" fontSize="6.5" fill="#6d28d9">{w}kg</text>}
                                                         </g>
                                                     );
                                                 }
                                                 return (
                                                     <g key={id}>
-                                                        <rect x={xc-12} y={yc-9} width={24} height={18} rx="2"
+                                                        <rect x={xc-bw/2} y={yc-bh/2} width={bw} height={bh} rx="2"
                                                               fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
-                                                        <text x={xc} y={yc+4} textAnchor="middle" fontSize="8" fontWeight="bold" fill="#94a3b8">{id}</text>
+                                                        <text x={xc} y={yc+3} textAnchor="middle"
+                                                              fontSize={isInner ? 7 : 8} fontWeight="bold" fill="#94a3b8">{id}</text>
                                                     </g>
                                                 );
                                             })}
