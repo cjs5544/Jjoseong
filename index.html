@@ -789,35 +789,57 @@
                                                     {selectedAc === 'HL9695' && <div className="flex items-center gap-1"><div className="w-5 h-0" style={{borderTop:'2px dashed #f87171'}}/><span className="text-[9px] font-black text-slate-500">Hoist</span></div>}
                                                 </div>
                                             </div>
-                                            <div className="flex-1 min-h-[300px] sm:min-h-[360px]">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 10 }}>
-                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.4} />
-                                                        <XAxis type="number" dataKey="x"
-                                                               domain={selectedAc === 'HL9695' ? [-0.14, 0.22] : [-0.13, 0.16]}
-                                                               tickCount={8} fontSize={10}
-                                                               tickFormatter={v => `${(v*1000).toFixed(0)}`}
-                                                               tick={{ fill: '#64748b', fontWeight: 'bold' }} />
-                                                        <YAxis type="number" dataKey="y"
-                                                               domain={[4200, selectedAc === 'HL9695' ? 7200 : 6600]}
-                                                               fontSize={10} tick={{ fill: '#64748b', fontWeight: 'bold' }} />
-                                                        <Tooltip cursor={{ strokeDasharray: '3 3' }}
-                                                                 formatter={(v, n) => n === 'x' ? [`${(v*1000).toFixed(0)} mm`, 'BL'] : [`${v.toLocaleString()} kg`, 'Weight']} />
-                                                        {/* 인벨로프 (패널 3 스타일: line + circle) */}
-                                                        <Scatter name="Envelope" data={LATERAL_ENVELOPE[selectedAc].standard}
-                                                                 fill="#cbd5e1" line stroke="#94a3b8" strokeWidth={2} shape="circle" />
-                                                        {/* Hoist Ops 점선 (HL9695 전용) */}
-                                                        {selectedAc === 'HL9695' && (
-                                                            <Scatter name="HoistOps" data={LATERAL_ENVELOPE.HL9695.hoistOps}
-                                                                     line={{ strokeDasharray: '5 5', stroke: '#f87171', strokeWidth: 1.5 }} shape="none" />
-                                                        )}
-                                                        {/* 현재 Lateral CG */}
-                                                        <Scatter name="Actual"
-                                                                 data={[{ x: lateralStats.lateralCG, y: stats.totalWeight }]}
-                                                                 fill={lateralStats.isWithinLimit ? '#10b981' : '#ef4444'} shape="circle" />
-                                                    </ScatterChart>
-                                                </ResponsiveContainer>
-                                            </div>
+                                            {/* 순수 SVG 인벨로프 차트 */}
+                                            {(() => {
+                                                const SW = 400, SH = 300;
+                                                const M = { t: 20, r: 25, b: 45, l: 52 };
+                                                const CW = SW - M.l - M.r, CH = SH - M.t - M.b;
+                                                const xMin = selectedAc === 'HL9695' ? -140 : -130;
+                                                const xMax = selectedAc === 'HL9695' ? 220 : 160;
+                                                const yMin = 4200;
+                                                const yMax = selectedAc === 'HL9695' ? 7200 : 6600;
+                                                const xs = v => M.l + (v - xMin) / (xMax - xMin) * CW;
+                                                const ys = v => M.t + (1 - (v - yMin) / (yMax - yMin)) * CH;
+                                                const env = LATERAL_ENVELOPE[selectedAc].standard;
+                                                const envD = env.map((p, i) => `${i===0?'M':'L'}${xs(p.x*1000).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(' ') + 'Z';
+                                                const hoist = selectedAc === 'HL9695' ? LATERAL_ENVELOPE.HL9695.hoistOps : null;
+                                                const hoistD = hoist ? hoist.map((p, i) => `${i===0?'M':'L'}${xs(p.x*1000).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(' ') : null;
+                                                const cgX = xs(lateralStats.lateralCG * 1000);
+                                                const cgY = ys(stats.totalWeight);
+                                                const xTicks = selectedAc === 'HL9695'
+                                                    ? [-100, -50, 0, 50, 100, 150, 200]
+                                                    : [-100, -50, 0, 50, 100, 150];
+                                                const yStep = 500;
+                                                const yTicks = [];
+                                                for (let y = Math.ceil(yMin/yStep)*yStep; y <= yMax; y += yStep) yTicks.push(y);
+                                                return (
+                                                    <svg viewBox={`0 0 ${SW} ${SH}`} className="w-full" style={{maxHeight:'300px',minHeight:'220px'}}>
+                                                        <rect x={M.l} y={M.t} width={CW} height={CH} fill="white" stroke="#e2e8f0" strokeWidth="1" rx="2" />
+                                                        {yTicks.map(y => (
+                                                            <g key={y}>
+                                                                <line x1={M.l} y1={ys(y)} x2={M.l+CW} y2={ys(y)} stroke="#f1f5f9" strokeWidth="1" />
+                                                                <text x={M.l-5} y={ys(y)} textAnchor="end" dominantBaseline="middle" fontSize="8" fill="#64748b">{y.toLocaleString()}</text>
+                                                            </g>
+                                                        ))}
+                                                        {xTicks.map(x => (
+                                                            <g key={x}>
+                                                                <line x1={xs(x)} y1={M.t} x2={xs(x)} y2={M.t+CH} stroke="#f1f5f9" strokeWidth="1" />
+                                                                <text x={xs(x)} y={M.t+CH+13} textAnchor="middle" fontSize="8" fill="#64748b">{x}</text>
+                                                            </g>
+                                                        ))}
+                                                        <line x1={M.l} y1={M.t} x2={M.l} y2={M.t+CH} stroke="#94a3b8" strokeWidth="1" />
+                                                        <line x1={M.l} y1={M.t+CH} x2={M.l+CW} y2={M.t+CH} stroke="#94a3b8" strokeWidth="1" />
+                                                        <path d={envD} fill="#f8fafc" fillOpacity="0.6" stroke="#475569" strokeWidth="2" />
+                                                        {env.slice(0,-1).map((p, i) => (
+                                                            <circle key={i} cx={xs(p.x*1000)} cy={ys(p.y)} r="3" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" />
+                                                        ))}
+                                                        {hoistD && <path d={hoistD} fill="none" stroke="#f87171" strokeWidth="1.5" strokeDasharray="5 4" />}
+                                                        <circle cx={cgX} cy={cgY} r="6" fill={lateralStats.isWithinLimit ? '#10b981' : '#ef4444'} stroke="white" strokeWidth="2" />
+                                                        <text x={M.l+CW/2} y={SH-6} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#64748b">BL (mm)</text>
+                                                        <text x="10" y={M.t+CH/2} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#64748b" transform={`rotate(-90,10,${M.t+CH/2})`}>Weight (kg)</text>
+                                                    </svg>
+                                                );
+                                            })()}
                                             {lateralStats.limits && (
                                                 <div className="mt-1 text-center text-[9px] text-slate-500 font-medium">
                                                     현재 {stats.totalWeight.toLocaleString()}kg: 좌 {(lateralStats.limits.left * 1000).toFixed(0)}mm / 우 +{(lateralStats.limits.right * 1000).toFixed(0)}mm
