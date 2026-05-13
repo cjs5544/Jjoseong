@@ -833,7 +833,7 @@
                                                 const yTicks = [];
                                                 for (let y = Math.ceil(yMin/yStep)*yStep; y <= yMax; y += yStep) yTicks.push(y);
                                                 return (
-                                                    <svg viewBox={`0 0 ${SW} ${SH}`} className="w-full h-full" style={{display:'block'}}>
+                                                    <svg viewBox={`0 0 ${SW} ${SH}`} preserveAspectRatio="none" className="w-full h-full" style={{display:'block'}}>
                                                         <rect x={M.l} y={M.t} width={CW} height={CH} fill="white" stroke="#e2e8f0" strokeWidth="1" rx="2" />
                                                         {yTicks.map(y => (
                                                             <g key={y}>
@@ -853,8 +853,8 @@
                                                         <line x1={xs(0)} y1={M.t} x2={xs(0)} y2={M.t+CH} stroke="#22c55e" strokeDasharray="4 3" strokeWidth="1" opacity="0.7" />
                                                         {/* HL9695: ⑤(-0.070,6400)↔⑨(0.145,6400) 및 ⑥(-0.066,6800)↔⑧(0.134,6800) 연결선 */}
                                                         {selectedAc==='HL9695' && <>
-                                                            <line x1={xs(-0.070)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#94a3b8" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
-                                                            <line x1={xs(-0.066)} y1={ys(6800)} x2={xs(0.134)} y2={ys(6800)} stroke="#94a3b8" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
+                                                            <line x1={xs(-0.070)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#ef4444" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
+                                                            <line x1={xs(-0.066)} y1={ys(6800)} x2={xs(0.134)} y2={ys(6800)} stroke="#ef4444" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
                                                         </>}
                                                         <path d={envD} fill="#f8fafc" fillOpacity="0.6" stroke="#475569" strokeWidth="2" />
                                                         {env.slice(0,-1).map((p, i) => (
