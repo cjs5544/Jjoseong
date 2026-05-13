@@ -526,7 +526,7 @@
 
                             {showLateral && (
                                 <div className="p-3 sm:p-5 fade-in">
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
                                     {/* ── COL 1: 좌석 배치도 (90° CW 회전) ── */}
                                     <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
                                         <div className="flex items-center justify-between mb-1">
@@ -798,7 +798,7 @@
                                     </div>
 
                                     {/* ── COL 3: 인벨로프 차트 ── */}
-                                    <div className="bg-slate-50 rounded-xl p-3 flex flex-col">
+                                    <div className="bg-slate-50 rounded-xl p-3 flex flex-col h-full">
                                             <div className="flex justify-between items-center mb-2">
                                                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Lateral CG Envelope</p>
                                                 <div className="flex items-center gap-2">
@@ -813,6 +813,7 @@
                                                 </div>
                                             </div>
                                             {/* 순수 SVG 인벨로프 차트 */}
+                                            <div className="flex-1 min-h-0">
                                             {(() => {
                                                 const SW = 400, SH = 300;
                                                 const M = { t: 20, r: 25, b: 45, l: 52 };
@@ -832,7 +833,7 @@
                                                 const yTicks = [];
                                                 for (let y = Math.ceil(yMin/yStep)*yStep; y <= yMax; y += yStep) yTicks.push(y);
                                                 return (
-                                                    <svg viewBox={`0 0 ${SW} ${SH}`} className="w-full" style={{maxHeight:'300px',minHeight:'220px'}}>
+                                                    <svg viewBox={`0 0 ${SW} ${SH}`} className="w-full h-full" style={{display:'block'}}>
                                                         <rect x={M.l} y={M.t} width={CW} height={CH} fill="white" stroke="#e2e8f0" strokeWidth="1" rx="2" />
                                                         {yTicks.map(y => (
                                                             <g key={y}>
@@ -892,6 +893,7 @@
                                                     </svg>
                                                 );
                                             })()}
+                                            </div>{/* flex-1 SVG wrapper */}
                                             {lateralStats.limits && (
                                                 <div className="mt-1 text-center text-[9px] text-slate-500 font-medium">
                                                     현재 {stats.totalWeight.toLocaleString()}kg: 좌 {(lateralStats.limits.left * 1000).toFixed(0)}mm / 우 +{(lateralStats.limits.right * 1000).toFixed(0)}mm
