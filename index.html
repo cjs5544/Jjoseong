@@ -130,20 +130,20 @@
         const LATERAL_ENVELOPE = {
             HL9277: {
                 standard: [
-                    { x: -0.070, y: 6400 }, { x: 0.090, y: 6400 },
-                    { x: 0.120, y: 4400 }, { x: -0.088, y: 4400 },
+                    { x: -0.070, y: 6400, label: '①' }, { x: 0.090, y: 6400, label: '②' },
+                    { x: 0.120, y: 4400, label: '③' }, { x: -0.088, y: 4400, label: '④' },
                     { x: -0.070, y: 6400 }
                 ]
             },
             HL9695: {
                 standard: [
-                    { x: -0.064, y: 7000 }, { x: 0.081, y: 7000 },
-                    { x: 0.120, y: 4400 }, { x: -0.088, y: 4400 },
+                    { x: -0.064, y: 7000, label: '①' }, { x: 0.081, y: 7000, label: '②' },
+                    { x: 0.120, y: 4400, label: '③' }, { x: -0.088, y: 4400, label: '④' },
                     { x: -0.064, y: 7000 }
                 ],
                 hoistOps: [
-                    { x: 0.081, y: 7000 }, { x: 0.134, y: 6800 },
-                    { x: 0.145, y: 6400 }, { x: 0.185, y: 4900 },
+                    { x: 0.081, y: 7000, label: '⑤' }, { x: 0.134, y: 6800, label: '⑥' },
+                    { x: 0.145, y: 6400, label: '⑦' }, { x: 0.185, y: 4900, label: '⑧' },
                     { x: 0.120, y: 4400 }
                 ]
             }
@@ -800,10 +800,8 @@
                                                 const SW = 400, SH = 300;
                                                 const M = { t: 20, r: 25, b: 45, l: 52 };
                                                 const CW = SW - M.l - M.r, CH = SH - M.t - M.b;
-                                                const xMin = selectedAc === 'HL9695' ? -140 : -130;
-                                                const xMax = selectedAc === 'HL9695' ? 220 : 160;
-                                                const yMin = 4200;
-                                                const yMax = selectedAc === 'HL9695' ? 7200 : 6600;
+                                                const xMin = -120, xMax = 220;
+                                                const yMin = 4200, yMax = 7200;
                                                 const xs = v => M.l + (v - xMin) / (xMax - xMin) * CW;
                                                 const ys = v => M.t + (1 - (v - yMin) / (yMax - yMin)) * CH;
                                                 const env = LATERAL_ENVELOPE[selectedAc].standard;
@@ -812,9 +810,7 @@
                                                 const hoistD = hoist ? hoist.map((p, i) => `${i===0?'M':'L'}${xs(p.x*1000).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(' ') : null;
                                                 const cgX = xs(lateralStats.lateralCG * 1000);
                                                 const cgY = ys(stats.totalWeight);
-                                                const xTicks = selectedAc === 'HL9695'
-                                                    ? [-100, -50, 0, 50, 100, 150, 200]
-                                                    : [-100, -50, 0, 50, 100, 150];
+                                                const xTicks = [-100, -50, 0, 50, 100, 150, 200];
                                                 const yStep = 500;
                                                 const yTicks = [];
                                                 for (let y = Math.ceil(yMin/yStep)*yStep; y <= yMax; y += yStep) yTicks.push(y);
@@ -842,16 +838,32 @@
                                                         {showLateralCoords && env.slice(0,-1).map((p, i) => {
                                                             const cx = xs(p.x*1000), cy = ys(p.y);
                                                             const bl = (p.x*1000).toFixed(0);
-                                                            const label = `(${bl}, ${p.y.toLocaleString()})`;
-                                                            // offset label above/below based on vertical position in chart
+                                                            const coordTxt = `(${bl}, ${p.y.toLocaleString()})`;
                                                             const aboveCenter = cy < M.t + CH / 2;
-                                                            const dy = aboveCenter ? -7 : 11;
+                                                            const dy = aboveCenter ? -7 : 14;
                                                             const anchor = cx < M.l + CW * 0.25 ? 'start' : cx > M.l + CW * 0.75 ? 'end' : 'middle';
                                                             return (
-                                                                <text key={`lbl${i}`} x={cx} y={cy + dy} textAnchor={anchor} fontSize="6.5" fontWeight="bold" fill="#475569">{label}</text>
+                                                                <g key={`lbl${i}`}>
+                                                                    {p.label && <text x={cx} y={cy + (aboveCenter ? -16 : 23)} textAnchor={anchor} fontSize="8" fontWeight="bold" fill="#7c3aed">{p.label}</text>}
+                                                                    <text x={cx} y={cy + dy} textAnchor={anchor} fontSize="6.5" fontWeight="bold" fill="#475569">{coordTxt}</text>
+                                                                </g>
                                                             );
                                                         })}
                                                         {hoistD && <path d={hoistD} fill="none" stroke="#f87171" strokeWidth="1.5" strokeDasharray="5 4" />}
+                                                        {showLateralCoords && hoist && hoist.filter(p => p.label).map((p, i) => {
+                                                            const cx = xs(p.x*1000), cy = ys(p.y);
+                                                            const bl = (p.x*1000).toFixed(0);
+                                                            const coordTxt = `(${bl}, ${p.y.toLocaleString()})`;
+                                                            const aboveCenter = cy < M.t + CH / 2;
+                                                            const dy = aboveCenter ? -7 : 14;
+                                                            const anchor = cx > M.l + CW * 0.75 ? 'end' : 'middle';
+                                                            return (
+                                                                <g key={`hlbl${i}`}>
+                                                                    <text x={cx} y={cy + (aboveCenter ? -16 : 23)} textAnchor={anchor} fontSize="8" fontWeight="bold" fill="#dc2626">{p.label}</text>
+                                                                    <text x={cx} y={cy + dy} textAnchor={anchor} fontSize="6.5" fontWeight="bold" fill="#dc2626">{coordTxt}</text>
+                                                                </g>
+                                                            );
+                                                        })}
                                                         <circle cx={cgX} cy={cgY} r="6" fill={lateralStats.isWithinLimit ? '#10b981' : '#ef4444'} stroke="white" strokeWidth="2" />
                                                         <text x={M.l+CW/2} y={SH-6} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#64748b">BL (mm)</text>
                                                         <text x="10" y={M.t+CH/2} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#64748b" transform={`rotate(-90,10,${M.t+CH/2})`}>Weight (kg)</text>
