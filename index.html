@@ -196,6 +196,7 @@
             const [showCoords, setShowCoords] = useState(true);
             const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
             const [showLateral, setShowLateral] = useState(false);
+            const [showLateralCoords, setShowLateralCoords] = useState(true);
             const [seatPopup, setSeatPopup] = useState(null); // { id, x, y }
             const [seatWeights, setSeatWeights] = useState(() => {
                 try { const s = localStorage.getItem('aw139_seat_weights'); if (s) return JSON.parse(s); } catch {}
@@ -783,10 +784,15 @@
                                         <div className="bg-slate-50 rounded-xl p-3 flex flex-col">
                                             <div className="flex justify-between items-center mb-2">
                                                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Lateral CG Envelope</p>
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-purple-500 border-2 border-purple-700"/><span className="text-[9px] font-black text-slate-500">Actual</span></div>
-                                                    <div className="flex items-center gap-1"><div className="w-5 h-0" style={{borderTop:'2px solid #64748b'}}/><span className="text-[9px] font-black text-slate-500">Envelope</span></div>
-                                                    {selectedAc === 'HL9695' && <div className="flex items-center gap-1"><div className="w-5 h-0" style={{borderTop:'2px dashed #f87171'}}/><span className="text-[9px] font-black text-slate-500">Hoist</span></div>}
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => setShowLateralCoords(v => !v)} title="좌표값 표시 ON/OFF"
+                                                            className={`no-print px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter border transition-all flex items-center gap-1 ${showLateralCoords ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                                                        <Icon name={showLateralCoords ? 'eye' : 'eye-off'} size={11} />
+                                                        좌표
+                                                    </button>
+                                                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-emerald-500"/><span className="text-[9px] font-black text-slate-500">Actual</span></div>
+                                                    <div className="flex items-center gap-1"><div className="w-4 h-0" style={{borderTop:'2px solid #64748b'}}/><span className="text-[9px] font-black text-slate-500">Env</span></div>
+                                                    {selectedAc === 'HL9695' && <div className="flex items-center gap-1"><div className="w-4 h-0" style={{borderTop:'2px dashed #f87171'}}/><span className="text-[9px] font-black text-slate-500">Hoist</span></div>}
                                                 </div>
                                             </div>
                                             {/* 순수 SVG 인벨로프 차트 */}
@@ -833,6 +839,18 @@
                                                         {env.slice(0,-1).map((p, i) => (
                                                             <circle key={i} cx={xs(p.x*1000)} cy={ys(p.y)} r="3" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" />
                                                         ))}
+                                                        {showLateralCoords && env.slice(0,-1).map((p, i) => {
+                                                            const cx = xs(p.x*1000), cy = ys(p.y);
+                                                            const bl = (p.x*1000).toFixed(0);
+                                                            const label = `(${bl}, ${p.y.toLocaleString()})`;
+                                                            // offset label above/below based on vertical position in chart
+                                                            const aboveCenter = cy < M.t + CH / 2;
+                                                            const dy = aboveCenter ? -7 : 11;
+                                                            const anchor = cx < M.l + CW * 0.25 ? 'start' : cx > M.l + CW * 0.75 ? 'end' : 'middle';
+                                                            return (
+                                                                <text key={`lbl${i}`} x={cx} y={cy + dy} textAnchor={anchor} fontSize="6.5" fontWeight="bold" fill="#475569">{label}</text>
+                                                            );
+                                                        })}
                                                         {hoistD && <path d={hoistD} fill="none" stroke="#f87171" strokeWidth="1.5" strokeDasharray="5 4" />}
                                                         <circle cx={cgX} cy={cgY} r="6" fill={lateralStats.isWithinLimit ? '#10b981' : '#ef4444'} stroke="white" strokeWidth="2" />
                                                         <text x={M.l+CW/2} y={SH-6} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#64748b">BL (mm)</text>
