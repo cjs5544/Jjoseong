@@ -199,6 +199,14 @@
             const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
             const [showLateral, setShowLateral] = useState(false);
             const [showLateralCoords, setShowLateralCoords] = useState(true);
+            const [showPrintDialog, setShowPrintDialog] = useState(false);
+            const [printState, setPrintState] = useState(null); // null | 'lateral' | 'no-lateral'
+            const handlePrint = () => setShowPrintDialog(true);
+            const doPrint = (includeLateral) => {
+                setShowPrintDialog(false);
+                setPrintState(includeLateral ? 'lateral' : 'no-lateral');
+                setTimeout(() => { window.print(); setPrintState(null); }, 200);
+            };
             const [customLateralItems, setCustomLateralItems] = useState([]);
             const addCustomLateralItem = () => setCustomLateralItems(prev => [...prev, { id: `clat-${Date.now()}`, label: '', weight: 0, arm: 0 }]);
             const updateCustomLateralItem = (id, field, val) => setCustomLateralItems(prev => prev.map(i => i.id === id ? { ...i, [field]: val } : i));
@@ -323,6 +331,26 @@
 
             return (
                 <div className="min-h-screen flex flex-col relative overflow-x-hidden">
+                    {/* ── PDF 출력 확인 다이얼로그 ── */}
+                    {showPrintDialog && (
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center no-print">
+                            <div className="absolute inset-0 bg-black/40" onClick={() => setShowPrintDialog(false)}/>
+                            <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 w-64 z-10">
+                                <button onClick={() => setShowPrintDialog(false)} className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs font-black">✕</button>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Icon name="file-text" size={16} className="text-blue-600"/>
+                                    <p className="text-sm font-black text-slate-800">PDF 출력</p>
+                                </div>
+                                <p className="text-[11px] text-slate-500 mb-4">레터럴 CG 섹션을 포함할까요?</p>
+                                <div className="flex gap-2">
+                                    <button onClick={() => doPrint(false)}
+                                            className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black transition-all active:scale-95">미포함</button>
+                                    <button onClick={() => doPrint(true)}
+                                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-all active:scale-95">포함</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-2 sm:p-4 backdrop-blur-md no-print">
                             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden modal-enter">
@@ -393,7 +421,7 @@
                                 <div className="flex gap-2">
                                     <button onClick={saveItemsToLocal} title="현재 입력된 모든 웨이트/암 값을 이 브라우저에 저장합니다. 다음 접속 시 자동으로 불러옵니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={resetWbToDefaults} title="저장된 값을 삭제하고 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
-                                    <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
+                                    <button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
                                 </div>
                             </div>
                         </div>
@@ -524,9 +552,9 @@
                         </div>
 
                         {/* 4. Lateral CG */}
-                        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden no-print">
+                        <section className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden ${printState === 'lateral' ? '' : 'no-print'}`}>
                             <button onClick={() => setShowLateral(v => !v)}
-                                    className="w-full px-5 py-3 bg-slate-50 border-b flex items-center justify-between hover:bg-slate-100 transition-all">
+                                    className="no-print w-full px-5 py-3 bg-slate-50 border-b flex items-center justify-between hover:bg-slate-100 transition-all">
                                 <div className="flex items-center gap-3">
                                     <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
                                         <Icon name="move-horizontal" size={18} className="text-purple-600" /> 4. Lateral CG
@@ -538,7 +566,7 @@
                                 <Icon name={showLateral ? 'chevron-up' : 'chevron-down'} size={18} className="text-slate-400" />
                             </button>
 
-                            {showLateral && (
+                            {(showLateral || printState === 'lateral') && (
                                 <div className="p-3 sm:p-5 fade-in">
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                                     {/* ── LEFT: 배치도 + 테이블 ── */}
