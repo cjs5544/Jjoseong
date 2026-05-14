@@ -663,7 +663,7 @@
                                                         <span className={`text-xs font-black ${accentTitle}`}>{title}</span>
                                                         <span className="text-[8px] font-bold text-slate-400">{sub}</span>
                                                     </div>
-                                                    <div>
+                                                    <div className={`flex items-center border-2 ${accentBorder} rounded-lg px-2 py-1.5 bg-white focus-within:ring-1 focus-within:ring-purple-300`}>
                                                         <input type="number" autoFocus id="seatPopupInput"
                                                                defaultValue={curW||''} placeholder="0"
                                                                onKeyDown={e=>{if(e.key==='Enter'){
@@ -671,8 +671,8 @@
                                                                    if(isPilot) updateItem('pilot','weight',v); else setSeatWeights(prev=>({...prev,[seatPopup.id]:v}));
                                                                    setSeatPopup(null);
                                                                }}}
-                                                               className={`w-full text-sm font-black text-center px-2 py-1.5 border-2 ${accentBorder} rounded-lg outline-none`}/>
-                                                        <p className="text-center text-[9px] font-bold text-slate-400 mt-0.5">kg</p>
+                                                               className="flex-1 min-w-0 text-sm font-black text-right outline-none bg-transparent"/>
+                                                        <span className="text-[10px] font-bold text-slate-400 ml-1 shrink-0">kg</span>
                                                     </div>
                                                     <div className="flex gap-1 mt-1.5">
                                                         {curW>0 && (
