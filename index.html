@@ -199,6 +199,10 @@
             const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
             const [showLateral, setShowLateral] = useState(false);
             const [showLateralCoords, setShowLateralCoords] = useState(true);
+            const [customLateralItems, setCustomLateralItems] = useState([]);
+            const addCustomLateralItem = () => setCustomLateralItems(prev => [...prev, { id: `clat-${Date.now()}`, label: '', weight: 0, arm: 0 }]);
+            const updateCustomLateralItem = (id, field, val) => setCustomLateralItems(prev => prev.map(i => i.id === id ? { ...i, [field]: val } : i));
+            const deleteCustomLateralItem = (id) => setCustomLateralItems(prev => prev.filter(i => i.id !== id));
             const [blSpacingScale, setBlSpacingScale] = useState(100);
             const [seatPopup, setSeatPopup] = useState(null); // { id } — id='_pilot' for crew
             const [seatWeights, setSeatWeights] = useState(() => {
@@ -271,12 +275,14 @@
                 // 탑승자: 좌석 다이어그램 입력값 사용
                 const varSeats = VARIABLE_SEATS[selectedAc] || [];
                 const seatMoment = varSeats.reduce((sum, id) => sum + (seatWeights[id] || 0) * (SEAT_CONFIG[id]?.bl || 0), 0);
-                const totalLateralMoment = itemMoment + seatMoment;
+                // 임의 추가 항목
+                const customMoment = customLateralItems.reduce((sum, i) => sum + (i.weight || 0) * (i.arm || 0), 0);
+                const totalLateralMoment = itemMoment + seatMoment + customMoment;
                 const lateralCG = stats.totalWeight > 0 ? totalLateralMoment / stats.totalWeight : 0;
                 const limits = getLateralLimits(stats.totalWeight, selectedAc);
                 const isWithinLimit = limits ? (lateralCG >= limits.left && lateralCG <= limits.right) : true;
-                return { totalLateralMoment, lateralCG, isWithinLimit, limits, seatMoment, itemMoment };
-            }, [stats, selectedAc, seatWeights]);
+                return { totalLateralMoment, lateralCG, isWithinLimit, limits, seatMoment, itemMoment, customMoment };
+            }, [stats, selectedAc, seatWeights, customLateralItems]);
 
             const updateItem = (id, field, value) => {
                 setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
@@ -681,7 +687,13 @@
 
                                     {/* ── 테이블 ── */}
                                     <div>
-                                        <p className="text-[9px] text-slate-400 font-medium mb-2">+ = 우(Stbd) / − = 좌(Port)</p>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[9px] text-slate-400 font-medium">+ = 우(Stbd) / − = 좌(Port)</p>
+                                            <button onClick={addCustomLateralItem}
+                                                className="flex items-center gap-1 px-2 py-1 bg-amber-50 border border-amber-300 text-amber-700 rounded-lg text-[9px] font-black hover:bg-amber-100 transition-all active:scale-95">
+                                                <Icon name="plus" size={11} /> 항목 추가
+                                            </button>
+                                        </div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left border-collapse min-w-[320px]">
                                                 <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest">
@@ -785,6 +797,34 @@
                                                         }
                                                         return rows;
                                                     })()}
+                                                    {/* 임의 추가 항목 */}
+                                                    {customLateralItems.map(ci => {
+                                                        const m = (ci.weight || 0) * (ci.arm || 0);
+                                                        return (
+                                                            <tr key={ci.id} className="border-b border-amber-100 bg-amber-50/30">
+                                                                <td className="px-2 py-1">
+                                                                    <input type="text" value={ci.label} placeholder="항목명"
+                                                                        onChange={e => updateCustomLateralItem(ci.id, 'label', e.target.value)}
+                                                                        className="w-full px-1 py-0.5 bg-white border border-amber-200 rounded text-[10px] font-bold text-amber-800 outline-none focus:ring-1 focus:ring-amber-400" />
+                                                                </td>
+                                                                <td className="px-2 py-1">
+                                                                    <input type="number" value={ci.weight || ''} placeholder="0"
+                                                                        onChange={e => updateCustomLateralItem(ci.id, 'weight', parseFloat(e.target.value) || 0)}
+                                                                        className="w-full px-1 py-0.5 bg-white border border-amber-200 rounded text-[10px] font-mono text-right text-amber-800 outline-none focus:ring-1 focus:ring-amber-400" />
+                                                                </td>
+                                                                <td className="px-2 py-1">
+                                                                    <input type="number" value={ci.arm !== 0 ? Math.round(ci.arm * 1000) : ''} placeholder="0"
+                                                                        onChange={e => updateCustomLateralItem(ci.id, 'arm', (parseFloat(e.target.value) || 0) / 1000)}
+                                                                        className="w-full px-1 py-0.5 bg-white border border-amber-200 rounded text-[10px] font-mono text-right text-amber-800 outline-none focus:ring-1 focus:ring-amber-400" />
+                                                                </td>
+                                                                <td className="px-2 py-1 text-right">
+                                                                    <span className={`text-[10px] font-mono font-bold ${m < -0.005 ? 'text-blue-500' : m > 0.005 ? 'text-rose-400' : 'text-slate-300'}`}>{m.toFixed(1)}</span>
+                                                                    <button onClick={() => deleteCustomLateralItem(ci.id)}
+                                                                        className="ml-2 text-rose-400 hover:text-rose-600 text-[10px] font-black">✕</button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
                                                     {/* 합계 */}
                                                     <tr className={`font-black text-[11px] border-t-2 border-slate-300 ${lateralStats.isWithinLimit ? 'bg-purple-50/50' : 'bg-rose-50'}`}>
                                                         <td className="px-3 py-2.5 text-slate-900">TOTAL WEIGHT</td>
