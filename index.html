@@ -663,7 +663,7 @@
                                                         <span className={`text-xs font-black ${accentTitle}`}>{title}</span>
                                                         <span className="text-[8px] font-bold text-slate-400">{sub}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-1">
+                                                    <div className="relative">
                                                         <input type="number" autoFocus id="seatPopupInput"
                                                                defaultValue={curW||''} placeholder="0"
                                                                onKeyDown={e=>{if(e.key==='Enter'){
@@ -671,8 +671,8 @@
                                                                    if(isPilot) updateItem('pilot','weight',v); else setSeatWeights(prev=>({...prev,[seatPopup.id]:v}));
                                                                    setSeatPopup(null);
                                                                }}}
-                                                               className={`w-20 text-sm font-black text-center px-2 py-1.5 border-2 ${accentBorder} rounded-lg outline-none`}/>
-                                                        <span className="text-[10px] font-bold text-slate-400">kg</span>
+                                                               className={`w-full text-sm font-black text-center px-2 py-1.5 border-2 ${accentBorder} rounded-lg outline-none`}/>
+                                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">kg</span>
                                                     </div>
                                                     <div className="flex gap-1 mt-1.5">
                                                         {curW>0 && (
