@@ -204,6 +204,8 @@
             const updateCustomLateralItem = (id, field, val) => setCustomLateralItems(prev => prev.map(i => i.id === id ? { ...i, [field]: val } : i));
             const deleteCustomLateralItem = (id) => setCustomLateralItems(prev => prev.filter(i => i.id !== id));
             const [pilotArms, setPilotArms] = useState({ plt: 0.550, cpt: -0.550 });
+            const [lateralEditPopup, setLateralEditPopup] = useState(null);
+            const lepUpdate = (f, v) => setLateralEditPopup(p => p ? {...p, [f]: v} : null);
             const [blSpacingScale, setBlSpacingScale] = useState(100);
             const [seatPopup, setSeatPopup] = useState(null); // { id } — id='_pilot' for crew
             const [seatWeights, setSeatWeights] = useState(() => {
@@ -711,63 +713,44 @@
                                                 </thead>
                                                 <tbody className="text-[10px] sm:text-[11px]">
                                                     {(() => {
+                                                        const TR = 'border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors';
+                                                        const TD = 'px-3 py-2';
                                                         const rows = [];
                                                         // 1. BEW
                                                         const bew = stats.tableData.find(i => i.id === 'bew');
                                                         if (bew) {
                                                             const arm = bew.lateralArm || 0;
                                                             rows.push(
-                                                                <tr key="bew" className="border-b border-slate-50">
-                                                                    <td className="px-3 py-1.5 font-bold text-slate-700">B.E.W</td>
-                                                                    <td className="px-2 py-1">
-                                                                        <input type="number" value={bew.weight || ''}
-                                                                               onChange={e => updateItem('bew','weight',parseFloat(e.target.value)||0)}
-                                                                               className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
-                                                                    </td>
-                                                                    <td className="px-3 py-1.5 text-right">
-                                                                        <input type="number" value={Math.round(arm*1000)}
-                                                                               onChange={e => updateItem('bew','lateralArm',(parseFloat(e.target.value)||0)/1000)}
-                                                                               className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
-                                                                    </td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-400">{(bew.weight*arm).toFixed(1)}</td>
+                                                                <tr key="bew" className={TR} onClick={() => setLateralEditPopup({type:'bew',id:'bew',label:'B.E.W',weight:bew.weight,arm})}>
+                                                                    <td className={`${TD} font-bold text-slate-700`}>B.E.W</td>
+                                                                    <td className={`${TD} text-right font-mono text-slate-600`}>{bew.weight.toLocaleString()}</td>
+                                                                    <td className={`${TD} text-right font-mono text-slate-500`}>{Math.round(arm*1000)}</td>
+                                                                    <td className={`${TD} text-right font-mono text-slate-400`}>{(bew.weight*arm).toFixed(1)}</td>
                                                                 </tr>
                                                             );
                                                         }
-                                                        // 2. 조종사 (무게=클릭팝업, 암=인라인 input)
+                                                        // 2. 조종사 (PLT/CPT 행 클릭 → 팝업)
                                                         const pilotItem = stats.tableData.find(i => i.id === 'pilot');
                                                         const pilotTotalW = pilotItem?.weight || 0;
                                                         const hw = pilotTotalW / 2;
+                                                        const openPilotPopup = () => setLateralEditPopup({type:'pilot',id:'pilot',label:'PLT / CPT',weight:pilotTotalW,arm:pilotArms.plt,armCpt:pilotArms.cpt});
                                                         rows.push(
-                                                            <tr key="plt" className="border-b border-slate-50 bg-indigo-50/10">
-                                                                <td className="px-3 py-1.5 font-bold text-indigo-700">PLT (부조종사)</td>
-                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-500 cursor-pointer hover:bg-indigo-100/60 rounded"
-                                                                    onClick={() => setSeatPopup({id:'_pilot'})}>
-                                                                    {hw > 0 ? hw : <span className="text-slate-300">—</span>}
-                                                                </td>
-                                                                <td className="px-2 py-1">
-                                                                    <input type="number" value={Math.round(pilotArms.plt*1000)}
-                                                                           onChange={e => setPilotArms(p=>({...p,plt:(parseFloat(e.target.value)||0)/1000}))}
-                                                                           className="w-16 px-1 py-0.5 bg-slate-50 border border-indigo-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-indigo-400 outline-none" />
-                                                                </td>
-                                                                <td className="px-3 py-1.5 text-right font-mono font-bold text-rose-400">{(hw*pilotArms.plt).toFixed(1)}</td>
+                                                            <tr key="plt" className={`${TR} bg-indigo-50/20`} onClick={openPilotPopup}>
+                                                                <td className={`${TD} font-bold text-indigo-700`}>PLT (부조종사)</td>
+                                                                <td className={`${TD} text-right font-mono text-indigo-500`}>{hw > 0 ? hw : <span className="text-slate-300">—</span>}</td>
+                                                                <td className={`${TD} text-right font-mono text-indigo-400`}>{Math.round(pilotArms.plt*1000)}</td>
+                                                                <td className={`${TD} text-right font-mono font-bold text-rose-400`}>{(hw*pilotArms.plt).toFixed(1)}</td>
                                                             </tr>
                                                         );
                                                         rows.push(
-                                                            <tr key="cpt" className="border-b border-slate-50 bg-indigo-50/10">
-                                                                <td className="px-3 py-1.5 font-bold text-indigo-700">CPT (기장)</td>
-                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-500 cursor-pointer hover:bg-indigo-100/60 rounded"
-                                                                    onClick={() => setSeatPopup({id:'_pilot'})}>
-                                                                    {hw > 0 ? hw : <span className="text-slate-300">—</span>}
-                                                                </td>
-                                                                <td className="px-2 py-1">
-                                                                    <input type="number" value={Math.round(pilotArms.cpt*1000)}
-                                                                           onChange={e => setPilotArms(p=>({...p,cpt:(parseFloat(e.target.value)||0)/1000}))}
-                                                                           className="w-16 px-1 py-0.5 bg-slate-50 border border-indigo-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-indigo-400 outline-none" />
-                                                                </td>
-                                                                <td className="px-3 py-1.5 text-right font-mono font-bold text-blue-500">{(hw*pilotArms.cpt).toFixed(1)}</td>
+                                                            <tr key="cpt" className={`${TR} bg-indigo-50/20`} onClick={openPilotPopup}>
+                                                                <td className={`${TD} font-bold text-indigo-700`}>CPT (기장)</td>
+                                                                <td className={`${TD} text-right font-mono text-indigo-500`}>{hw > 0 ? hw : <span className="text-slate-300">—</span>}</td>
+                                                                <td className={`${TD} text-right font-mono text-indigo-400`}>{Math.round(pilotArms.cpt*1000)}</td>
+                                                                <td className={`${TD} text-right font-mono font-bold text-blue-500`}>{(hw*pilotArms.cpt).toFixed(1)}</td>
                                                             </tr>
                                                         );
-                                                        // 3. 변동 좌석 (seat diagram 입력값)
+                                                        // 3. 변동 좌석
                                                         const varSeats = VARIABLE_SEATS[selectedAc] || [];
                                                         varSeats.forEach(id => {
                                                             const w = seatWeights[id];
@@ -776,35 +759,28 @@
                                                             const armMm = Math.round(cfg.bl * 1000);
                                                             const m = w * cfg.bl;
                                                             rows.push(
-                                                                <tr key={`seat-${id}`} className="border-b border-purple-50/60 bg-purple-50/10 cursor-pointer hover:bg-purple-50/40"
-                                                                    onClick={() => setSeatPopup({ id })}>
-                                                                    <td className="px-3 py-1.5 font-bold text-purple-700">Seat {id} <span className="text-[9px] text-purple-400 font-normal">Row {cfg.col+1}</span></td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-purple-600">{w}</td>
-                                                                    <td className={`px-3 py-1.5 text-right font-mono ${armMm >= 0 ? 'text-indigo-500' : 'text-indigo-500'}`}>{armMm >= 0 ? '+' : ''}{armMm}</td>
-                                                                    <td className={`px-3 py-1.5 text-right font-mono font-bold ${m < -0.005 ? 'text-blue-500' : m > 0.005 ? 'text-rose-400' : 'text-slate-300'}`}>{m.toFixed(1)}</td>
+                                                                <tr key={`seat-${id}`} className={`${TR} bg-purple-50/10`}
+                                                                    onClick={() => setLateralEditPopup({type:'seat',id,label:`Seat ${id}`,weight:w,arm:cfg.bl,armFixed:true})}>
+                                                                    <td className={`${TD} font-bold text-purple-700`}>Seat {id} <span className="text-[9px] text-purple-400 font-normal">Row {cfg.col+1}</span></td>
+                                                                    <td className={`${TD} text-right font-mono text-purple-600`}>{w}</td>
+                                                                    <td className={`${TD} text-right font-mono text-indigo-400`}>{armMm >= 0 ? '+' : ''}{armMm}</td>
+                                                                    <td className={`${TD} text-right font-mono font-bold ${m < -0.005 ? 'text-blue-500' : m > 0.005 ? 'text-rose-400' : 'text-slate-300'}`}>{m.toFixed(1)}</td>
                                                                 </tr>
                                                             );
                                                         });
-                                                        // 4. 기타 장비 항목 (bew, pilot, pax1-3, fuel 제외)
+                                                        // 4. 기타 장비 항목
                                                         stats.tableData
                                                             .filter(i => !['bew','pilot','pax1','pax2','pax3'].includes(i.id) && !i.isFuel && i.weight > 0)
                                                             .forEach(item => {
                                                                 const arm = item.lateralArm || 0;
                                                                 const m = item.weight * arm;
                                                                 rows.push(
-                                                                    <tr key={item.id} className="border-b border-slate-50">
-                                                                        <td className="px-3 py-1.5 font-bold text-slate-600 whitespace-nowrap text-[10px]">{item.label}</td>
-                                                                        <td className="px-2 py-1">
-                                                                            <input type="number" value={item.weight || ''}
-                                                                                   onChange={e => updateItem(item.id,'weight',parseFloat(e.target.value)||0)}
-                                                                                   className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
-                                                                        </td>
-                                                                        <td className="px-3 py-1.5 text-right">
-                                                                            <input type="number" value={Math.round(arm*1000)}
-                                                                                   onChange={e => updateItem(item.id,'lateralArm',(parseFloat(e.target.value)||0)/1000)}
-                                                                                   className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
-                                                                        </td>
-                                                                        <td className={`px-3 py-1.5 text-right font-mono font-bold ${m < -0.01 ? 'text-blue-500' : m > 0.01 ? 'text-rose-400' : 'text-slate-300'}`}>{m.toFixed(1)}</td>
+                                                                    <tr key={item.id} className={TR}
+                                                                        onClick={() => setLateralEditPopup({type:'equipment',id:item.id,label:item.label,weight:item.weight,arm})}>
+                                                                        <td className={`${TD} font-bold text-slate-600 text-[10px]`}>{item.label}</td>
+                                                                        <td className={`${TD} text-right font-mono text-slate-600`}>{item.weight.toLocaleString()}</td>
+                                                                        <td className={`${TD} text-right font-mono text-slate-500`}>{Math.round(arm*1000)}</td>
+                                                                        <td className={`${TD} text-right font-mono font-bold ${m < -0.01 ? 'text-blue-500' : m > 0.01 ? 'text-rose-400' : 'text-slate-300'}`}>{m.toFixed(1)}</td>
                                                                     </tr>
                                                                 );
                                                             });
@@ -814,19 +790,12 @@
                                                             const fuelArm = fuelItem.lateralArm || 0;
                                                             const fuelM = fuelItem.weight * fuelArm;
                                                             rows.push(
-                                                                <tr key="fuel" className="border-b border-slate-100">
-                                                                    <td className="px-3 py-1.5 font-bold text-slate-700">{fuelItem.label}</td>
-                                                                    <td className="px-2 py-1">
-                                                                        <input type="number" value={fuelItem.weight || ''}
-                                                                               onChange={e => updateItem(fuelItem.id,'weight',parseFloat(e.target.value)||0)}
-                                                                               className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
-                                                                    </td>
-                                                                    <td className="px-2 py-1">
-                                                                        <input type="number" value={Math.round(fuelArm*1000)}
-                                                                               onChange={e => updateItem(fuelItem.id,'lateralArm',(parseFloat(e.target.value)||0)/1000)}
-                                                                               className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
-                                                                    </td>
-                                                                    <td className={`px-3 py-1.5 text-right font-mono font-bold ${fuelM < -0.01 ? 'text-blue-500' : fuelM > 0.01 ? 'text-rose-400' : 'text-slate-300'}`}>{fuelM.toFixed(1)}</td>
+                                                                <tr key="fuel" className={TR}
+                                                                    onClick={() => setLateralEditPopup({type:'fuel',id:fuelItem.id,label:fuelItem.label,weight:fuelItem.weight,arm:fuelArm})}>
+                                                                    <td className={`${TD} font-bold text-slate-700`}>{fuelItem.label}</td>
+                                                                    <td className={`${TD} text-right font-mono text-slate-600`}>{fuelItem.weight.toLocaleString()}</td>
+                                                                    <td className={`${TD} text-right font-mono text-slate-500`}>{Math.round(fuelArm*1000)}</td>
+                                                                    <td className={`${TD} text-right font-mono font-bold ${fuelM < -0.01 ? 'text-blue-500' : fuelM > 0.01 ? 'text-rose-400' : 'text-slate-300'}`}>{fuelM.toFixed(1)}</td>
                                                                 </tr>
                                                             );
                                                         }
@@ -836,27 +805,12 @@
                                                     {customLateralItems.map(ci => {
                                                         const m = (ci.weight || 0) * (ci.arm || 0);
                                                         return (
-                                                            <tr key={ci.id} className="border-b border-amber-100 bg-amber-50/30">
-                                                                <td className="px-2 py-1">
-                                                                    <input type="text" value={ci.label} placeholder="항목명"
-                                                                        onChange={e => updateCustomLateralItem(ci.id, 'label', e.target.value)}
-                                                                        className="w-full px-1 py-0.5 bg-white border border-amber-200 rounded text-[10px] font-bold text-amber-800 outline-none focus:ring-1 focus:ring-amber-400" />
-                                                                </td>
-                                                                <td className="px-2 py-1">
-                                                                    <input type="number" value={ci.weight || ''} placeholder="0"
-                                                                        onChange={e => updateCustomLateralItem(ci.id, 'weight', parseFloat(e.target.value) || 0)}
-                                                                        className="w-full px-1 py-0.5 bg-white border border-amber-200 rounded text-[10px] font-mono text-right text-amber-800 outline-none focus:ring-1 focus:ring-amber-400" />
-                                                                </td>
-                                                                <td className="px-2 py-1">
-                                                                    <input type="number" value={ci.arm !== 0 ? Math.round(ci.arm * 1000) : ''} placeholder="0"
-                                                                        onChange={e => updateCustomLateralItem(ci.id, 'arm', (parseFloat(e.target.value) || 0) / 1000)}
-                                                                        className="w-full px-1 py-0.5 bg-white border border-amber-200 rounded text-[10px] font-mono text-right text-amber-800 outline-none focus:ring-1 focus:ring-amber-400" />
-                                                                </td>
-                                                                <td className="px-2 py-1 text-right">
-                                                                    <span className={`text-[10px] font-mono font-bold ${m < -0.005 ? 'text-blue-500' : m > 0.005 ? 'text-rose-400' : 'text-slate-300'}`}>{m.toFixed(1)}</span>
-                                                                    <button onClick={() => deleteCustomLateralItem(ci.id)}
-                                                                        className="ml-2 text-rose-400 hover:text-rose-600 text-[10px] font-black">✕</button>
-                                                                </td>
+                                                            <tr key={ci.id} className="border-b border-amber-100 bg-amber-50/20 cursor-pointer hover:bg-amber-50/50 transition-colors"
+                                                                onClick={() => setLateralEditPopup({type:'custom',id:ci.id,label:ci.label||'추가 항목',editLabel:ci.label,weight:ci.weight,arm:ci.arm})}>
+                                                                <td className="px-3 py-2 font-bold text-amber-700">{ci.label || <span className="text-slate-300 font-normal">항목명 없음</span>}</td>
+                                                                <td className="px-3 py-2 text-right font-mono text-amber-600">{ci.weight || <span className="text-slate-300">—</span>}</td>
+                                                                <td className="px-3 py-2 text-right font-mono text-amber-500">{ci.arm ? Math.round(ci.arm*1000) : <span className="text-slate-300">—</span>}</td>
+                                                                <td className={`px-3 py-2 text-right font-mono font-bold ${m < -0.005 ? 'text-blue-500' : m > 0.005 ? 'text-rose-400' : 'text-slate-300'}`}>{m.toFixed(1)}</td>
                                                             </tr>
                                                         );
                                                     })}
@@ -876,6 +830,96 @@
                                         </div>
                                     </div>
                                     </div>{/* end left wrapper */}
+
+                                    {/* ── Lateral Edit Popup ── */}
+                                    {lateralEditPopup && (() => {
+                                        const lep = lateralEditPopup;
+                                        const isPilot = lep.type === 'pilot';
+                                        const isCustom = lep.type === 'custom';
+                                        const isSeat = lep.type === 'seat';
+                                        const confirmEdit = () => {
+                                            if (isPilot) {
+                                                updateItem('pilot','weight', lep.weight || 0);
+                                                setPilotArms({ plt: lep.arm, cpt: lep.armCpt });
+                                            } else if (isCustom) {
+                                                updateCustomLateralItem(lep.id,'label', lep.editLabel || '');
+                                                updateCustomLateralItem(lep.id,'weight', lep.weight || 0);
+                                                updateCustomLateralItem(lep.id,'arm', lep.arm || 0);
+                                            } else if (isSeat) {
+                                                setSeatWeights(prev => ({...prev, [lep.id]: lep.weight || 0}));
+                                            } else {
+                                                updateItem(lep.id,'weight', lep.weight || 0);
+                                                updateItem(lep.id,'lateralArm', lep.arm || 0);
+                                            }
+                                            setLateralEditPopup(null);
+                                        };
+                                        return (
+                                            <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setLateralEditPopup(null)}>
+                                                <div className="absolute inset-0 bg-black/20"/>
+                                                <div className="relative bg-white rounded-2xl shadow-xl border border-purple-200 p-4 w-56 z-10" onClick={e => e.stopPropagation()}>
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <span className="text-sm font-black text-purple-700">{lep.label}</span>
+                                                        <button onClick={() => setLateralEditPopup(null)} className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs font-black">✕</button>
+                                                    </div>
+                                                    {/* 무게 */}
+                                                    <div className="mb-2.5">
+                                                        <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">
+                                                            {isPilot ? 'Weight 합계 (PLT+CPT) kg' : 'Weight (kg)'}
+                                                        </label>
+                                                        <input autoFocus type="number" value={lep.weight || ''} placeholder="0"
+                                                               onChange={e => lepUpdate('weight', parseFloat(e.target.value) || 0)}
+                                                               onKeyDown={e => e.key === 'Enter' && confirmEdit()}
+                                                               className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono text-right focus:ring-2 focus:ring-purple-400 outline-none" />
+                                                    </div>
+                                                    {/* 암 */}
+                                                    {isPilot ? (
+                                                        <div className="flex gap-2 mb-2.5">
+                                                            <div className="flex-1">
+                                                                <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">PLT Arm (mm)</label>
+                                                                <input type="number" value={Math.round((lep.arm||0)*1000)}
+                                                                       onChange={e => lepUpdate('arm',(parseFloat(e.target.value)||0)/1000)}
+                                                                       onKeyDown={e => e.key === 'Enter' && confirmEdit()}
+                                                                       className="w-full px-2 py-2 border border-indigo-200 rounded-xl text-sm font-mono text-right focus:ring-2 focus:ring-indigo-400 outline-none" />
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">CPT Arm (mm)</label>
+                                                                <input type="number" value={Math.round((lep.armCpt||0)*1000)}
+                                                                       onChange={e => lepUpdate('armCpt',(parseFloat(e.target.value)||0)/1000)}
+                                                                       onKeyDown={e => e.key === 'Enter' && confirmEdit()}
+                                                                       className="w-full px-2 py-2 border border-indigo-200 rounded-xl text-sm font-mono text-right focus:ring-2 focus:ring-indigo-400 outline-none" />
+                                                            </div>
+                                                        </div>
+                                                    ) : !isSeat && (
+                                                        <div className="mb-2.5">
+                                                            <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">CG Arm (mm)</label>
+                                                            <input type="number" value={Math.round((lep.arm||0)*1000)}
+                                                                   onChange={e => lepUpdate('arm',(parseFloat(e.target.value)||0)/1000)}
+                                                                   onKeyDown={e => e.key === 'Enter' && confirmEdit()}
+                                                                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono text-right focus:ring-2 focus:ring-purple-400 outline-none" />
+                                                        </div>
+                                                    )}
+                                                    {/* 추가항목: 이름 편집 */}
+                                                    {isCustom && (
+                                                        <div className="mb-2.5">
+                                                            <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">항목명</label>
+                                                            <input type="text" value={lep.editLabel || ''} placeholder="항목명"
+                                                                   onChange={e => lepUpdate('editLabel', e.target.value)}
+                                                                   onKeyDown={e => e.key === 'Enter' && confirmEdit()}
+                                                                   className="w-full px-3 py-2 border border-amber-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-amber-400 outline-none" />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex gap-2 mt-3">
+                                                        {isCustom && (
+                                                            <button onClick={() => { deleteCustomLateralItem(lep.id); setLateralEditPopup(null); }}
+                                                                    className="px-2.5 py-2 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-[10px] font-black hover:bg-rose-100 transition-all">삭제</button>
+                                                        )}
+                                                        <button onClick={confirmEdit}
+                                                                className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-all active:scale-95">확인</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
 
                                     {/* ── RIGHT: 인벨로프 차트 ── */}
                                     <div className="bg-slate-50 rounded-xl p-3 flex flex-col h-full">
