@@ -203,6 +203,7 @@
             const addCustomLateralItem = () => setCustomLateralItems(prev => [...prev, { id: `clat-${Date.now()}`, label: '', weight: 0, arm: 0 }]);
             const updateCustomLateralItem = (id, field, val) => setCustomLateralItems(prev => prev.map(i => i.id === id ? { ...i, [field]: val } : i));
             const deleteCustomLateralItem = (id) => setCustomLateralItems(prev => prev.filter(i => i.id !== id));
+            const [pilotArms, setPilotArms] = useState({ plt: 0.550, cpt: -0.550 });
             const [blSpacingScale, setBlSpacingScale] = useState(100);
             const [seatPopup, setSeatPopup] = useState(null); // { id } — id='_pilot' for crew
             const [seatWeights, setSeatWeights] = useState(() => {
@@ -270,19 +271,23 @@
             }, [seatWeights]);
 
             const lateralStats = useMemo(() => {
-                // 장비/구조물: items의 lateralArm 사용
-                const itemMoment = stats.tableData.reduce((sum, i) => sum + i.weight * (i.lateralArm || 0), 0);
+                // 장비/구조물: pilot 제외, items의 lateralArm 사용
+                const itemMoment = stats.tableData.filter(i => i.id !== 'pilot').reduce((sum, i) => sum + i.weight * (i.lateralArm || 0), 0);
+                // 조종사: pilotArms 기반
+                const pilotW = stats.tableData.find(i => i.id === 'pilot')?.weight || 0;
+                const hw = pilotW / 2;
+                const pilotMoment = hw * pilotArms.plt + hw * pilotArms.cpt;
                 // 탑승자: 좌석 다이어그램 입력값 사용
                 const varSeats = VARIABLE_SEATS[selectedAc] || [];
                 const seatMoment = varSeats.reduce((sum, id) => sum + (seatWeights[id] || 0) * (SEAT_CONFIG[id]?.bl || 0), 0);
                 // 임의 추가 항목
                 const customMoment = customLateralItems.reduce((sum, i) => sum + (i.weight || 0) * (i.arm || 0), 0);
-                const totalLateralMoment = itemMoment + seatMoment + customMoment;
+                const totalLateralMoment = itemMoment + pilotMoment + seatMoment + customMoment;
                 const lateralCG = stats.totalWeight > 0 ? totalLateralMoment / stats.totalWeight : 0;
                 const limits = getLateralLimits(stats.totalWeight, selectedAc);
                 const isWithinLimit = limits ? (lateralCG >= limits.left && lateralCG <= limits.right) : true;
                 return { totalLateralMoment, lateralCG, isWithinLimit, limits, seatMoment, itemMoment, customMoment };
-            }, [stats, selectedAc, seatWeights, customLateralItems]);
+            }, [stats, selectedAc, seatWeights, customLateralItems, pilotArms]);
 
             const updateItem = (id, field, value) => {
                 setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
@@ -714,7 +719,11 @@
                                                             rows.push(
                                                                 <tr key="bew" className="border-b border-slate-50">
                                                                     <td className="px-3 py-1.5 font-bold text-slate-700">B.E.W</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-500">{bew.weight.toLocaleString()}</td>
+                                                                    <td className="px-2 py-1">
+                                                                        <input type="number" value={bew.weight || ''}
+                                                                               onChange={e => updateItem('bew','weight',parseFloat(e.target.value)||0)}
+                                                                               className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
+                                                                    </td>
                                                                     <td className="px-3 py-1.5 text-right">
                                                                         <input type="number" value={Math.round(arm*1000)}
                                                                                onChange={e => updateItem('bew','lateralArm',(parseFloat(e.target.value)||0)/1000)}
@@ -724,26 +733,38 @@
                                                                 </tr>
                                                             );
                                                         }
-                                                        // 2. 조종사 (항상 표시, 클릭으로 무게 입력)
+                                                        // 2. 조종사 (무게=클릭팝업, 암=인라인 input)
                                                         const pilotItem = stats.tableData.find(i => i.id === 'pilot');
                                                         const pilotTotalW = pilotItem?.weight || 0;
                                                         const hw = pilotTotalW / 2;
                                                         rows.push(
-                                                            <tr key="plt" className="border-b border-slate-50 cursor-pointer hover:bg-indigo-50/50"
-                                                                onClick={() => setSeatPopup({id:'_pilot'})}>
+                                                            <tr key="plt" className="border-b border-slate-50 bg-indigo-50/10">
                                                                 <td className="px-3 py-1.5 font-bold text-indigo-700">PLT (부조종사)</td>
-                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-500">{hw > 0 ? hw : <span className="text-slate-300">—</span>}</td>
-                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-400">+550</td>
-                                                                <td className="px-3 py-1.5 text-right font-mono font-bold text-rose-400">{(hw*0.550).toFixed(1)}</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-500 cursor-pointer hover:bg-indigo-100/60 rounded"
+                                                                    onClick={() => setSeatPopup({id:'_pilot'})}>
+                                                                    {hw > 0 ? hw : <span className="text-slate-300">—</span>}
+                                                                </td>
+                                                                <td className="px-2 py-1">
+                                                                    <input type="number" value={Math.round(pilotArms.plt*1000)}
+                                                                           onChange={e => setPilotArms(p=>({...p,plt:(parseFloat(e.target.value)||0)/1000}))}
+                                                                           className="w-16 px-1 py-0.5 bg-slate-50 border border-indigo-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-indigo-400 outline-none" />
+                                                                </td>
+                                                                <td className="px-3 py-1.5 text-right font-mono font-bold text-rose-400">{(hw*pilotArms.plt).toFixed(1)}</td>
                                                             </tr>
                                                         );
                                                         rows.push(
-                                                            <tr key="cpt" className="border-b border-slate-50 cursor-pointer hover:bg-indigo-50/50"
-                                                                onClick={() => setSeatPopup({id:'_pilot'})}>
+                                                            <tr key="cpt" className="border-b border-slate-50 bg-indigo-50/10">
                                                                 <td className="px-3 py-1.5 font-bold text-indigo-700">CPT (기장)</td>
-                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-500">{hw > 0 ? hw : <span className="text-slate-300">—</span>}</td>
-                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-400">−550</td>
-                                                                <td className="px-3 py-1.5 text-right font-mono font-bold text-blue-500">{(hw*-0.550).toFixed(1)}</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono text-indigo-500 cursor-pointer hover:bg-indigo-100/60 rounded"
+                                                                    onClick={() => setSeatPopup({id:'_pilot'})}>
+                                                                    {hw > 0 ? hw : <span className="text-slate-300">—</span>}
+                                                                </td>
+                                                                <td className="px-2 py-1">
+                                                                    <input type="number" value={Math.round(pilotArms.cpt*1000)}
+                                                                           onChange={e => setPilotArms(p=>({...p,cpt:(parseFloat(e.target.value)||0)/1000}))}
+                                                                           className="w-16 px-1 py-0.5 bg-slate-50 border border-indigo-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-indigo-400 outline-none" />
+                                                                </td>
+                                                                <td className="px-3 py-1.5 text-right font-mono font-bold text-blue-500">{(hw*pilotArms.cpt).toFixed(1)}</td>
                                                             </tr>
                                                         );
                                                         // 3. 변동 좌석 (seat diagram 입력값)
@@ -773,7 +794,11 @@
                                                                 rows.push(
                                                                     <tr key={item.id} className="border-b border-slate-50">
                                                                         <td className="px-3 py-1.5 font-bold text-slate-600 whitespace-nowrap text-[10px]">{item.label}</td>
-                                                                        <td className="px-3 py-1.5 text-right font-mono text-slate-500">{item.weight.toLocaleString()}</td>
+                                                                        <td className="px-2 py-1">
+                                                                            <input type="number" value={item.weight || ''}
+                                                                                   onChange={e => updateItem(item.id,'weight',parseFloat(e.target.value)||0)}
+                                                                                   className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
+                                                                        </td>
                                                                         <td className="px-3 py-1.5 text-right">
                                                                             <input type="number" value={Math.round(arm*1000)}
                                                                                    onChange={e => updateItem(item.id,'lateralArm',(parseFloat(e.target.value)||0)/1000)}
@@ -785,13 +810,23 @@
                                                             });
                                                         // 5. 연료
                                                         const fuelItem = stats.tableData.find(i => i.isFuel);
-                                                        if (fuelItem && fuelItem.weight > 0) {
+                                                        if (fuelItem) {
+                                                            const fuelArm = fuelItem.lateralArm || 0;
+                                                            const fuelM = fuelItem.weight * fuelArm;
                                                             rows.push(
                                                                 <tr key="fuel" className="border-b border-slate-100">
                                                                     <td className="px-3 py-1.5 font-bold text-slate-700">{fuelItem.label}</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-500">{fuelItem.weight.toLocaleString()}</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-400">0</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-300">0.0</td>
+                                                                    <td className="px-2 py-1">
+                                                                        <input type="number" value={fuelItem.weight || ''}
+                                                                               onChange={e => updateItem(fuelItem.id,'weight',parseFloat(e.target.value)||0)}
+                                                                               className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
+                                                                    </td>
+                                                                    <td className="px-2 py-1">
+                                                                        <input type="number" value={Math.round(fuelArm*1000)}
+                                                                               onChange={e => updateItem(fuelItem.id,'lateralArm',(parseFloat(e.target.value)||0)/1000)}
+                                                                               className="w-16 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs font-mono text-right focus:ring-1 focus:ring-purple-400 outline-none" />
+                                                                    </td>
+                                                                    <td className={`px-3 py-1.5 text-right font-mono font-bold ${fuelM < -0.01 ? 'text-blue-500' : fuelM > 0.01 ? 'text-rose-400' : 'text-slate-300'}`}>{fuelM.toFixed(1)}</td>
                                                                 </tr>
                                                             );
                                                         }
