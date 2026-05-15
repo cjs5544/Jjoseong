@@ -176,24 +176,25 @@ function TSDCalc() {
     const [speed, setSpeed] = useState(120);
     const [dist, setDist] = useState(180);
 
+    const pad = n => String(Math.max(0, Math.floor(n))).padStart(2,'0');
+
     const result = useMemo(() => {
         const T = timeH*3600 + timeM*60 + timeS;
+        const p = n => String(Math.max(0, Math.floor(n))).padStart(2,'0');
         if (mode === 'time') {
             if (speed <= 0) return null;
             const sec = (dist/speed)*3600;
             const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=Math.round(sec%60);
-            return { time: pad(h)+':'+pad(m)+':'+pad(s), speed: speed.toFixed(1), dist: dist.toFixed(1) };
+            return { time: p(h)+':'+p(m)+':'+p(s), speed: speed.toFixed(1), dist: dist.toFixed(1) };
         }
         if (mode === 'speed') {
             if (T <= 0) return null;
             const spd = dist/(T/3600);
-            return { time: pad(timeH)+':'+pad(timeM)+':'+pad(timeS), speed: spd.toFixed(1), dist: dist.toFixed(1) };
+            return { time: p(timeH)+':'+p(timeM)+':'+p(timeS), speed: spd.toFixed(1), dist: dist.toFixed(1) };
         }
         const d = speed*(T/3600);
-        return { time: pad(timeH)+':'+pad(timeM)+':'+pad(timeS), speed: speed.toFixed(1), dist: d.toFixed(1) };
+        return { time: p(timeH)+':'+p(timeM)+':'+p(timeS), speed: speed.toFixed(1), dist: d.toFixed(1) };
     }, [mode, timeH, timeM, timeS, speed, dist]);
-
-    const pad = n => String(n).padStart(2,'0');
 
     const ModeBtn = ({ val, label }) => html`
         <button onClick=${() => setMode(val)}
@@ -584,6 +585,16 @@ function CoordConv() {
     </div>`;
 }
 
+function TabContent({ tab }) {
+    if (tab === 'wind')  return html`<${WindCalc}/>`;
+    if (tab === 'tsd')   return html`<${TSDCalc}/>`;
+    if (tab === 'fuel')  return html`<${FuelCalc}/>`;
+    if (tab === 'da')    return html`<${DensityAlt}/>`;
+    if (tab === 'unit')  return html`<${UnitConv}/>`;
+    if (tab === 'coord') return html`<${CoordConv}/>`;
+    return null;
+}
+
 // ══════════════════════════════════════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════════════════════════════════════
@@ -628,12 +639,7 @@ function App() {
             </div>
         </div>
         <main class="flex-1 max-w-5xl mx-auto w-full px-3 sm:px-6 py-5">
-            ${tab==='wind' && html`<${WindCalc}/>`}
-            ${tab==='tsd'  && html`<${TSDCalc}/>`}
-            ${tab==='fuel' && html`<${FuelCalc}/>`}
-            ${tab==='da'   && html`<${DensityAlt}/>`}
-            ${tab==='unit' && html`<${UnitConv}/>`}
-            ${tab==='coord'&& html`<${CoordConv}/>`}
+            <${TabContent} tab=${tab} />
         </main>
         <footer class="bg-slate-900 text-slate-500 text-[9px] py-3 text-center font-bold uppercase tracking-widest">
             E6B Flight Computer · For Training Use Only · Not for Navigation
