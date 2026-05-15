@@ -692,9 +692,9 @@ function CoordConv() {
                         ` : html`<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 font-bold">유효하지 않은 좌표입니다.</div>`}
                     </div>
                     <!-- 오른쪽: 지도 -->
-                    <div class="flex-1 min-w-0">
+                    <div class="flex-1 min-w-0 flex flex-col">
                         <div class="text-[9px] text-slate-400 font-black uppercase mb-1">지도</div>
-                        <div ref=${mapRef} style="height:420px;border-radius:12px;overflow:hidden;z-index:0;" class="border border-slate-200 w-full sm:h-full" ></div>
+                        <div ref=${mapRef} style="min-height:260px;border-radius:12px;overflow:hidden;z-index:0;" class="flex-1 border border-slate-200 w-full"></div>
                     </div>
                 </div>
             </div>
