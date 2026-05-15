@@ -8,6 +8,8 @@
     <script src="https://unpkg.com/preact@10/dist/preact.umd.js"></script>
     <script src="https://unpkg.com/preact@10/hooks/dist/hooks.umd.js"></script>
     <script src="https://unpkg.com/htm@3/dist/htm.umd.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         body { font-family: 'Pretendard','Apple SD Gothic Neo',sans-serif; overflow-x:hidden; }
         @media (min-width:1024px) { body { zoom:0.9; } }
@@ -30,7 +32,7 @@
 </div>
 <script>
 const { h, render, Component } = preact;
-const { useState, useMemo, useEffect } = preactHooks;
+const { useState, useMemo, useEffect, useRef } = preactHooks;
 const html = htm.bind(h);
 
 // ── Math helpers ──────────────────────────────────────────────────
@@ -489,6 +491,9 @@ function CoordConv() {
     const [type, setType] = useState('DD');
     const [latDD, setLatDD] = useState(37.5635);
     const [lonDD, setLonDD] = useState(126.9778);
+    const mapRef = useRef(null);
+    const leafletMap = useRef(null);
+    const markerRef = useRef(null);
     const [latD,setLatD]=useState(37); const [latM,setLatM]=useState(33); const [latS,setLatS]=useState(49); const [latDir,setLatDir]=useState('N');
     const [lonD,setLonD]=useState(126); const [lonM,setLonM]=useState(58); const [lonS,setLonS]=useState(40); const [lonDir,setLonDir]=useState('E');
     const [latDd,setLatDd]=useState(37); const [latDm,setLatDm]=useState(33.816); const [latDdir,setLatDdir]=useState('N');
@@ -515,6 +520,25 @@ function CoordConv() {
     const latDMS=dms(latDec), lonDMS=dms(lonDec);
     const ld=latDec>=0?'N':'S', lo=lonDec>=0?'E':'W';
     const valid=!isNaN(latDec)&&!isNaN(lonDec)&&Math.abs(latDec)<=90&&Math.abs(lonDec)<=180;
+
+    useEffect(() => {
+        if (!mapRef.current) return;
+        leafletMap.current = L.map(mapRef.current).setView([37.5635, 126.9778], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 18
+        }).addTo(leafletMap.current);
+        markerRef.current = L.marker([37.5635, 126.9778]).addTo(leafletMap.current);
+        return () => {
+            if (leafletMap.current) { leafletMap.current.remove(); leafletMap.current = null; }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!valid || !leafletMap.current) return;
+        leafletMap.current.setView([latDec, lonDec], leafletMap.current.getZoom());
+        if (markerRef.current) markerRef.current.setLatLng([latDec, lonDec]);
+    }, [latDec, lonDec, valid]);
 
     const DBtn = ({val,cur,set}) => html`<button onClick=${()=>set(val)}
         class=${'flex-1 py-2 text-xs font-black rounded ' + (cur===val?'bg-blue-600 text-white':'bg-slate-100 text-slate-500')}>${val}</button>`;
@@ -580,6 +604,10 @@ function CoordConv() {
                         ${ld}${String(latDMS.d).padStart(2,'0')}${String(latDMS.m).padStart(2,'0')}${latDMS.s.toFixed(0).padStart(2,'0')} ${lo}${String(lonDMS.d).padStart(3,'0')}${String(lonDMS.m).padStart(2,'0')}${lonDMS.s.toFixed(0).padStart(2,'0')}
                     </div>
                 ` : html`<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 font-bold">유효하지 않은 좌표입니다.</div>`}
+                <div class="space-y-1">
+                    <div class="text-[9px] text-slate-400 font-black uppercase">지도</div>
+                    <div ref=${mapRef} style="height:260px;border-radius:12px;overflow:hidden;z-index:0;" class="border border-slate-200 w-full"></div>
+                </div>
             </div>
         </div>
     </div>`;
