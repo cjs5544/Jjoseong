@@ -265,9 +265,9 @@ function FuelCalc() {
     const [reserve, setReserve] = useState(20);
     const [unit, setUnit] = useState('kg');
 
-    const KL = 0.803, KG = 3.040;
-    const toKg = v => unit==='kg' ? v : unit==='L' ? v*KL : v*KG;
-    const frKg = v => unit==='kg' ? v : unit==='L' ? v/KL : v/KG;
+    const KL = 0.803, KG = 3.040, KLB = 2.20462;
+    const toKg = v => unit==='kg' ? v : unit==='L' ? v*KL : unit==='USG' ? v*KG : v/KLB;
+    const frKg = v => unit==='kg' ? v : unit==='L' ? v/KL : unit==='USG' ? v/KG : v*KLB;
 
     const fobK=toKg(fob), ffK=toKg(ff);
     const resK=ffK*(reserve/60);
@@ -279,8 +279,8 @@ function FuelCalc() {
 
     const UBtn = ({ u }) => html`<button onClick=${() => {
         const k=toKg(fob), kf=toKg(ff); setUnit(u);
-        setFob(parseFloat((u==='kg'?k:u==='L'?k/KL:k/KG).toFixed(1)));
-        setFf(parseFloat((u==='kg'?kf:u==='L'?kf/KL:kf/KG).toFixed(1)));
+        setFob(parseFloat((u==='kg'?k:u==='L'?k/KL:u==='USG'?k/KG:k*KLB).toFixed(1)));
+        setFf(parseFloat((u==='kg'?kf:u==='L'?kf/KL:u==='USG'?kf/KG:kf*KLB).toFixed(1)));
     }} class=${'px-3 py-1 text-xs font-black rounded-lg ' + (unit===u?'bg-blue-600 text-white':'bg-slate-100 text-slate-500')}>${u}</button>`;
 
     const [dist2, setDist2] = useState(100);
@@ -293,12 +293,12 @@ function FuelCalc() {
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <${SectionHeader} icon="fuel" title="연료 계획" badge="Fuel" />
                 <div class="p-4 space-y-3">
-                    <div class="flex gap-1.5 items-center">
-                        <${UBtn} u="kg" /><${UBtn} u="L" /><${UBtn} u="USG" />
-                        <span class="ml-auto text-[9px] text-slate-400">Jet-A: 0.803 kg/L</span>
+                    <div class="flex gap-1.5 items-center flex-wrap">
+                        <${UBtn} u="kg" /><${UBtn} u="lbs" /><${UBtn} u="L" /><${UBtn} u="USG" />
+                        <span class="ml-auto text-[9px] text-slate-400">Jet-A: 0.803 kg/L · 1 kg=2.205 lbs</span>
                     </div>
-                    <${NumInput} label=${'탑재 연료 FOB'} value=${fob} onChange=${setFob} unit=${unit} min=0 step=${unit==='kg'?10:unit==='L'?12.5:3} />
-                    <${NumInput} label=${'연료소모율 FF'} value=${ff} onChange=${setFf} unit=${unit+'/hr'} min=0.1 step=${unit==='kg'?5:unit==='L'?6.2:1.5} />
+                    <${NumInput} label=${'탑재 연료 FOB'} value=${fob} onChange=${setFob} unit=${unit} min=0 step=${unit==='kg'?10:unit==='L'?12.5:unit==='USG'?3:22} />
+                    <${NumInput} label=${'연료소모율 FF'} value=${ff} onChange=${setFf} unit=${unit+'/hr'} min=0.1 step=${unit==='kg'?5:unit==='L'?6.2:unit==='USG'?1.5:11} />
                     <${NumInput} label="지상속도 GS" value=${gs} onChange=${setGs} unit="kt" min=1 />
                     <${NumInput} label="예비 연료" value=${reserve} onChange=${setReserve} unit="min" min=0 max=120 />
                 </div>
