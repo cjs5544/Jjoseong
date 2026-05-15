@@ -484,6 +484,71 @@ function UnitConv() {
     </div>`;
 }
 
+// ── MGRS helpers ──────────────────────────────────────────────────
+const MGRS_COL_SETS=['ABCDEFGH','JKLMNPQR','STUVWXYZ'];
+const MGRS_ROW_ODD='ABCDEFGHJKLMNPQRSTUV';
+const MGRS_ROW_EVEN='FGHJKLMNPQRSTUVABCDE';
+
+function getUTMBand(lat){
+    if(lat<-80||lat>84)return null;
+    return 'CDEFGHJKLMNPQRSTUVWX'[Math.floor((lat+80)/8)];
+}
+function llToUTM(lat,lon){
+    const a=6378137,e2=0.00669437999014,k0=0.9996;
+    let z=Math.floor((lon+180)/6)+1;
+    if(lat>=56&&lat<64&&lon>=3&&lon<12)z=32;
+    if(lat>=72&&lat<84){if(lon>=0&&lon<9)z=31;else if(lon>=9&&lon<21)z=33;else if(lon>=21&&lon<33)z=35;else if(lon>=33&&lon<42)z=37;}
+    const φ=lat*Math.PI/180,λ0=((z-1)*6-180+3)*Math.PI/180;
+    const N=a/Math.sqrt(1-e2*Math.sin(φ)**2);
+    const T=Math.tan(φ)**2,C=e2/(1-e2)*Math.cos(φ)**2;
+    const A=Math.cos(φ)*(lon*Math.PI/180-λ0);
+    const M=a*((1-e2/4-3*e2**2/64-5*e2**3/256)*φ-(3*e2/8+3*e2**2/32+45*e2**3/1024)*Math.sin(2*φ)+(15*e2**2/256+45*e2**3/1024)*Math.sin(4*φ)-(35*e2**3/3072)*Math.sin(6*φ));
+    const E=k0*N*(A+(1-T+C)*A**3/6+(5-18*T+T**2+72*C-58*e2/(1-e2))*A**5/120)+500000;
+    let Nn=k0*(M+N*Math.tan(φ)*(A**2/2+(5-T+9*C+4*C**2)*A**4/24+(61-58*T+T**2+600*C-330*e2/(1-e2))*A**6/720));
+    if(lat<0)Nn+=10000000;
+    return{z,E,Nn};
+}
+function utmToLL(z,E,Nn,isNorth){
+    const a=6378137,e2=0.00669437999014,k0=0.9996;
+    const e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
+    const x=E-500000,y=isNorth?Nn:Nn-10000000;
+    const M=y/k0,mu=M/(a*(1-e2/4-3*e2**2/64-5*e2**3/256));
+    const φ1=mu+(3*e1/2-27*e1**3/32)*Math.sin(2*mu)+(21*e1**2/16-55*e1**4/32)*Math.sin(4*mu)+(151*e1**3/96)*Math.sin(6*mu)+(1097*e1**4/512)*Math.sin(8*mu);
+    const N1=a/Math.sqrt(1-e2*Math.sin(φ1)**2);
+    const T1=Math.tan(φ1)**2,C1=e2/(1-e2)*Math.cos(φ1)**2;
+    const R1=a*(1-e2)/(1-e2*Math.sin(φ1)**2)**1.5;
+    const D=x/(N1*k0);
+    const lat=(φ1-(N1*Math.tan(φ1)/R1)*(D**2/2-(5+3*T1+10*C1-4*C1**2-9*e2/(1-e2))*D**4/24+(61+90*T1+298*C1+45*T1**2-252*e2/(1-e2)-3*C1**2)*D**6/720))*180/Math.PI;
+    const λ0=((z-1)*6-180+3)*Math.PI/180;
+    const lon=(λ0+(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1**2+8*e2/(1-e2)+24*T1**2)*D**5/120)/Math.cos(φ1))*180/Math.PI;
+    return{lat,lon};
+}
+function toMGRS(lat,lon,prec=5){
+    if(lat<-80||lat>84)return 'UPS(극지)';
+    const{z,E,Nn}=llToUTM(lat,lon);
+    const band=getUTMBand(lat);
+    const colLtr=MGRS_COL_SETS[(z-1)%3][Math.floor(E/100000)-1]||'?';
+    const rowLtr=(z%2===1?MGRS_ROW_ODD:MGRS_ROW_EVEN)[Math.floor(Nn/100000)%20];
+    const e=String(Math.round(E%100000)).padStart(5,'0').slice(0,prec);
+    const n=String(Math.round(Nn%100000)).padStart(5,'0').slice(0,prec);
+    return `${z}${band} ${colLtr}${rowLtr} ${e} ${n}`;
+}
+const MGRS_BAND_MIN=[1100000,2000000,2800000,3700000,4600000,5500000,6400000,7300000,8200000,9100000,0,888000,1777000,2666000,3555000,4444000,5332000,6221000,7110000,7999000];
+function fromMGRS(s){
+    s=s.replace(/\s+/g,'').toUpperCase();
+    const m=s.match(/^(\d{1,2})([C-HJ-NP-X])([A-HJ-Z][A-HJ-NP-Z])(\d{2,10})$/);
+    if(!m||m[4].length%2!==0)return null;
+    const z=parseInt(m[1]),band=m[2],sq=m[3],nums=m[4],half=nums.length/2;
+    const eN=parseInt(nums.slice(0,half).padEnd(5,'0'));
+    const nN=parseInt(nums.slice(half).padEnd(5,'0'));
+    const ci=MGRS_COL_SETS[(z-1)%3].indexOf(sq[0]);if(ci<0)return null;
+    const ri=(z%2===1?MGRS_ROW_ODD:MGRS_ROW_EVEN).indexOf(sq[1]);if(ri<0)return null;
+    const bi='CDEFGHJKLMNPQRSTUVWX'.indexOf(band);if(bi<0)return null;
+    let n100k=ri*100000;
+    while(n100k<MGRS_BAND_MIN[bi])n100k+=2000000;
+    return utmToLL(z,(ci+1)*100000+eN,n100k+nN,band>='N');
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 6. COORDINATE CONVERSION
 // ══════════════════════════════════════════════════════════════════
@@ -498,20 +563,23 @@ function CoordConv() {
     const [lonD,setLonD]=useState(126); const [lonM,setLonM]=useState(58); const [lonS,setLonS]=useState(40); const [lonDir,setLonDir]=useState('E');
     const [latDd,setLatDd]=useState(37); const [latDm,setLatDm]=useState(33.816); const [latDdir,setLatDdir]=useState('N');
     const [lonDd,setLonDd]=useState(126); const [lonDm,setLonDm]=useState(58.668); const [lonDdir,setLonDdir]=useState('E');
+    const [mgrsIn, setMgrsIn] = useState('52S CB 35822 27403');
 
     const latDec = useMemo(() => {
         if (type==='DD') return latDD;
+        if (type==='MGRS') { const r=fromMGRS(mgrsIn); return r?r.lat:NaN; }
         const sign = (d) => (d==='S'||d==='W') ? -1 : 1;
         if (type==='DMS') return sign(latDir)*((latD||0)+(latM||0)/60+(latS||0)/3600);
         return sign(latDdir)*((latDd||0)+(latDm||0)/60);
-    }, [type,latDD,latD,latM,latS,latDir,latDd,latDm,latDdir]);
+    }, [type,latDD,latD,latM,latS,latDir,latDd,latDm,latDdir,mgrsIn]);
 
     const lonDec = useMemo(() => {
         if (type==='DD') return lonDD;
+        if (type==='MGRS') { const r=fromMGRS(mgrsIn); return r?r.lon:NaN; }
         const sign = (d) => (d==='S'||d==='W') ? -1 : 1;
         if (type==='DMS') return sign(lonDir)*((lonD||0)+(lonM||0)/60+(lonS||0)/3600);
         return sign(lonDdir)*((lonDd||0)+(lonDm||0)/60);
-    }, [type,lonDD,lonD,lonM,lonS,lonDir,lonDd,lonDm,lonDdir]);
+    }, [type,lonDD,lonD,lonM,lonS,lonDir,lonDd,lonDm,lonDdir,mgrsIn]);
 
     const dms = dd => {
         const a=Math.abs(dd), d=Math.floor(a), mAll=(a-d)*60, m=Math.floor(mAll), s=(mAll-m)*60;
@@ -556,12 +624,21 @@ function CoordConv() {
             <${SectionHeader} icon="map-pin" title="좌표 변환" badge="Coords" />
             <div class="p-4 space-y-4">
                 <div class="flex gap-2">
-                    ${['DD','DMS','DDM'].map(t => html`<button key=${t} onClick=${()=>setType(t)}
+                    ${[['DD','십진도'],['DMS','도분초'],['DDM','도분'],['MGRS','MGRS']].map(([t,lbl]) => html`<button key=${t} onClick=${()=>setType(t)}
                         class=${'flex-1 py-2 text-xs font-black rounded-lg ' + (type===t?'bg-blue-600 text-white':'bg-slate-100 text-slate-500')}>
-                        ${t==='DD'?'십진도':t==='DMS'?'도분초':'도분'}
+                        ${lbl}
                     </button>`)}
                 </div>
-                <div class="space-y-3">
+                ${type==='MGRS' && html`
+                    <div class="space-y-2">
+                        <label class="text-[9px] font-black text-slate-400 uppercase">MGRS 좌표 입력</label>
+                        <input type="text" value=${mgrsIn} onInput=${e=>setMgrsIn(e.target.value)}
+                            placeholder="예: 52S CB 35822 27403"
+                            class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold font-mono outline-none focus:ring-2 focus:ring-blue-500"/>
+                        <p class="text-[9px] text-slate-400">형식: 구역번호 위도밴드 격자문자2 동 북 (공백 생략 가능)</p>
+                    </div>
+                `}
+                <div class="space-y-3" style=${'display:'+(type==='MGRS'?'none':'block')}>
                     <div class="space-y-1">
                         <label class="text-[9px] font-black text-slate-400 uppercase">위도 (Latitude)</label>
                         ${type==='DD' && html`<div class="flex gap-2 items-center"><input type="number" value=${latDD} onInput=${e=>setLatDD(parseFloat(e.target.value)||0)} step=0.0001 min=-90 max=90 class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500"/><span class="text-xs text-slate-400">° (N+ S-)</span></div>`}
@@ -591,12 +668,16 @@ function CoordConv() {
                                 <div>${lo} ${lonDMS.d}° ${lonDMS.m}' ${lonDMS.s.toFixed(2)}"</div>
                             </div>
                         </div>
-                        <div>
+                        <div class="border-b border-slate-700 pb-3">
                             <div class="text-[9px] text-slate-400 font-black uppercase mb-1">도분 DDM</div>
                             <div class="font-mono text-xs text-white font-bold space-y-0.5">
                                 <div>${ld} ${latDMS.d}° ${(latDMS.m+latDMS.s/60).toFixed(4)}'</div>
                                 <div>${lo} ${lonDMS.d}° ${(lonDMS.m+lonDMS.s/60).toFixed(4)}'</div>
                             </div>
+                        </div>
+                        <div>
+                            <div class="text-[9px] text-slate-400 font-black uppercase mb-1">MGRS</div>
+                            <div class="font-mono text-sm text-white font-black tracking-wider">${toMGRS(latDec,lonDec)}</div>
                         </div>
                     </div>
                     <div class="bg-slate-50 rounded-xl p-3 text-[10px] font-mono text-slate-700 break-all">
