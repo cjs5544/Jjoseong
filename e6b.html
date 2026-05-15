@@ -554,16 +554,16 @@ function fromMGRS(s){
 // ══════════════════════════════════════════════════════════════════
 function CoordConv() {
     const [type, setType] = useState('DD');
-    const [latDD, setLatDD] = useState(37.4602);
-    const [lonDD, setLonDD] = useState(126.4407);
+    const [latDD, setLatDD] = useState(37.51887);
+    const [lonDD, setLonDD] = useState(126.49807);
     const mapRef = useRef(null);
     const leafletMap = useRef(null);
     const markerRef = useRef(null);
-    const [latD,setLatD]=useState(37); const [latM,setLatM]=useState(27); const [latS,setLatS]=useState(37); const [latDir,setLatDir]=useState('N');
-    const [lonD,setLonD]=useState(126); const [lonM,setLonM]=useState(26); const [lonS,setLonS]=useState(27); const [lonDir,setLonDir]=useState('E');
-    const [latDd,setLatDd]=useState(37); const [latDm,setLatDm]=useState(27.617); const [latDdir,setLatDdir]=useState('N');
-    const [lonDd,setLonDd]=useState(126); const [lonDm,setLonDm]=useState(26.442); const [lonDdir,setLonDdir]=useState('E');
-    const [mgrsIn, setMgrsIn] = useState('52S TG 73000 49000');
+    const [latD,setLatD]=useState(37); const [latM,setLatM]=useState(31); const [latS,setLatS]=useState(7.9); const [latDir,setLatDir]=useState('N');
+    const [lonD,setLonD]=useState(126); const [lonM,setLonM]=useState(29); const [lonS,setLonS]=useState(53.0); const [lonDir,setLonDir]=useState('E');
+    const [latDd,setLatDd]=useState(37); const [latDm,setLatDm]=useState(31.132); const [latDdir,setLatDdir]=useState('N');
+    const [lonDd,setLonDd]=useState(126); const [lonDm,setLonDm]=useState(29.884); const [lonDdir,setLonDdir]=useState('E');
+    const [mgrsIn, setMgrsIn] = useState('52S TG 80000 55000');
 
     const latDec = useMemo(() => {
         if (type==='DD') return latDD;
@@ -591,12 +591,12 @@ function CoordConv() {
 
     useEffect(() => {
         if (!mapRef.current) return;
-        leafletMap.current = L.map(mapRef.current).setView([37.4602, 126.4407], 13);
+        leafletMap.current = L.map(mapRef.current).setView([37.51887, 126.49807], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 18
         }).addTo(leafletMap.current);
-        markerRef.current = L.marker([37.4602, 126.4407]).addTo(leafletMap.current);
+        markerRef.current = L.marker([37.51887, 126.49807]).addTo(leafletMap.current);
         return () => {
             if (leafletMap.current) { leafletMap.current.remove(); leafletMap.current = null; }
         };
