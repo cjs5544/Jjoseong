@@ -680,14 +680,14 @@ function CoordConv() {
                                         <div>${lo} ${lonDMS.d}° ${(lonDMS.m+lonDMS.s/60).toFixed(4)}'</div>
                                     </div>
                                 </div>
-                                <div>
+                                <div class="border-b border-slate-700 pb-3">
                                     <div class="text-[9px] text-slate-400 font-black uppercase mb-1">MGRS</div>
                                     <div class="font-mono text-sm text-white font-black tracking-wider">${toMGRS(latDec,lonDec)}</div>
                                 </div>
-                            </div>
-                            <div class="bg-slate-50 rounded-xl p-3 break-all">
-                                <div class="text-[9px] text-slate-400 font-black uppercase mb-1">ICAO 형식</div>
-                                <div class="font-mono text-sm font-black text-slate-700">${ld}${String(latDMS.d).padStart(2,'0')}${String(latDMS.m).padStart(2,'0')}${latDMS.s.toFixed(0).padStart(2,'0')} ${lo}${String(lonDMS.d).padStart(3,'0')}${String(lonDMS.m).padStart(2,'0')}${lonDMS.s.toFixed(0).padStart(2,'0')}</div>
+                                <div class="bg-blue-600 bg-opacity-20 border border-blue-500 rounded-lg px-3 py-2">
+                                    <div class="text-[9px] text-blue-300 font-black uppercase mb-1">ICAO 형식</div>
+                                    <div class="font-mono text-base font-black text-white tracking-widest">${ld}${String(latDMS.d).padStart(2,'0')}${String(latDMS.m).padStart(2,'0')}${latDMS.s.toFixed(0).padStart(2,'0')} ${lo}${String(lonDMS.d).padStart(3,'0')}${String(lonDMS.m).padStart(2,'0')}${lonDMS.s.toFixed(0).padStart(2,'0')}</div>
+                                </div>
                             </div>
                         ` : html`<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 font-bold">유효하지 않은 좌표입니다.</div>`}
                     </div>
