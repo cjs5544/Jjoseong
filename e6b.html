@@ -680,9 +680,9 @@ function CoordConv() {
                             <div class="font-mono text-sm text-white font-black tracking-wider">${toMGRS(latDec,lonDec)}</div>
                         </div>
                     </div>
-                    <div class="bg-slate-50 rounded-xl p-3 text-[10px] font-mono text-slate-700 break-all">
+                    <div class="bg-slate-50 rounded-xl p-3 break-all">
                         <div class="text-[9px] text-slate-400 font-black uppercase mb-1">ICAO 형식</div>
-                        ${ld}${String(latDMS.d).padStart(2,'0')}${String(latDMS.m).padStart(2,'0')}${latDMS.s.toFixed(0).padStart(2,'0')} ${lo}${String(lonDMS.d).padStart(3,'0')}${String(lonDMS.m).padStart(2,'0')}${lonDMS.s.toFixed(0).padStart(2,'0')}
+                        <div class="font-mono text-sm font-black text-slate-700">${ld}${String(latDMS.d).padStart(2,'0')}${String(latDMS.m).padStart(2,'0')}${latDMS.s.toFixed(0).padStart(2,'0')} ${lo}${String(lonDMS.d).padStart(3,'0')}${String(lonDMS.m).padStart(2,'0')}${lonDMS.s.toFixed(0).padStart(2,'0')}</div>
                     </div>
                 ` : html`<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 font-bold">유효하지 않은 좌표입니다.</div>`}
                 <div class="space-y-1">
