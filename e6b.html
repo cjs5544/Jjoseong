@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>E6B Flight Computer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; overflow-x: hidden; }
+        @media screen { body { zoom: 0.9; } }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { opacity: 1; }
+        .fade-in { animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .tab-active { background: #2563eb; color: white; }
+        .result-box { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .wind-arrow { transition: transform 0.4s ease; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useCallback, useEffect } = React;
+
+const Icon = ({ name, size = 16, className = "" }) => {
+    useEffect(() => { if (window.lucide) lucide.createIcons(); }, [name]);
+    return <i data-lucide={name} style={{ width: size, height: size }} className={`inline-block ${className}`}></i>;
+};
+
+const toRad = d => d * Math.PI / 180;
+const toDeg = r => r * 180 / Math.PI;
+const norm360 = d => ((d % 360) + 360) % 360;
+const fmtHdr = v => String(Math.round(norm360(v))).padStart(3, '0') + '°';
+const fmtNum = (v, d = 1) => isNaN(v) ? '-' : Number(v).toFixed(d);
+
+// ── Input Field Component ─────────────────────────────────────────
+function NumInput({ label, value, onChange, unit, min, max, step = 1, note }) {
+    return (
+        <div className="flex flex-col gap-0.5">
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</label>
+            <div className="relative flex items-center">
+                <input
+                    type="number"
+                    value={value}
+                    onChange={e => onChange(parseFloat(e.target.value) || 0)}
+                    min={min} max={max} step={step}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all pr-10"
+                />
+                {unit && <span className="absolute right-3 text-[10px] text-slate-400 font-bold pointer-events-none">{unit}</span>}
+            </div>
+            {note && <span className="text-[9px] text-slate-400">{note}</span>}
+        </div>
+    );
+}
+
+function ResultCard({ label, value, unit, sub, highlight }) {
+    return (
+        <div className={`result-box rounded-xl p-3 flex flex-col gap-0.5 ${highlight ? 'ring-2 ring-blue-500' : ''}`}>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+            <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-black text-white leading-none">{value}</span>
+                {unit && <span className="text-[10px] text-slate-400 font-bold">{unit}</span>}
+            </div>
+            {sub && <span className="text-[10px] text-slate-400">{sub}</span>}
+        </div>
+    );
+}
+
+function SectionHeader({ icon, title, badge }) {
+    return (
+        <div className="px-5 py-3 bg-slate-50 border-b flex items-center gap-2">
+            <Icon name={icon} size={18} className="text-blue-600" />
+            <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter">{title}</h2>
+            {badge && <span className="ml-auto text-[9px] bg-blue-100 text-blue-700 font-black px-2 py-0.5 rounded-full uppercase tracking-wider">{badge}</span>}
+        </div>
+    );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 1. WIND TRIANGLE
+// ══════════════════════════════════════════════════════════════════
+function WindCalc() {
+    const [tc, setTc] = useState(090);
+    const [tas, setTas] = useState(100);
+    const [windFrom, setWindFrom] = useState(270);
+    const [windSpeed, setWindSpeed] = useState(20);
+    const [variation, setVariation] = useState(-8);
+
+    const calc = useMemo(() => {
+        if (tas <= 0) return null;
+        const WA = toRad(windFrom - tc);
+        const ratio = windSpeed / tas;
+        if (Math.abs(ratio * Math.sin(WA)) > 1) return null;
+        const WCA_rad = Math.asin(ratio * Math.sin(WA));
+        const WCA = toDeg(WCA_rad);
+        const TH = norm360(tc + WCA);
+        const GS = tas * Math.cos(WCA_rad) - windSpeed * Math.cos(WA);
+        const MH = norm360(TH - variation);
+        return {
+            WCA: Math.abs(WCA).toFixed(1),
+            WCAdir: WCA >= 0 ? 'R' : 'L',
+            TH: fmtHdr(TH),
+            GS: GS.toFixed(0),
+            MH: fmtHdr(MH),
+            THraw: TH,
+            GSraw: GS
+        };
+    }, [tc, tas, windFrom, windSpeed, variation]);
+
+    const windDeg = norm360(windFrom + 180); // direction wind is going TO
+
+    return (
+        <div className="fade-in space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {/* Inputs */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <SectionHeader icon="navigation" title="입력값" />
+                    <div className="p-5 grid grid-cols-2 gap-3">
+                        <NumInput label="진침로 TC" value={tc} onChange={setTc} unit="°" min={0} max={359} note="0–359°" />
+                        <NumInput label="진대기속도 TAS" value={tas} onChange={setTas} unit="kt" min={1} max={999} />
+                        <NumInput label="풍향 (From)" value={windFrom} onChange={setWindFrom} unit="°" min={0} max={359} note="바람이 불어오는 방향" />
+                        <NumInput label="풍속" value={windSpeed} onChange={setWindSpeed} unit="kt" min={0} max={200} />
+                        <div className="col-span-2">
+                            <NumInput label="편차 Variation" value={variation} onChange={setVariation} unit="°" step={0.5} note="동편차(+), 서편차(−)" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Results + Diagram */}
+                <div className="flex flex-col gap-4">
+                    {/* Wind diagram */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <SectionHeader icon="compass" title="바람 삼각형" />
+                        <div className="p-4 flex justify-center">
+                            <svg width="160" height="160" viewBox="0 0 160 160">
+                                {/* Compass rose background */}
+                                <circle cx="80" cy="80" r="72" fill="#0f172a" stroke="#334155" strokeWidth="1"/>
+                                <circle cx="80" cy="80" r="60" fill="none" stroke="#1e3a5f" strokeWidth="0.5" strokeDasharray="2,4"/>
+                                {['N','E','S','W'].map((d,i) => (
+                                    <text key={d} x={80 + 52*Math.sin(i*90*Math.PI/180)} y={80 - 52*Math.cos(i*90*Math.PI/180) + 4}
+                                        textAnchor="middle" fontSize="9" fill="#64748b" fontWeight="bold">{d}</text>
+                                ))}
+                                {/* Track (TC) - green */}
+                                <line x1="80" y1="80"
+                                    x2={80 + 48*Math.sin(toRad(tc))} y2={80 - 48*Math.cos(toRad(tc))}
+                                    stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"/>
+                                <polygon points={`0,-5 3,3 -3,3`}
+                                    fill="#22c55e"
+                                    transform={`translate(${80 + 48*Math.sin(toRad(tc))},${80 - 48*Math.cos(toRad(tc))}) rotate(${tc})`}/>
+                                {/* Heading (TH) - blue */}
+                                {calc && (
+                                    <>
+                                        <line x1="80" y1="80"
+                                            x2={80 + 48*Math.sin(toRad(calc.THraw))} y2={80 - 48*Math.cos(toRad(calc.THraw))}
+                                            stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="4,2"/>
+                                        <polygon points={`0,-5 3,3 -3,3`}
+                                            fill="#60a5fa"
+                                            transform={`translate(${80 + 48*Math.sin(toRad(calc.THraw))},${80 - 48*Math.cos(toRad(calc.THraw))}) rotate(${calc.THraw})`}/>
+                                    </>
+                                )}
+                                {/* Wind arrow - yellow */}
+                                <line
+                                    x1={80 - 36*Math.sin(toRad(windDeg))} y1={80 + 36*Math.cos(toRad(windDeg))}
+                                    x2={80 + 36*Math.sin(toRad(windDeg))} y2={80 - 36*Math.cos(toRad(windDeg))}
+                                    stroke="#fbbf24" strokeWidth="2" strokeLinecap="round"/>
+                                <polygon points={`0,-5 3,3 -3,3`}
+                                    fill="#fbbf24"
+                                    transform={`translate(${80 + 36*Math.sin(toRad(windDeg))},${80 - 36*Math.cos(toRad(windDeg))}) rotate(${windDeg})`}/>
+                                {/* Center dot */}
+                                <circle cx="80" cy="80" r="3" fill="#f1f5f9"/>
+                            </svg>
+                            <div className="ml-3 flex flex-col justify-center gap-2 text-[10px]">
+                                <div className="flex items-center gap-1.5"><div className="w-6 h-0.5 bg-green-500 rounded"/><span className="text-slate-500">진침로(TC)</span></div>
+                                <div className="flex items-center gap-1.5"><div className="w-6 h-0.5 bg-blue-400 rounded border-dashed" style={{borderBottom:'2px dashed #60a5fa', background:'none'}}/><span className="text-slate-500">진항로(TH)</span></div>
+                                <div className="flex items-center gap-1.5"><div className="w-6 h-0.5 bg-yellow-400 rounded"/><span className="text-slate-500">바람</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Result values */}
+                    {calc ? (
+                        <div className="grid grid-cols-2 gap-2">
+                            <ResultCard label="편류수정각 WCA" value={`${calc.WCA}°${calc.WCAdir}`} sub="RIGHT=우, LEFT=좌" />
+                            <ResultCard label="진항로 TH" value={calc.TH} highlight />
+                            <ResultCard label="자기항로 MH" value={calc.MH} highlight />
+                            <ResultCard label="지상속도 GS" value={calc.GS} unit="kt" />
+                        </div>
+                    ) : (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 font-bold">
+                            계산 불가: 풍속이 TAS보다 크거나 입력값을 확인하세요.
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 2. TIME-SPEED-DISTANCE
+// ══════════════════════════════════════════════════════════════════
+function TSDCalc() {
+    const [mode, setMode] = useState('time'); // which to SOLVE
+    const [timeH, setTimeH] = useState(1);
+    const [timeM, setTimeM] = useState(30);
+    const [timeS, setTimeS] = useState(0);
+    const [speed, setSpeed] = useState(120);
+    const [dist, setDist] = useState(180);
+
+    const result = useMemo(() => {
+        const T = timeH * 3600 + timeM * 60 + timeS; // seconds
+        const S = speed; // kt
+        const D = dist;  // nm
+
+        if (mode === 'time') {
+            if (S <= 0) return null;
+            const sec = (D / S) * 3600;
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = Math.round(sec % 60);
+            return { time: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`, speed: S.toFixed(1), dist: D.toFixed(1) };
+        }
+        if (mode === 'speed') {
+            if (T <= 0) return null;
+            const spd = D / (T / 3600);
+            return { time: `${String(timeH).padStart(2,'0')}:${String(timeM).padStart(2,'0')}:${String(timeS).padStart(2,'0')}`, speed: spd.toFixed(1), dist: D.toFixed(1) };
+        }
+        if (mode === 'dist') {
+            const d = S * (T / 3600);
+            return { time: `${String(timeH).padStart(2,'0')}:${String(timeM).padStart(2,'0')}:${String(timeS).padStart(2,'0')}`, speed: S.toFixed(1), dist: d.toFixed(1) };
+        }
+        return null;
+    }, [mode, timeH, timeM, timeS, speed, dist]);
+
+    const ModeBtn = ({ val, label }) => (
+        <button onClick={() => setMode(val)}
+            className={`flex-1 py-2 text-xs font-black rounded-lg transition-all ${mode === val ? 'bg-blue-600 text-white shadow' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+            {label} 구하기
+        </button>
+    );
+
+    return (
+        <div className="fade-in space-y-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <SectionHeader icon="timer" title="시간 · 속도 · 거리" badge="TSD" />
+                <div className="p-5 space-y-5">
+                    <div className="flex gap-2">
+                        <ModeBtn val="time" label="시간" />
+                        <ModeBtn val="speed" label="속도" />
+                        <ModeBtn val="dist" label="거리" />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {/* Time */}
+                        <div className={`rounded-xl border p-3 space-y-2 ${mode === 'time' ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'}`}>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">시간 (HH:MM:SS)</label>
+                            <div className="flex gap-1 items-center">
+                                <input type="number" value={timeH} onChange={e => setTimeH(parseInt(e.target.value)||0)} min={0} disabled={mode==='time'}
+                                    className="w-14 bg-white border border-slate-200 rounded px-2 py-1.5 text-sm font-bold text-center outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-300"/>
+                                <span className="text-slate-300 font-bold">:</span>
+                                <input type="number" value={timeM} onChange={e => setTimeM(Math.min(59,parseInt(e.target.value)||0))} min={0} max={59} disabled={mode==='time'}
+                                    className="w-14 bg-white border border-slate-200 rounded px-2 py-1.5 text-sm font-bold text-center outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-300"/>
+                                <span className="text-slate-300 font-bold">:</span>
+                                <input type="number" value={timeS} onChange={e => setTimeS(Math.min(59,parseInt(e.target.value)||0))} min={0} max={59} disabled={mode==='time'}
+                                    className="w-14 bg-white border border-slate-200 rounded px-2 py-1.5 text-sm font-bold text-center outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-300"/>
+                            </div>
+                            {mode === 'time' && result && (
+                                <div className="result-box rounded-lg px-3 py-2">
+                                    <span className="text-lg font-black text-white">{result.time}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Speed */}
+                        <div className={`rounded-xl border p-3 space-y-2 ${mode === 'speed' ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'}`}>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">속도 (kt)</label>
+                            <input type="number" value={speed} onChange={e => setSpeed(parseFloat(e.target.value)||0)} min={1} disabled={mode==='speed'}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-300"/>
+                            {mode === 'speed' && result && (
+                                <div className="result-box rounded-lg px-3 py-2 flex items-baseline gap-1.5">
+                                    <span className="text-lg font-black text-white">{result.speed}</span>
+                                    <span className="text-[10px] text-slate-400">kt</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Distance */}
+                        <div className={`rounded-xl border p-3 space-y-2 ${mode === 'dist' ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white'}`}>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">거리 (NM)</label>
+                            <input type="number" value={dist} onChange={e => setDist(parseFloat(e.target.value)||0)} min={0} disabled={mode==='dist'}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-300"/>
+                            {mode === 'dist' && result && (
+                                <div className="result-box rounded-lg px-3 py-2 flex items-baseline gap-1.5">
+                                    <span className="text-lg font-black text-white">{result.dist}</span>
+                                    <span className="text-[10px] text-slate-400">NM</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Summary */}
+                    {result && (
+                        <div className="result-box rounded-xl p-4 grid grid-cols-3 gap-3 text-center">
+                            <div>
+                                <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">비행시간</div>
+                                <div className="text-base font-black text-white">{result.time}</div>
+                            </div>
+                            <div>
+                                <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">속도</div>
+                                <div className="text-base font-black text-white">{result.speed} <span className="text-xs text-slate-400">kt</span></div>
+                            </div>
+                            <div>
+                                <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">거리</div>
+                                <div className="text-base font-black text-white">{result.dist} <span className="text-xs text-slate-400">NM</span></div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 3. FUEL PLANNING
+// ══════════════════════════════════════════════════════════════════
+function FuelCalc() {
+    const [fob, setFob] = useState(800);      // fuel on board kg
+    const [ff, setFf] = useState(200);         // fuel flow kg/hr
+    const [gs, setGs] = useState(120);          // ground speed kt
+    const [reserve, setReserve] = useState(20); // reserve min
+    const [fuelUnit, setFuelUnit] = useState('kg');
+
+    const KG_PER_L = 0.803;
+    const KG_PER_USG = 3.040;
+
+    const toKg = v => fuelUnit === 'kg' ? v : fuelUnit === 'L' ? v * KG_PER_L : v * KG_PER_USG;
+    const fromKg = v => fuelUnit === 'kg' ? v : fuelUnit === 'L' ? v / KG_PER_L : v / KG_PER_USG;
+    const unitLabel = fuelUnit;
+
+    const fobKg = toKg(fob);
+    const ffKg = toKg(ff);
+
+    const reserveKg = ffKg * (reserve / 60);
+    const usableFuelKg = Math.max(0, fobKg - reserveKg);
+    const enduranceTotal = ffKg > 0 ? fobKg / ffKg : 0;      // hours
+    const enduranceUsable = ffKg > 0 ? usableFuelKg / ffKg : 0; // hours
+    const rangeFull = enduranceTotal * gs;
+    const rangeUsable = enduranceUsable * gs;
+
+    const fmtTime = h => {
+        const hh = Math.floor(h);
+        const mm = Math.round((h - hh) * 60);
+        return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+    };
+
+    return (
+        <div className="fade-in space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <SectionHeader icon="fuel" title="연료 계획" badge="Fuel" />
+                    <div className="p-5 space-y-4">
+                        {/* Unit selector */}
+                        <div className="flex gap-1.5">
+                            {['kg','L','USG'].map(u => (
+                                <button key={u} onClick={() => { const kg = toKg(fob); const kgff = toKg(ff); setFuelUnit(u); setFob(parseFloat((u==='kg'?kg:u==='L'?kg/KG_PER_L:kg/KG_PER_USG).toFixed(1))); setFf(parseFloat((u==='kg'?kgff:u==='L'?kgff/KG_PER_L:kgff/KG_PER_USG).toFixed(1)));}}
+                                    className={`px-3 py-1 text-xs font-black rounded-lg transition-all ${fuelUnit===u?'bg-blue-600 text-white':'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{u}</button>
+                            ))}
+                            <span className="ml-auto text-[9px] text-slate-400 self-center">Jet-A: 0.803 kg/L</span>
+                        </div>
+                        <NumInput label={`탑재 연료 FOB`} value={fob} onChange={setFob} unit={unitLabel} min={0} step={fuelUnit==='kg'?10:fuelUnit==='L'?12.5:3} />
+                        <NumInput label={`연료소모율 FF`} value={ff} onChange={setFf} unit={`${unitLabel}/hr`} min={0.1} step={fuelUnit==='kg'?5:fuelUnit==='L'?6.2:1.5} />
+                        <NumInput label="지상속도 GS" value={gs} onChange={setGs} unit="kt" min={1} />
+                        <NumInput label="예비 연료 시간" value={reserve} onChange={setReserve} unit="min" min={0} max={120} />
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                        <ResultCard label="비행가능시간 (전체)" value={fmtTime(enduranceTotal)} sub="HH:MM (예비 포함)" />
+                        <ResultCard label="실사용 비행시간" value={fmtTime(enduranceUsable)} highlight sub={`예비 ${reserve}분 공제`} />
+                        <ResultCard label="항속거리 (전체)" value={rangeFull.toFixed(0)} unit="NM" sub={`${(rangeFull * 1.852).toFixed(0)} km`} />
+                        <ResultCard label="실사용 항속거리" value={rangeUsable.toFixed(0)} unit="NM" highlight sub={`${(rangeUsable * 1.852).toFixed(0)} km`} />
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <SectionHeader icon="calculator" title="구간 연료 계산" />
+                        <TripFuelInner gs={gs} ff={ff} fuelUnit={unitLabel} toKg={toKg} fromKg={fromKg} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function TripFuelInner({ gs, ff, fuelUnit, toKg, fromKg }) {
+    const [dist, setDist] = useState(100);
+    const ffKg = toKg(ff);
+    const tripTime = gs > 0 ? dist / gs : 0; // hours
+    const tripFuelKg = ffKg * tripTime;
+    const fmtTime = h => { const hh=Math.floor(h); const mm=Math.round((h-hh)*60); return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`; };
+
+    return (
+        <div className="p-4 space-y-3">
+            <NumInput label="목적지까지 거리" value={dist} onChange={setDist} unit="NM" min={0} />
+            <div className="result-box rounded-xl p-3 grid grid-cols-2 gap-3">
+                <div>
+                    <div className="text-[9px] text-slate-400 font-black uppercase mb-1">구간 비행시간</div>
+                    <div className="text-lg font-black text-white">{fmtTime(tripTime)}</div>
+                </div>
+                <div>
+                    <div className="text-[9px] text-slate-400 font-black uppercase mb-1">필요 연료</div>
+                    <div className="text-lg font-black text-white">{fromKg(tripFuelKg).toFixed(1)} <span className="text-xs text-slate-400">{fuelUnit}</span></div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 4. DENSITY ALTITUDE
+// ══════════════════════════════════════════════════════════════════
+function DensityAlt() {
+    const [pa, setPa] = useState(2000);   // pressure altitude ft
+    const [oat, setOat] = useState(25);   // OAT °C
+    const [ias, setIas] = useState(100);  // IAS kt
+    const [qnh, setQnh] = useState(1013.25);
+    const [altInd, setAltInd] = useState(2000); // indicated altitude
+    const [usePaCalc, setUsePaCalc] = useState(false);
+
+    const computedPA = useMemo(() => {
+        if (!usePaCalc) return pa;
+        // PA = Indicated Alt + (1013.25 - QNH) * 30 ft/hPa
+        return Math.round(altInd + (1013.25 - qnh) * 30);
+    }, [usePaCalc, altInd, qnh, pa]);
+
+    const calc = useMemo(() => {
+        const PA = computedPA;
+        // ISA standard temp at PA
+        const T_std_C = 15 - PA / 500; // °C (2°C per 1000ft)
+        const T_std_K = T_std_C + 273.15;
+        const T_act_K = oat + 273.15;
+        const ISA_dev = oat - T_std_C;
+
+        // DA approximation (standard formula)
+        const DA_approx = Math.round(PA + 120 * ISA_dev);
+
+        // Pressure ratio at PA (ICAO standard atmosphere)
+        const P_ratio = Math.pow(T_std_K / 288.15, 5.2561);
+
+        // Density ratio σ = (P/P0) * (T0/T_actual)
+        const sigma = P_ratio * (288.15 / T_act_K);
+
+        // TAS = IAS / √σ
+        const TAS = ias / Math.sqrt(sigma);
+
+        // Density altitude from σ: DA = 145442 * (1 - σ^0.235)
+        const DA_accurate = Math.round(145442 * (1 - Math.pow(sigma, 0.235)));
+
+        // Speed of sound & Mach
+        const a = Math.sqrt(1.4 * 287.05 * T_act_K); // m/s
+        const TAS_ms = TAS * 0.514444;
+        const mach = TAS_ms / a;
+
+        return {
+            ISA_dev: ISA_dev.toFixed(1),
+            T_std: T_std_C.toFixed(1),
+            DA: DA_accurate,
+            DA_approx,
+            sigma: sigma.toFixed(4),
+            TAS: TAS.toFixed(1),
+            mach: mach.toFixed(3)
+        };
+    }, [computedPA, oat, ias]);
+
+    return (
+        <div className="fade-in space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <SectionHeader icon="mountain" title="밀도 고도" badge="DA" />
+                    <div className="p-5 space-y-4">
+                        {/* PA source toggle */}
+                        <div className="flex items-center gap-3 bg-slate-50 rounded-lg p-3">
+                            <span className="text-xs font-black text-slate-500">PA 입력 방법:</span>
+                            <button onClick={() => setUsePaCalc(false)}
+                                className={`px-3 py-1 text-xs font-black rounded transition-all ${!usePaCalc ? 'bg-blue-600 text-white' : 'bg-white text-slate-500'}`}>
+                                직접 입력
+                            </button>
+                            <button onClick={() => setUsePaCalc(true)}
+                                className={`px-3 py-1 text-xs font-black rounded transition-all ${usePaCalc ? 'bg-blue-600 text-white' : 'bg-white text-slate-500'}`}>
+                                QNH → PA 변환
+                            </button>
+                        </div>
+
+                        {usePaCalc ? (
+                            <div className="space-y-3">
+                                <NumInput label="지시 고도 (Indicated Alt)" value={altInd} onChange={setAltInd} unit="ft" min={-1500} max={60000} step={100} />
+                                <NumInput label="QNH" value={qnh} onChange={setQnh} unit="hPa" min={900} max={1100} step={0.25} />
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <span className="text-xs text-blue-600 font-black">계산된 압력 고도: {computedPA.toLocaleString()} ft</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <NumInput label="압력 고도 PA" value={pa} onChange={setPa} unit="ft" min={-1500} max={60000} step={100} />
+                        )}
+                        <NumInput label="외기온도 OAT" value={oat} onChange={setOat} unit="°C" min={-80} max={60} />
+
+                        <div className="border-t border-slate-100 pt-4">
+                            <NumInput label="지시대기속도 IAS (TAS 계산용)" value={ias} onChange={setIas} unit="kt" min={1} max={600} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                        <ResultCard label="밀도 고도 DA" value={calc.DA.toLocaleString()} unit="ft" highlight />
+                        <ResultCard label="ISA 편차" value={`${parseFloat(calc.ISA_dev) >= 0 ? '+' : ''}${calc.ISA_dev}`} unit="°C" sub={`ISA 표준: ${calc.T_std}°C`} />
+                        <ResultCard label="진대기속도 TAS" value={calc.TAS} unit="kt" highlight />
+                        <ResultCard label="마하수 Mach" value={calc.mach} sub="IAS 기준" />
+                    </div>
+
+                    {/* ISA Table */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <SectionHeader icon="table" title="ISA 표준 대기" />
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-[10px]">
+                                <thead className="bg-slate-50">
+                                    <tr className="border-b border-slate-100">
+                                        <th className="px-3 py-2 text-left font-black text-slate-400 uppercase">고도 (ft)</th>
+                                        <th className="px-3 py-2 text-right font-black text-slate-400 uppercase">ISA °C</th>
+                                        <th className="px-3 py-2 text-right font-black text-slate-400 uppercase">P (hPa)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[0,1000,2000,3000,4000,5000,6000,8000,10000,15000].map(alt => {
+                                        const T = 15 - alt/500;
+                                        const P = 1013.25 * Math.pow((288.15 - alt * 0.0019812) / 288.15, 5.2561);
+                                        const isMatch = Math.abs(computedPA - alt) < 600;
+                                        return (
+                                            <tr key={alt} className={`border-b border-slate-50 ${isMatch ? 'bg-blue-50' : ''}`}>
+                                                <td className="px-3 py-1.5 font-bold text-slate-700">{alt.toLocaleString()}</td>
+                                                <td className="px-3 py-1.5 text-right font-mono text-slate-600">{T.toFixed(1)}</td>
+                                                <td className="px-3 py-1.5 text-right font-mono text-slate-600">{P.toFixed(1)}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 5. UNIT CONVERSION
+// ══════════════════════════════════════════════════════════════════
+const UNIT_CATS = [
+    {
+        id: 'dist', label: '거리', icon: 'ruler',
+        units: [
+            { id: 'nm', label: 'NM (해리)', toBase: v => v, fromBase: v => v },
+            { id: 'km', label: 'km', toBase: v => v / 1.852, fromBase: v => v * 1.852 },
+            { id: 'sm', label: 'SM (법정마일)', toBase: v => v / 1.15078, fromBase: v => v * 1.15078 },
+            { id: 'ft', label: 'ft (피트)', toBase: v => v / 6076.12, fromBase: v => v * 6076.12 },
+            { id: 'm', label: 'm (미터)', toBase: v => v / 1852, fromBase: v => v * 1852 },
+        ]
+    },
+    {
+        id: 'speed', label: '속도', icon: 'gauge',
+        units: [
+            { id: 'kt', label: 'kt (노트)', toBase: v => v, fromBase: v => v },
+            { id: 'kmh', label: 'km/h', toBase: v => v / 1.852, fromBase: v => v * 1.852 },
+            { id: 'mph', label: 'mph (법정마일)', toBase: v => v / 1.15078, fromBase: v => v * 1.15078 },
+            { id: 'ms', label: 'm/s', toBase: v => v / 0.514444, fromBase: v => v * 0.514444 },
+            { id: 'fpm', label: 'fpm (ft/min)', toBase: v => v / 101.269, fromBase: v => v * 101.269 },
+        ]
+    },
+    {
+        id: 'alt', label: '고도', icon: 'arrow-up',
+        units: [
+            { id: 'ft', label: 'ft (피트)', toBase: v => v, fromBase: v => v },
+            { id: 'm', label: 'm (미터)', toBase: v => v / 0.3048, fromBase: v => v * 0.3048 },
+        ]
+    },
+    {
+        id: 'temp', label: '온도', icon: 'thermometer',
+        units: [
+            { id: 'c', label: '°C (섭씨)', toBase: v => v, fromBase: v => v },
+            { id: 'f', label: '°F (화씨)', toBase: v => (v - 32) * 5/9, fromBase: v => v * 9/5 + 32 },
+            { id: 'k', label: 'K (켈빈)', toBase: v => v - 273.15, fromBase: v => v + 273.15 },
+        ]
+    },
+    {
+        id: 'weight', label: '중량', icon: 'weight',
+        units: [
+            { id: 'kg', label: 'kg', toBase: v => v, fromBase: v => v },
+            { id: 'lbs', label: 'lbs', toBase: v => v / 2.20462, fromBase: v => v * 2.20462 },
+        ]
+    },
+    {
+        id: 'pressure', label: '기압', icon: 'activity',
+        units: [
+            { id: 'hpa', label: 'hPa / mbar', toBase: v => v, fromBase: v => v },
+            { id: 'inhg', label: 'inHg', toBase: v => v / 0.02953, fromBase: v => v * 0.02953 },
+            { id: 'psi', label: 'psi', toBase: v => v / 0.014504, fromBase: v => v * 0.014504 },
+        ]
+    },
+    {
+        id: 'volume', label: '용량', icon: 'droplets',
+        units: [
+            { id: 'L', label: 'L (리터)', toBase: v => v, fromBase: v => v },
+            { id: 'USG', label: 'USG (미국 갤런)', toBase: v => v / 0.264172, fromBase: v => v * 0.264172 },
+            { id: 'kg', label: 'kg (Jet-A 기준)', toBase: v => v / 0.803, fromBase: v => v * 0.803 },
+            { id: 'lbs', label: 'lbs (Jet-A 기준)', toBase: v => v / (0.803*2.20462), fromBase: v => v * 0.803 * 2.20462 },
+        ]
+    },
+];
+
+function UnitConv() {
+    const [cat, setCat] = useState('dist');
+    const [inputUnit, setInputUnit] = useState(null);
+    const [inputVal, setInputVal] = useState(100);
+
+    const category = UNIT_CATS.find(c => c.id === cat);
+    const activeInputUnit = inputUnit || category.units[0].id;
+    const srcUnit = category.units.find(u => u.id === activeInputUnit) || category.units[0];
+    const baseVal = srcUnit.toBase(inputVal);
+
+    const handleCatChange = (c) => { setCat(c); setInputUnit(null); setInputVal(1); };
+
+    return (
+        <div className="fade-in space-y-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <SectionHeader icon="repeat" title="단위 환산" />
+                <div className="p-5 space-y-4">
+                    {/* Category tabs */}
+                    <div className="flex flex-wrap gap-1.5">
+                        {UNIT_CATS.map(c => (
+                            <button key={c.id} onClick={() => handleCatChange(c.id)}
+                                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-black rounded-lg transition-all ${cat===c.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                                <Icon name={c.icon} size={11} /> {c.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Input unit selector */}
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">입력 단위</label>
+                        <div className="flex flex-wrap gap-1.5">
+                            {category.units.map(u => (
+                                <button key={u.id} onClick={() => setInputUnit(u.id)}
+                                    className={`px-3 py-1.5 text-xs font-black rounded-lg transition-all ${activeInputUnit===u.id ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                                    {u.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Input value */}
+                    <div className="relative">
+                        <input type="number" value={inputVal} onChange={e => setInputVal(parseFloat(e.target.value)||0)}
+                            className="w-full bg-white border-2 border-blue-200 rounded-xl px-4 py-3 text-xl font-black focus:ring-2 focus:ring-blue-500 outline-none"/>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-black">{srcUnit.label}</span>
+                    </div>
+
+                    {/* Converted values */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {category.units.filter(u => u.id !== activeInputUnit).map(u => {
+                            const converted = u.fromBase(baseVal);
+                            return (
+                                <div key={u.id} className="result-box rounded-xl p-3 flex justify-between items-center cursor-pointer"
+                                    onClick={() => { setInputUnit(u.id); setInputVal(parseFloat(converted.toFixed(6))); }}>
+                                    <span className="text-[10px] text-slate-400 font-black">{u.label}</span>
+                                    <span className="text-lg font-black text-white">
+                                        {Math.abs(converted) >= 10000 ? converted.toExponential(3) : converted.toFixed(4).replace(/\.?0+$/, '') || '0'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <p className="text-[9px] text-slate-400 text-right">변환 결과를 탭하면 해당 단위로 입력 전환됩니다</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 6. COORDINATE CONVERSION
+// ══════════════════════════════════════════════════════════════════
+function parseDMS(d, m, s, dir) {
+    const dd = (parseFloat(d)||0) + (parseFloat(m)||0)/60 + (parseFloat(s)||0)/3600;
+    return (dir === 'S' || dir === 'W') ? -dd : dd;
+}
+function parseDDM(d, dm, dir) {
+    const dd = (parseFloat(d)||0) + (parseFloat(dm)||0)/60;
+    return (dir === 'S' || dir === 'W') ? -dd : dd;
+}
+function ddToDMS(dd) {
+    const abs = Math.abs(dd);
+    const d = Math.floor(abs);
+    const mAll = (abs - d) * 60;
+    const m = Math.floor(mAll);
+    const s = (mAll - m) * 60;
+    return { d, m, s };
+}
+
+function CoordConv() {
+    const [inputType, setInputType] = useState('DD');
+    // DD inputs
+    const [latDD, setLatDD] = useState(37.5635);
+    const [lonDD, setLonDD] = useState(126.9778);
+    // DMS inputs
+    const [latD, setLatD] = useState(37); const [latM, setLatM] = useState(33); const [latS, setLatS] = useState(49);
+    const [latDir, setLatDir] = useState('N');
+    const [lonD, setLonD] = useState(126); const [lonM, setLonM] = useState(58); const [lonS, setLonS] = useState(40);
+    const [lonDir, setLonDir] = useState('E');
+    // DDM inputs
+    const [latDDM_d, setLatDDM_d] = useState(37); const [latDDM_m, setLatDDM_m] = useState(33.816);
+    const [latDDM_dir, setLatDDM_dir] = useState('N');
+    const [lonDDM_d, setLonDDM_d] = useState(126); const [lonDDM_m, setLonDDM_m] = useState(58.668);
+    const [lonDDM_dir, setLonDDM_dir] = useState('E');
+
+    const latDecimal = useMemo(() => {
+        if (inputType === 'DD') return latDD;
+        if (inputType === 'DMS') return parseDMS(latD, latM, latS, latDir);
+        return parseDDM(latDDM_d, latDDM_m, latDDM_dir);
+    }, [inputType, latDD, latD, latM, latS, latDir, latDDM_d, latDDM_m, latDDM_dir]);
+
+    const lonDecimal = useMemo(() => {
+        if (inputType === 'DD') return lonDD;
+        if (inputType === 'DMS') return parseDMS(lonD, lonM, lonS, lonDir);
+        return parseDDM(lonDDM_d, lonDDM_m, lonDDM_dir);
+    }, [inputType, lonDD, lonD, lonM, lonS, lonDir, lonDDM_d, lonDDM_m, lonDDM_dir]);
+
+    const latDMS = ddToDMS(latDecimal);
+    const lonDMS = ddToDMS(lonDecimal);
+    const latDirLabel = latDecimal >= 0 ? 'N' : 'S';
+    const lonDirLabel = lonDecimal >= 0 ? 'E' : 'W';
+
+    const valid = !isNaN(latDecimal) && !isNaN(lonDecimal) &&
+        Math.abs(latDecimal) <= 90 && Math.abs(lonDecimal) <= 180;
+
+    const DirBtn = ({ val, current, set }) => (
+        <button onClick={() => set(val)}
+            className={`w-8 py-1 text-xs font-black rounded transition-all ${current===val ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{val}</button>
+    );
+
+    const SmInput = ({ value, onChange, max, step = 1 }) => (
+        <input type="number" value={value} onChange={e => onChange(parseFloat(e.target.value)||0)} min={0} max={max} step={step}
+            className="w-20 bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-bold text-center outline-none focus:ring-1 focus:ring-blue-500" />
+    );
+
+    return (
+        <div className="fade-in space-y-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <SectionHeader icon="map-pin" title="좌표 변환" badge="Coords" />
+                <div className="p-5 space-y-5">
+                    {/* Input type selector */}
+                    <div className="flex gap-2">
+                        {['DD','DMS','DDM'].map(t => (
+                            <button key={t} onClick={() => setInputType(t)}
+                                className={`flex-1 py-2 text-xs font-black rounded-lg transition-all ${inputType===t ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                                {t === 'DD' ? '십진도 (DD)' : t === 'DMS' ? '도분초 (DMS)' : '도분 (DDM)'}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* LAT */}
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">위도 (Latitude)</label>
+                            {inputType === 'DD' && (
+                                <div className="flex items-center gap-2">
+                                    <input type="number" value={latDD} onChange={e => setLatDD(parseFloat(e.target.value)||0)} step="0.0001" min={-90} max={90}
+                                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500"/>
+                                    <span className="text-xs text-slate-400 font-bold">°</span>
+                                </div>
+                            )}
+                            {inputType === 'DMS' && (
+                                <div className="flex items-center gap-1.5">
+                                    <SmInput value={latD} onChange={setLatD} max={89} /><span className="text-xs text-slate-400">°</span>
+                                    <SmInput value={latM} onChange={setLatM} max={59} /><span className="text-xs text-slate-400">'</span>
+                                    <SmInput value={latS} onChange={setLatS} max={59.9} step={0.1} /><span className="text-xs text-slate-400">"</span>
+                                    <div className="flex gap-1">
+                                        <DirBtn val="N" current={latDir} set={setLatDir} />
+                                        <DirBtn val="S" current={latDir} set={setLatDir} />
+                                    </div>
+                                </div>
+                            )}
+                            {inputType === 'DDM' && (
+                                <div className="flex items-center gap-1.5">
+                                    <SmInput value={latDDM_d} onChange={setLatDDM_d} max={89} /><span className="text-xs text-slate-400">°</span>
+                                    <input type="number" value={latDDM_m} onChange={e => setLatDDM_m(parseFloat(e.target.value)||0)} step="0.001" min={0} max={59.999}
+                                        className="w-24 bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-bold text-center outline-none focus:ring-1 focus:ring-blue-500"/>
+                                    <span className="text-xs text-slate-400">'</span>
+                                    <div className="flex gap-1">
+                                        <DirBtn val="N" current={latDDM_dir} set={setLatDDM_dir} />
+                                        <DirBtn val="S" current={latDDM_dir} set={setLatDDM_dir} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* LON */}
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">경도 (Longitude)</label>
+                            {inputType === 'DD' && (
+                                <div className="flex items-center gap-2">
+                                    <input type="number" value={lonDD} onChange={e => setLonDD(parseFloat(e.target.value)||0)} step="0.0001" min={-180} max={180}
+                                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500"/>
+                                    <span className="text-xs text-slate-400 font-bold">°</span>
+                                </div>
+                            )}
+                            {inputType === 'DMS' && (
+                                <div className="flex items-center gap-1.5">
+                                    <SmInput value={lonD} onChange={setLonD} max={179} /><span className="text-xs text-slate-400">°</span>
+                                    <SmInput value={lonM} onChange={setLonM} max={59} /><span className="text-xs text-slate-400">'</span>
+                                    <SmInput value={lonS} onChange={setLonS} max={59.9} step={0.1} /><span className="text-xs text-slate-400">"</span>
+                                    <div className="flex gap-1">
+                                        <DirBtn val="E" current={lonDir} set={setLonDir} />
+                                        <DirBtn val="W" current={lonDir} set={setLonDir} />
+                                    </div>
+                                </div>
+                            )}
+                            {inputType === 'DDM' && (
+                                <div className="flex items-center gap-1.5">
+                                    <SmInput value={lonDDM_d} onChange={setLonDDM_d} max={179} /><span className="text-xs text-slate-400">°</span>
+                                    <input type="number" value={lonDDM_m} onChange={e => setLonDDM_m(parseFloat(e.target.value)||0)} step="0.001" min={0} max={59.999}
+                                        className="w-24 bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-bold text-center outline-none focus:ring-1 focus:ring-blue-500"/>
+                                    <span className="text-xs text-slate-400">'</span>
+                                    <div className="flex gap-1">
+                                        <DirBtn val="E" current={lonDDM_dir} set={setLonDDM_dir} />
+                                        <DirBtn val="W" current={lonDDM_dir} set={setLonDDM_dir} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Results */}
+                    {valid ? (
+                        <div className="space-y-3">
+                            <div className="result-box rounded-xl p-4 space-y-3">
+                                {/* DD */}
+                                <div className="border-b border-slate-700 pb-3">
+                                    <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">십진도 DD (Decimal Degrees)</div>
+                                    <div className="font-mono text-sm text-white font-bold">
+                                        {Math.abs(latDecimal).toFixed(6)}° {latDirLabel} &nbsp; {Math.abs(lonDecimal).toFixed(6)}° {lonDirLabel}
+                                    </div>
+                                </div>
+                                {/* DMS */}
+                                <div className="border-b border-slate-700 pb-3">
+                                    <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">도분초 DMS (Degrees Minutes Seconds)</div>
+                                    <div className="font-mono text-sm text-white font-bold">
+                                        {latDMS.d}° {latDMS.m}' {latDMS.s.toFixed(2)}" {latDirLabel} &nbsp;
+                                        {lonDMS.d}° {lonDMS.m}' {lonDMS.s.toFixed(2)}" {lonDirLabel}
+                                    </div>
+                                </div>
+                                {/* DDM */}
+                                <div>
+                                    <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">도분 DDM (Degrees Decimal Minutes)</div>
+                                    <div className="font-mono text-sm text-white font-bold">
+                                        {latDMS.d}° {(latDMS.m + latDMS.s/60).toFixed(4)}' {latDirLabel} &nbsp;
+                                        {lonDMS.d}° {(lonDMS.m + lonDMS.s/60).toFixed(4)}' {lonDirLabel}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Copy-friendly formats */}
+                            <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                                <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest">ICAO / 항공 형식</div>
+                                <div className="font-mono text-xs text-slate-700 space-y-1">
+                                    <div>
+                                        {latDirLabel}{String(latDMS.d).padStart(2,'0')}{String(latDMS.m).padStart(2,'0')}{latDMS.s.toFixed(0).padStart(2,'0')}&nbsp;
+                                        {lonDirLabel}{String(lonDMS.d).padStart(3,'0')}{String(lonDMS.m).padStart(2,'0')}{lonDMS.s.toFixed(0).padStart(2,'0')}
+                                    </div>
+                                    <div className="text-slate-400 text-[9px]">
+                                        {latDirLabel}{String(latDMS.d).padStart(2,'0')}{String(latDMS.m).padStart(2,'0')}{latDMS.s.toFixed(2).replace('.','').padStart(4,'0')}&nbsp;
+                                        {lonDirLabel}{String(lonDMS.d).padStart(3,'0')}{String(lonDMS.m).padStart(2,'0')}{lonDMS.s.toFixed(2).replace('.','').padStart(4,'0')}&nbsp;(DDDMMSS.ss)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 font-bold">
+                            유효하지 않은 좌표입니다. 위도 ±90°, 경도 ±180° 범위를 확인하세요.
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MAIN APP
+// ══════════════════════════════════════════════════════════════════
+const TABS = [
+    { id: 'wind', label: '바람 삼각형', icon: 'wind', short: 'Wind' },
+    { id: 'tsd', label: '시간·속도·거리', icon: 'timer', short: 'TSD' },
+    { id: 'fuel', label: '연료 계획', icon: 'fuel', short: 'Fuel' },
+    { id: 'da', label: '밀도 고도', icon: 'mountain', short: 'DA' },
+    { id: 'unit', label: '단위 환산', icon: 'repeat', short: 'Unit' },
+    { id: 'coord', label: '좌표 변환', icon: 'map-pin', short: 'Coord' },
+];
+
+function App() {
+    const [tab, setTab] = useState('wind');
+    const current = TABS.find(t => t.id === tab);
+
+    return (
+        <div className="min-h-screen flex flex-col">
+            {/* Header */}
+            <header className="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50">
+                <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-600 rounded-lg flex-shrink-0">
+                            <Icon name="plane" size={22} />
+                        </div>
+                        <div>
+                            <h1 className="text-base sm:text-lg font-black tracking-tight uppercase leading-none">E6B Flight Computer</h1>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">조종사용 비행 계산기</p>
+                        </div>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-bold hidden sm:block">
+                        Incheon 119 Fire Aviation Unit
+                    </div>
+                </div>
+            </header>
+
+            {/* Tab bar */}
+            <div className="bg-slate-800 border-b border-slate-700 sticky top-[68px] z-40">
+                <div className="max-w-5xl mx-auto px-2 overflow-x-auto scrollbar-hide">
+                    <div className="flex">
+                        {TABS.map(t => (
+                            <button key={t.id} onClick={() => setTab(t.id)}
+                                className={`flex items-center gap-1.5 px-3 py-3 text-[10px] sm:text-xs font-black whitespace-nowrap transition-all border-b-2 ${tab===t.id ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}>
+                                <Icon name={t.icon} size={13} />
+                                <span className="hidden sm:inline">{t.label}</span>
+                                <span className="sm:hidden">{t.short}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Content */}
+            <main className="flex-1 max-w-5xl mx-auto w-full px-3 sm:px-6 py-5">
+                {tab === 'wind' && <WindCalc />}
+                {tab === 'tsd' && <TSDCalc />}
+                {tab === 'fuel' && <FuelCalc />}
+                {tab === 'da' && <DensityAlt />}
+                {tab === 'unit' && <UnitConv />}
+                {tab === 'coord' && <CoordConv />}
+            </main>
+
+            <footer className="bg-slate-900 text-slate-500 text-[9px] py-3 text-center font-bold uppercase tracking-widest">
+                E6B Flight Computer · For Training Use Only · Not for Navigation
+            </footer>
+        </div>
+    );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
