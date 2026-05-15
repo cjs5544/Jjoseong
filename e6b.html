@@ -987,15 +987,31 @@ function App() {
     );
 }
 
-try {
-    document.getElementById('loading').style.display = 'none';
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-} catch(e) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('root').innerHTML =
-        '<div style="padding:24px;color:#dc2626;font-family:sans-serif;font-size:14px;font-weight:bold;">앱 로드 오류: ' + e.message + '</div>';
+class ErrorBoundary extends React.Component {
+    constructor(props) { super(props); this.state = { err: null }; }
+    static getDerivedStateFromError(e) { return { err: e }; }
+    render() {
+        if (this.state.err) return (
+            <div style={{padding:'24px',color:'#dc2626',fontFamily:'sans-serif',fontSize:'13px',fontWeight:'bold',background:'#fff1f2',margin:'16px',borderRadius:'12px',border:'1px solid #fecaca'}}>
+                <div style={{marginBottom:'8px'}}>⚠️ 앱 오류 (아래 내용을 개발자에게 전달하세요)</div>
+                <div style={{fontFamily:'monospace',fontSize:'11px',wordBreak:'break-all'}}>{String(this.state.err)}</div>
+            </div>
+        );
+        return this.props.children;
+    }
 }
+
+window.onerror = (msg, src, line) => {
+    document.getElementById('loading').style.display = 'none';
+    if (!document.getElementById('root').hasChildNodes()) {
+        document.getElementById('root').innerHTML =
+            '<div style="padding:24px;color:#dc2626;font-family:monospace;font-size:12px;background:#fff1f2;margin:16px;border-radius:12px;">JS 오류: ' + msg + ' (line ' + line + ')</div>';
+    }
+};
+
+document.getElementById('loading').style.display = 'none';
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<ErrorBoundary><App /></ErrorBoundary>);
 </script>
 </body>
 </html>
