@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E6B Flight Computer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -27,6 +27,11 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
+<div id="loading" style="display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:12px;background:#f8fafc;">
+    <div style="width:36px;height:36px;border:4px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <p style="font-size:13px;color:#64748b;font-weight:700;letter-spacing:0.05em;">E6B Loading...</p>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useMemo, useCallback, useEffect } = React;
@@ -982,8 +987,15 @@ function App() {
     );
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+try {
+    document.getElementById('loading').style.display = 'none';
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+} catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('root').innerHTML =
+        '<div style="padding:24px;color:#dc2626;font-family:sans-serif;font-size:14px;font-weight:bold;">앱 로드 오류: ' + e.message + '</div>';
+}
 </script>
 </body>
 </html>

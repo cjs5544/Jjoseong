@@ -419,7 +419,7 @@
                                     </button>
                                 </div>
                                 <div className="flex gap-2">
-                                    <a href="e6b.html" title="E6B 비행 계산기로 이동" className="flex items-center gap-1.5 p-2 bg-slate-800 text-amber-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95 hover:bg-slate-700"><Icon name="calculator" size={16} /><span className="hidden sm:inline text-[10px] font-black">E6B</span></a>
+                                    <a href="e6b.html" title="E6B 비행 계산기로 이동" className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white rounded-lg border border-amber-600 shadow-md transition-all active:scale-95 hover:bg-amber-600 text-[10px] font-black">E6B</a>
                                     <button onClick={saveItemsToLocal} title="현재 입력된 모든 웨이트/암 값을 이 브라우저에 저장합니다. 다음 접속 시 자동으로 불러옵니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={resetWbToDefaults} title="저장된 값을 삭제하고 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
                                     <button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
@@ -1636,7 +1636,7 @@
                                     <button className="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow">Engine PA</button>
                                 </div>
                                 <div className="flex gap-2">
-                                    <a href="e6b.html" title="E6B 비행 계산기로 이동" className="flex items-center gap-1.5 p-2 bg-slate-800 text-amber-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95 hover:bg-slate-700"><Icon name="calculator" size={16} /><span className="hidden sm:inline text-[10px] font-black">E6B</span></a>
+                                    <a href="e6b.html" title="E6B 비행 계산기로 이동" className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white rounded-lg border border-amber-600 shadow-md transition-all active:scale-95 hover:bg-amber-600 text-[10px] font-black">E6B</a>
                                     <button onClick={saveAsDefault} title="기본값 저장 — 패널 보정 및 PA 보정으로 조정한 값을 새 기본값으로 저장합니다. (보정 작업을 마친 후 사용하세요)" className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={() => setCalib(userDefault)} title="기본값으로 초기화" className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
                                     <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
