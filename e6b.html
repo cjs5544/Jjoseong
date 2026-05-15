@@ -599,7 +599,8 @@ function CoordConv() {
 
     useEffect(() => {
         if (!mapRef.current) return;
-        leafletMap.current = L.map(mapRef.current).setView([37.51887, 126.49807], 14);
+        leafletMap.current = L.map(mapRef.current, {zoomControl: false}).setView([37.51887, 126.49807], 14);
+        L.control.zoom({position: 'bottomright'}).addTo(leafletMap.current);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 18
