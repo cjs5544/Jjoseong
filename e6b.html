@@ -601,6 +601,32 @@ function CoordConv() {
         if (!mapRef.current) return;
         leafletMap.current = L.map(mapRef.current, {zoomControl: false}).setView([37.51887, 126.49807], 14);
         L.control.zoom({position: 'bottomright'}).addTo(leafletMap.current);
+
+        const locateCtrl = L.control({position:'bottomright'});
+        locateCtrl.onAdd = function() {
+            const div = L.DomUtil.create('div','leaflet-bar leaflet-control');
+            const btn = L.DomUtil.create('a','',div);
+            btn.title = '현재 위치로 이동';
+            btn.href = '#';
+            btn.style.cssText = 'font-size:16px;line-height:26px;font-weight:bold;color:#2563eb;';
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="4 2"/></svg>';
+            L.DomEvent.on(btn,'click',function(e){
+                L.DomEvent.preventDefault(e);
+                if(!navigator.geolocation){alert('위치 정보를 지원하지 않는 브라우저입니다.');return;}
+                btn.style.opacity='0.5';
+                navigator.geolocation.getCurrentPosition(
+                    pos=>{
+                        const lt=pos.coords.latitude,ln=pos.coords.longitude;
+                        leafletMap.current.setView([lt,ln],15);
+                        btn.style.opacity='1';
+                    },
+                    ()=>{alert('현재 위치를 가져올 수 없습니다.');btn.style.opacity='1';}
+                );
+            });
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        locateCtrl.addTo(leafletMap.current);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             maxZoom: 18
