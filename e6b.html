@@ -618,7 +618,7 @@ function CoordConv() {
 
         leafletMap.current.on('mousemove', function(e) {
             const lat = e.latlng.lat, lon = e.latlng.lng;
-            coordCtrl.getContainer().innerHTML = toICAO(lat,lon) + '<br><span style="color:#93c5fd;font-size:11px;">' + toMGRS(lat,lon) + '</span>';
+            coordCtrl.getContainer().innerHTML = toICAO(lat,lon) + '<br><span style="color:#93c5fd;font-size:14px;">' + toMGRS(lat,lon) + '</span>';
         });
         leafletMap.current.on('mouseout', function() {
             coordCtrl.getContainer().textContent = '지도 위에 마우스를 올리세요';
