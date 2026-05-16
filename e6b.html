@@ -567,6 +567,7 @@ function CoordConv() {
     const mapRef = useRef(null);
     const leafletMap = useRef(null);
     const markerRef = useRef(null);
+    const locDotRef = useRef(null);
     const [latD,setLatD]=useState(37); const [latM,setLatM]=useState(31); const [latS,setLatS]=useState(7.9); const [latDir,setLatDir]=useState('N');
     const [lonD,setLonD]=useState(126); const [lonM,setLonM]=useState(29); const [lonS,setLonS]=useState(53.0); const [lonDir,setLonDir]=useState('E');
     const [latDd,setLatDd]=useState(37); const [latDm,setLatDm]=useState(31.132); const [latDdir,setLatDdir]=useState('N');
@@ -609,7 +610,7 @@ function CoordConv() {
             btn.title = '현재 위치로 이동';
             btn.href = '#';
             btn.style.cssText = 'font-size:16px;line-height:26px;font-weight:bold;color:#2563eb;';
-            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="4 2"/></svg>';
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
             L.DomEvent.on(btn,'click',function(e){
                 L.DomEvent.preventDefault(e);
                 if(!navigator.geolocation){alert('위치 정보를 지원하지 않는 브라우저입니다.');return;}
@@ -618,6 +619,13 @@ function CoordConv() {
                     pos=>{
                         const lt=pos.coords.latitude,ln=pos.coords.longitude;
                         leafletMap.current.setView([lt,ln],15);
+                        if(locDotRef.current){
+                            locDotRef.current.setLatLng([lt,ln]);
+                        } else {
+                            locDotRef.current = L.circleMarker([lt,ln],{
+                                radius:8, fillColor:'#3b82f6', color:'#fff', weight:2.5, fillOpacity:1
+                            }).addTo(leafletMap.current);
+                        }
                         btn.style.opacity='1';
                     },
                     ()=>{alert('현재 위치를 가져올 수 없습니다.');btn.style.opacity='1';}
