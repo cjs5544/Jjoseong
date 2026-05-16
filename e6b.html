@@ -617,7 +617,8 @@ function CoordConv() {
         coordCtrl.addTo(leafletMap.current);
 
         leafletMap.current.on('mousemove', function(e) {
-            coordCtrl.getContainer().textContent = toICAO(e.latlng.lat, e.latlng.lng);
+            const lat = e.latlng.lat, lon = e.latlng.lng;
+            coordCtrl.getContainer().innerHTML = toICAO(lat,lon) + '<br><span style="color:#93c5fd;font-size:11px;">' + toMGRS(lat,lon) + '</span>';
         });
         leafletMap.current.on('mouseout', function() {
             coordCtrl.getContainer().textContent = '지도 위에 마우스를 올리세요';
@@ -634,8 +635,8 @@ function CoordConv() {
         if (markerRef.current) markerRef.current.setLatLng([latDec, lonDec]);
     }, [latDec, lonDec, valid]);
 
-    const DBtn = ({val,cur,set}) => html`<button onClick=${()=>set(val)}
-        class=${'flex-1 py-2 text-xs font-black rounded ' + (cur===val?'bg-blue-600 text-white':'bg-slate-100 text-slate-500')}>${val}</button>`;
+    const DBtn = ({a,b,cur,set}) => html`<button onClick=${()=>set(cur===a?b:a)}
+        class="px-3 py-2 text-xs font-black rounded-lg bg-blue-600 hover:bg-blue-700 text-white min-w-[2.5rem] transition-all">${cur}</button>`;
 
     const SI = ({value,onChange,max,step=1,lbl}) => html`
         <div class="flex flex-col gap-0.5 flex-1 min-w-0">
@@ -673,14 +674,14 @@ function CoordConv() {
                             <div class="space-y-1">
                                 <label class="text-[9px] font-black text-slate-400 uppercase">위도 (Latitude)</label>
                                 ${type==='DD' && html`<div class="flex gap-2 items-center"><input type="number" value=${latDD} onInput=${e=>setLatDD(parseFloat(e.target.value)||0)} step=0.0001 min=-90 max=90 class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500"/><span class="text-xs text-slate-400">° (N+ S-)</span></div>`}
-                                ${type==='DMS' && html`<div class="flex gap-1.5 items-end"><${SI} value=${latD} onChange=${setLatD} max=89 lbl="도°"/><${SI} value=${latM} onChange=${setLatM} max=59 lbl="분'"/><${SI} value=${latS} onChange=${setLatS} max=59.9 step=0.1 lbl='초"'/><div class="flex gap-1"><${DBtn} val="N" cur=${latDir} set=${setLatDir}/><${DBtn} val="S" cur=${latDir} set=${setLatDir}/></div></div>`}
-                                ${type==='DDM' && html`<div class="flex gap-1.5 items-end"><${SI} value=${latDd} onChange=${setLatDd} max=89 lbl="도°"/><div class="flex flex-col gap-0.5 flex-[2] min-w-0"><span class="text-[8px] text-slate-400 font-black text-center">분.소수'</span><input type="number" value=${latDm} onInput=${e=>setLatDm(parseFloat(e.target.value)||0)} step=0.001 min=0 max=59.999 class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-bold text-center outline-none"/></div><div class="flex gap-1"><${DBtn} val="N" cur=${latDdir} set=${setLatDdir}/><${DBtn} val="S" cur=${latDdir} set=${setLatDdir}/></div></div>`}
+                                ${type==='DMS' && html`<div class="flex gap-1.5 items-end"><${SI} value=${latD} onChange=${setLatD} max=89 lbl="도°"/><${SI} value=${latM} onChange=${setLatM} max=59 lbl="분'"/><${SI} value=${latS} onChange=${setLatS} max=59.9 step=0.1 lbl='초"'/><${DBtn} a="N" b="S" cur=${latDir} set=${setLatDir}/></div>`}
+                                ${type==='DDM' && html`<div class="flex gap-1.5 items-end"><${SI} value=${latDd} onChange=${setLatDd} max=89 lbl="도°"/><div class="flex flex-col gap-0.5 flex-[2] min-w-0"><span class="text-[8px] text-slate-400 font-black text-center">분.소수'</span><input type="number" value=${latDm} onInput=${e=>setLatDm(parseFloat(e.target.value)||0)} step=0.001 min=0 max=59.999 class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-bold text-center outline-none"/></div><${DBtn} a="N" b="S" cur=${latDdir} set=${setLatDdir}/></div>`}
                             </div>
                             <div class="space-y-1">
                                 <label class="text-[9px] font-black text-slate-400 uppercase">경도 (Longitude)</label>
                                 ${type==='DD' && html`<div class="flex gap-2 items-center"><input type="number" value=${lonDD} onInput=${e=>setLonDD(parseFloat(e.target.value)||0)} step=0.0001 min=-180 max=180 class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500"/><span class="text-xs text-slate-400">° (E+ W-)</span></div>`}
-                                ${type==='DMS' && html`<div class="flex gap-1.5 items-end"><${SI} value=${lonD} onChange=${setLonD} max=179 lbl="도°"/><${SI} value=${lonM} onChange=${setLonM} max=59 lbl="분'"/><${SI} value=${lonS} onChange=${setLonS} max=59.9 step=0.1 lbl='초"'/><div class="flex gap-1"><${DBtn} val="E" cur=${lonDir} set=${setLonDir}/><${DBtn} val="W" cur=${lonDir} set=${setLonDir}/></div></div>`}
-                                ${type==='DDM' && html`<div class="flex gap-1.5 items-end"><${SI} value=${lonDd} onChange=${setLonDd} max=179 lbl="도°"/><div class="flex flex-col gap-0.5 flex-[2] min-w-0"><span class="text-[8px] text-slate-400 font-black text-center">분.소수'</span><input type="number" value=${lonDm} onInput=${e=>setLonDm(parseFloat(e.target.value)||0)} step=0.001 min=0 max=59.999 class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-bold text-center outline-none"/></div><div class="flex gap-1"><${DBtn} val="E" cur=${lonDdir} set=${setLonDdir}/><${DBtn} val="W" cur=${lonDdir} set=${setLonDdir}/></div></div>`}
+                                ${type==='DMS' && html`<div class="flex gap-1.5 items-end"><${SI} value=${lonD} onChange=${setLonD} max=179 lbl="도°"/><${SI} value=${lonM} onChange=${setLonM} max=59 lbl="분'"/><${SI} value=${lonS} onChange=${setLonS} max=59.9 step=0.1 lbl='초"'/><${DBtn} a="E" b="W" cur=${lonDir} set=${setLonDir}/></div>`}
+                                ${type==='DDM' && html`<div class="flex gap-1.5 items-end"><${SI} value=${lonDd} onChange=${setLonDd} max=179 lbl="도°"/><div class="flex flex-col gap-0.5 flex-[2] min-w-0"><span class="text-[8px] text-slate-400 font-black text-center">분.소수'</span><input type="number" value=${lonDm} onInput=${e=>setLonDm(parseFloat(e.target.value)||0)} step=0.001 min=0 max=59.999 class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm font-bold text-center outline-none"/></div><${DBtn} a="E" b="W" cur=${lonDdir} set=${setLonDdir}/></div>`}
                             </div>
                         </div>
                         ${valid ? html`
