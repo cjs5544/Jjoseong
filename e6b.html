@@ -568,6 +568,7 @@ function CoordConv() {
     const leafletMap = useRef(null);
     const markerRef = useRef(null);
     const locDotRef = useRef(null);
+    const crosshairRef = useRef(null);
     const [latD,setLatD]=useState(37); const [latM,setLatM]=useState(31); const [latS,setLatS]=useState(7.9); const [latDir,setLatDir]=useState('N');
     const [lonD,setLonD]=useState(126); const [lonM,setLonM]=useState(29); const [lonS,setLonS]=useState(53.0); const [lonDir,setLonDir]=useState('E');
     const [latDd,setLatDd]=useState(37); const [latDm,setLatDm]=useState(31.132); const [latDdir,setLatDdir]=useState('N');
@@ -640,6 +641,23 @@ function CoordConv() {
             maxZoom: 18
         }).addTo(leafletMap.current);
         markerRef.current = L.marker([37.51887, 126.49807]).addTo(leafletMap.current);
+
+        const crosshairIcon = L.divIcon({
+            className:'',
+            html:'<div style="position:relative;width:0;height:0;">'
+                +'<div style="position:absolute;left:-14px;top:-1px;width:10px;height:2px;background:#ef4444;filter:drop-shadow(0 0 1px #000);"></div>'
+                +'<div style="position:absolute;left:4px;top:-1px;width:10px;height:2px;background:#ef4444;filter:drop-shadow(0 0 1px #000);"></div>'
+                +'<div style="position:absolute;top:-14px;left:-1px;width:2px;height:10px;background:#ef4444;filter:drop-shadow(0 0 1px #000);"></div>'
+                +'<div style="position:absolute;top:4px;left:-1px;width:2px;height:10px;background:#ef4444;filter:drop-shadow(0 0 1px #000);"></div>'
+                +'<div style="position:absolute;top:-2px;left:-2px;width:4px;height:4px;border-radius:50%;background:#ef4444;"></div>'
+                +'</div>',
+            iconSize:[0,0], iconAnchor:[0,0]
+        });
+
+        leafletMap.current.on('click', function(e) {
+            if (crosshairRef.current) leafletMap.current.removeLayer(crosshairRef.current);
+            crosshairRef.current = L.marker(e.latlng, {icon: crosshairIcon, interactive: false}).addTo(leafletMap.current);
+        });
 
         const coordCtrl = L.control({position:'topleft'});
         coordCtrl.onAdd = function() {
