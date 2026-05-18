@@ -681,7 +681,10 @@ function CoordConv() {
             attribution: '© Esri', maxZoom: 19
         });
         const labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '© Esri', maxZoom: 19, opacity: 1
+            attribution: '© Esri', maxZoom: 19
+        });
+        const transportLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© Esri', maxZoom: 19
         });
         // modes: 'map' | 'sat' | 'hybrid'
         let mapMode = 'hybrid';
@@ -693,6 +696,7 @@ function CoordConv() {
             leafletMap.current.removeLayer(osmLayer);
             leafletMap.current.removeLayer(satLayer);
             leafletMap.current.removeLayer(labelsLayer);
+            leafletMap.current.removeLayer(transportLayer);
             if (mode === 'map') {
                 osmLayer.addTo(leafletMap.current);
             } else if (mode === 'sat') {
@@ -700,6 +704,7 @@ function CoordConv() {
             } else {
                 satLayer.addTo(leafletMap.current);
                 labelsLayer.addTo(leafletMap.current);
+                transportLayer.addTo(leafletMap.current);
             }
         }
         applyMapMode(mapMode);
@@ -763,11 +768,50 @@ function CoordConv() {
         };
         coordCtrl.addTo(leafletMap.current);
 
+        let elevCache = {};
+        let elevTimer = null;
+        let lastElev = null;
+
+        function elevKey(lat, lon) {
+            return (Math.round(lat*100)/100) + ',' + (Math.round(lon*100)/100);
+        }
+
+        function updateCoordDisplay(lat, lon, elev) {
+            const elevStr = elev !== null
+                ? '<span style="color:#86efac;font-size:13px;">▲ ' + elev + 'm</span>'
+                : '<span style="color:#64748b;font-size:12px;">▲ ---</span>';
+            coordCtrl.getContainer().innerHTML =
+                toICAO(lat,lon) +
+                '<br><span style="color:#93c5fd;font-size:14px;">' + toMGRS(lat,lon) + '</span>' +
+                '  ' + elevStr;
+        }
+
         leafletMap.current.on('mousemove', function(e) {
             const lat = e.latlng.lat, lon = e.latlng.lng;
-            coordCtrl.getContainer().innerHTML = toICAO(lat,lon) + '<br><span style="color:#93c5fd;font-size:14px;">' + toMGRS(lat,lon) + '</span>';
+            const key = elevKey(lat, lon);
+            if (elevCache[key] !== undefined) {
+                lastElev = elevCache[key];
+            }
+            updateCoordDisplay(lat, lon, lastElev);
+            clearTimeout(elevTimer);
+            elevTimer = setTimeout(function() {
+                if (elevCache[key] !== undefined) return;
+                fetch('https://api.opentopodata.org/v1/aster30m?locations=' + lat.toFixed(5) + ',' + lon.toFixed(5))
+                    .then(function(r){ return r.json(); })
+                    .then(function(d){
+                        if (d.results && d.results[0]) {
+                            const ev = Math.round(d.results[0].elevation);
+                            elevCache[key] = ev;
+                            lastElev = ev;
+                            updateCoordDisplay(lat, lon, ev);
+                        }
+                    })
+                    .catch(function(){});
+            }, 800);
         });
         leafletMap.current.on('mouseout', function() {
+            clearTimeout(elevTimer);
+            lastElev = null;
             coordCtrl.getContainer().textContent = '지도 위에 마우스를 올리세요';
         });
 
