@@ -778,7 +778,7 @@ function CoordConv() {
 
         function updateCoordDisplay(lat, lon, elev) {
             const elevStr = elev !== null
-                ? '<span style="color:#86efac;font-size:13px;">▲ ' + elev + 'm</span>'
+                ? '<span style="color:#86efac;font-size:13px;">▲ ' + elev + 'm / ' + Math.round(elev * 3.28084) + 'ft</span>'
                 : '<span style="color:#64748b;font-size:12px;">▲ ---</span>';
             coordCtrl.getContainer().innerHTML =
                 toICAO(lat,lon) +
