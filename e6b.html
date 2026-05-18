@@ -610,7 +610,7 @@ function CoordConv() {
             const btn = L.DomUtil.create('a','',div);
             btn.title = '현재 위치로 이동';
             btn.href = '#';
-            btn.style.cssText = 'color:#2563eb;display:flex;align-items:center;justify-content:center;width:26px;height:26px;';
+            btn.style.cssText = 'color:#2563eb;display:flex;align-items:center;justify-content:center;width:26px;height:26px;box-sizing:border-box;padding:0;line-height:normal;';
             btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
             L.DomEvent.on(btn,'click',function(e){
                 L.DomEvent.preventDefault(e);
