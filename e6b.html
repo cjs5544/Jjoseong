@@ -472,7 +472,9 @@ function UnitConv() {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     ${category.units.filter(u=>u.id!==src.id).map(u => {
                         const cv = u.frB(base);
-                        const disp = Math.abs(cv)>=10000 ? cv.toExponential(3) : (parseFloat(cv.toFixed(5)).toString());
+                        const disp = Math.abs(cv)<0.0001 ? cv.toExponential(3)
+                            : Math.abs(cv)>=10000 ? Math.round(cv).toLocaleString('en-US')
+                            : parseFloat(cv.toFixed(4)).toString();
                         return html`<div key=${u.id} class="result-box rounded-xl p-3 flex justify-between items-center cursor-pointer"
                             onClick=${()=>{setSrcId(u.id);setVal(parseFloat(cv.toFixed(6)));}}>
                             <span class="text-[10px] text-slate-400 font-black">${u.label}</span>
