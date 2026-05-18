@@ -610,8 +610,8 @@ function CoordConv() {
             const btn = L.DomUtil.create('a','',div);
             btn.title = '현재 위치로 이동';
             btn.href = '#';
-            btn.style.cssText = 'color:#2563eb;display:block;width:26px;height:26px;line-height:26px;text-align:center;';
-            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-3px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
+            btn.style.cssText = 'color:#2563eb;display:flex;align-items:center;justify-content:center;width:26px;height:26px;';
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
             L.DomEvent.on(btn,'click',function(e){
                 L.DomEvent.preventDefault(e);
                 if(!navigator.geolocation){alert('위치 정보를 지원하지 않는 브라우저입니다.');return;}
@@ -643,32 +643,46 @@ function CoordConv() {
         const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: '© Esri', maxZoom: 19
         });
+        const labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© Esri', maxZoom: 19, opacity: 1
+        });
         osmLayer.addTo(leafletMap.current);
 
-        let isSat = false;
+        // modes: 'map' | 'sat' | 'hybrid'
+        let mapMode = 'map';
+        const modes = ['map','sat','hybrid'];
+        const modeLabels = {map:'위성', sat:'혼합', hybrid:'지도'};
+        const modeColors = {map:'#374151', sat:'#059669', hybrid:'#2563eb'};
+
+        function applyMapMode(mode) {
+            leafletMap.current.removeLayer(osmLayer);
+            leafletMap.current.removeLayer(satLayer);
+            leafletMap.current.removeLayer(labelsLayer);
+            if (mode === 'map') {
+                osmLayer.addTo(leafletMap.current);
+            } else if (mode === 'sat') {
+                satLayer.addTo(leafletMap.current);
+            } else {
+                satLayer.addTo(leafletMap.current);
+                labelsLayer.addTo(leafletMap.current);
+            }
+        }
+
         const layerCtrl = L.control({position:'topright'});
         layerCtrl.onAdd = function() {
             const div = L.DomUtil.create('div','leaflet-bar leaflet-control');
             const btn = L.DomUtil.create('a','',div);
             btn.href = '#';
-            btn.title = '위성/지도 전환';
-            btn.style.cssText = 'display:block;width:44px;height:26px;line-height:26px;text-align:center;font-size:10px;font-weight:800;color:#374151;letter-spacing:0.03em;';
-            btn.textContent = '위성';
+            btn.title = '지도 레이어 전환';
+            btn.style.cssText = 'display:flex;align-items:center;justify-content:center;width:44px;height:26px;font-size:10px;font-weight:800;color:#374151;letter-spacing:0.03em;';
+            btn.textContent = modeLabels[mapMode];
+            btn.style.color = modeColors[mapMode];
             L.DomEvent.on(btn,'click',function(e){
                 L.DomEvent.preventDefault(e);
-                if(isSat){
-                    leafletMap.current.removeLayer(satLayer);
-                    osmLayer.addTo(leafletMap.current);
-                    btn.textContent='위성';
-                    btn.style.color='#374151';
-                    isSat=false;
-                } else {
-                    leafletMap.current.removeLayer(osmLayer);
-                    satLayer.addTo(leafletMap.current);
-                    btn.textContent='지도';
-                    btn.style.color='#2563eb';
-                    isSat=true;
-                }
+                mapMode = modes[(modes.indexOf(mapMode)+1) % modes.length];
+                applyMapMode(mapMode);
+                btn.textContent = modeLabels[mapMode];
+                btn.style.color = modeColors[mapMode];
             });
             L.DomEvent.disableClickPropagation(div);
             return div;
