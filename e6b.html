@@ -21,6 +21,8 @@
         .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
         .result-box { background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); }
         @keyframes spin { to { transform:rotate(360deg) } }
+        .leaflet-map-fullscreen:-webkit-full-screen { width:100%!important;height:100%!important;border-radius:0!important; }
+        .leaflet-map-fullscreen:fullscreen { width:100%!important;height:100%!important;border-radius:0!important; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -637,6 +639,41 @@ function CoordConv() {
         };
         locateCtrl.addTo(leafletMap.current);
 
+        // Fullscreen button
+        const fsCtrl = L.control({position:'bottomright'});
+        fsCtrl.onAdd = function() {
+            const div = L.DomUtil.create('div','leaflet-bar leaflet-control');
+            const btn = L.DomUtil.create('a','',div);
+            btn.href = '#';
+            btn.title = '전체화면';
+            btn.style.cssText = 'display:flex;align-items:center;justify-content:center;width:26px;height:26px;color:#374151;';
+            const iconExpand = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+            const iconCollapse = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>';
+            btn.innerHTML = iconExpand;
+            const mapEl = mapRef.current;
+            L.DomEvent.on(btn,'click',function(e){
+                L.DomEvent.preventDefault(e);
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    const req = mapEl.requestFullscreen || mapEl.webkitRequestFullscreen;
+                    if (req) req.call(mapEl);
+                } else {
+                    const ex = document.exitFullscreen || document.webkitExitFullscreen;
+                    if (ex) ex.call(document);
+                }
+            });
+            const onFsChange = () => {
+                const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                btn.innerHTML = isFs ? iconCollapse : iconExpand;
+                btn.style.color = isFs ? '#2563eb' : '#374151';
+                setTimeout(() => leafletMap.current && leafletMap.current.invalidateSize(), 100);
+            };
+            document.addEventListener('fullscreenchange', onFsChange);
+            document.addEventListener('webkitfullscreenchange', onFsChange);
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        fsCtrl.addTo(leafletMap.current);
+
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 18
         });
@@ -821,7 +858,7 @@ function CoordConv() {
                     <!-- 오른쪽: 지도 -->
                     <div class="flex-1 min-w-0 flex flex-col">
                         <div class="text-[9px] text-slate-400 font-black uppercase mb-1">지도</div>
-                        <div ref=${mapRef} style="min-height:260px;border-radius:12px;overflow:hidden;z-index:0;" class="flex-1 border border-slate-200 w-full"></div>
+                        <div ref=${mapRef} style="min-height:260px;border-radius:12px;overflow:hidden;z-index:0;" class="leaflet-map-fullscreen flex-1 border border-slate-200 w-full"></div>
                     </div>
                 </div>
             </div>
