@@ -683,13 +683,62 @@ function CoordConv() {
         const labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
             attribution: '© Esri', maxZoom: 19
         });
-        const transportLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '© Esri', maxZoom: 19
-        });
-        // OSM-based labels-only layer (transparent bg): covers Korean island/mountain names
+        // OSM labels-only (transparent): island/mountain names
         const osmLabelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png', {
             attribution: '© CartoDB © OpenStreetMap', maxZoom: 19, opacity: 0.9
         });
+
+        // Highway + IC/JCT vector layers (Overpass)
+        const hwLineGroup = L.layerGroup().addTo(leafletMap.current);
+        const hwLabelGroup = L.layerGroup().addTo(leafletMap.current);
+        let hwTimer = null;
+
+        async function loadHighways() {
+            hwLineGroup.clearLayers();
+            hwLabelGroup.clearLayers();
+            if (mapMode !== 'hybrid') return;
+            const zoom = leafletMap.current.getZoom();
+            if (zoom < 8) return;
+            const b = leafletMap.current.getBounds();
+            const bbox = b.getSouth().toFixed(4)+','+b.getWest().toFixed(4)+','+b.getNorth().toFixed(4)+','+b.getEast().toFixed(4);
+            const q = '[out:json][timeout:20];('
+                + 'way["highway"~"^motorway$|^motorway_link$"]('+bbox+');'
+                + 'node["highway"="motorway_junction"]('+bbox+');'
+                + ');out body;>;out skel qt;';
+            try {
+                const res = await fetch('https://overpass-api.de/api/interpreter', {
+                    method:'POST', body:'data='+encodeURIComponent(q)
+                });
+                const d = await res.json();
+                const nodeCoords = {};
+                d.elements.forEach(function(el) {
+                    if (el.type==='node') nodeCoords[el.id]=[el.lat,el.lon];
+                });
+                d.elements.forEach(function(el) {
+                    if (el.type==='way') {
+                        const pts = (el.nodes||[]).map(function(nid){return nodeCoords[nid];}).filter(Boolean);
+                        if (pts.length<2) return;
+                        const isLink = el.tags && el.tags.highway==='motorway_link';
+                        L.polyline(pts,{color:'#ff8c00',weight:isLink?2:4,opacity:0.85,interactive:false}).addTo(hwLineGroup);
+                    } else if (el.type==='node' && el.tags && el.tags.highway==='motorway_junction') {
+                        const name = (el.tags['name:ko']||el.tags.name||el.tags.ref||'').trim();
+                        if (!name) return;
+                        const icon = L.divIcon({
+                            className:'',
+                            html:'<div style="background:rgba(220,80,0,0.92);color:#fff;font-size:9px;font-weight:800;padding:2px 5px;border-radius:3px;white-space:nowrap;font-family:Pretendard,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.5);transform:translateX(-50%);">'+name+'</div>',
+                            iconAnchor:[0,8]
+                        });
+                        L.marker([el.lat,el.lon],{icon,interactive:false}).addTo(hwLabelGroup);
+                    }
+                });
+            } catch(e) {}
+        }
+
+        leafletMap.current.on('moveend', function() {
+            clearTimeout(hwTimer);
+            hwTimer = setTimeout(loadHighways, 400);
+        });
+
         // modes: 'map' | 'sat' | 'hybrid'
         let mapMode = 'hybrid';
         const modes = ['map','sat','hybrid'];
@@ -700,7 +749,6 @@ function CoordConv() {
             leafletMap.current.removeLayer(osmLayer);
             leafletMap.current.removeLayer(satLayer);
             leafletMap.current.removeLayer(labelsLayer);
-            leafletMap.current.removeLayer(transportLayer);
             leafletMap.current.removeLayer(osmLabelsLayer);
             if (mode === 'map') {
                 osmLayer.addTo(leafletMap.current);
@@ -709,9 +757,10 @@ function CoordConv() {
             } else {
                 satLayer.addTo(leafletMap.current);
                 labelsLayer.addTo(leafletMap.current);
-                transportLayer.addTo(leafletMap.current);
                 osmLabelsLayer.addTo(leafletMap.current);
             }
+            clearTimeout(hwTimer);
+            hwTimer = setTimeout(loadHighways, 200);
         }
         applyMapMode(mapMode);
 
