@@ -636,10 +636,44 @@ function CoordConv() {
             return div;
         };
         locateCtrl.addTo(leafletMap.current);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            maxZoom: 18
-        }).addTo(leafletMap.current);
+
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 18
+        });
+        const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© Esri', maxZoom: 19
+        });
+        osmLayer.addTo(leafletMap.current);
+
+        let isSat = false;
+        const layerCtrl = L.control({position:'topright'});
+        layerCtrl.onAdd = function() {
+            const div = L.DomUtil.create('div','leaflet-bar leaflet-control');
+            const btn = L.DomUtil.create('a','',div);
+            btn.href = '#';
+            btn.title = '위성/지도 전환';
+            btn.style.cssText = 'display:block;width:44px;height:26px;line-height:26px;text-align:center;font-size:10px;font-weight:800;color:#374151;letter-spacing:0.03em;';
+            btn.textContent = '위성';
+            L.DomEvent.on(btn,'click',function(e){
+                L.DomEvent.preventDefault(e);
+                if(isSat){
+                    leafletMap.current.removeLayer(satLayer);
+                    osmLayer.addTo(leafletMap.current);
+                    btn.textContent='위성';
+                    btn.style.color='#374151';
+                    isSat=false;
+                } else {
+                    leafletMap.current.removeLayer(osmLayer);
+                    satLayer.addTo(leafletMap.current);
+                    btn.textContent='지도';
+                    btn.style.color='#2563eb';
+                    isSat=true;
+                }
+            });
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        layerCtrl.addTo(leafletMap.current);
         markerRef.current = L.marker([37.51887, 126.49807]).addTo(leafletMap.current);
 
         const crosshairIcon = L.divIcon({
