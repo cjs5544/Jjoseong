@@ -796,11 +796,11 @@ function CoordConv() {
             clearTimeout(elevTimer);
             elevTimer = setTimeout(function() {
                 if (elevCache[key] !== undefined) return;
-                fetch('https://api.opentopodata.org/v1/aster30m?locations=' + lat.toFixed(5) + ',' + lon.toFixed(5))
+                fetch('https://api.open-meteo.com/v1/elevation?latitude=' + lat.toFixed(5) + '&longitude=' + lon.toFixed(5))
                     .then(function(r){ return r.json(); })
                     .then(function(d){
-                        if (d.results && d.results[0]) {
-                            const ev = Math.round(d.results[0].elevation);
+                        if (d.elevation && d.elevation[0] !== undefined) {
+                            const ev = Math.round(d.elevation[0]);
                             elevCache[key] = ev;
                             lastElev = ev;
                             updateCoordDisplay(lat, lon, ev);
