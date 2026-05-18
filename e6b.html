@@ -707,18 +707,29 @@ function CoordConv() {
         const layerCtrl = L.control({position:'topright'});
         layerCtrl.onAdd = function() {
             const div = L.DomUtil.create('div','leaflet-bar leaflet-control');
-            const btn = L.DomUtil.create('a','',div);
-            btn.href = '#';
-            btn.title = '지도 레이어 전환';
-            btn.style.cssText = 'display:flex;align-items:center;justify-content:center;width:44px;height:26px;font-size:10px;font-weight:800;color:#374151;letter-spacing:0.03em;';
-            btn.textContent = modeLabels[mapMode];
-            btn.style.color = modeColors[mapMode];
-            L.DomEvent.on(btn,'click',function(e){
-                L.DomEvent.preventDefault(e);
-                mapMode = modes[(modes.indexOf(mapMode)+1) % modes.length];
-                applyMapMode(mapMode);
-                btn.textContent = modeLabels[mapMode];
-                btn.style.color = modeColors[mapMode];
+            div.style.cssText = 'display:flex;flex-direction:row;';
+            const btnLabels = {map:'지도', sat:'위성', hybrid:'혼합'};
+            const activeColor = '#2563eb';
+            const inactiveColor = '#374151';
+            const btnEls = {};
+            modes.forEach(function(m) {
+                const btn = L.DomUtil.create('a','',div);
+                btn.href = '#';
+                btn.title = btnLabels[m];
+                btn.style.cssText = 'display:flex;align-items:center;justify-content:center;width:36px;height:26px;font-size:10px;font-weight:800;letter-spacing:0.03em;border-left:1px solid #ddd;';
+                btn.textContent = btnLabels[m];
+                btn.style.color = (m === mapMode) ? activeColor : inactiveColor;
+                btn.style.background = (m === mapMode) ? '#eff6ff' : '';
+                btnEls[m] = btn;
+                L.DomEvent.on(btn,'click',function(e){
+                    L.DomEvent.preventDefault(e);
+                    mapMode = m;
+                    applyMapMode(mapMode);
+                    modes.forEach(function(mm) {
+                        btnEls[mm].style.color = (mm === mapMode) ? activeColor : inactiveColor;
+                        btnEls[mm].style.background = (mm === mapMode) ? '#eff6ff' : '';
+                    });
+                });
             });
             L.DomEvent.disableClickPropagation(div);
             return div;
