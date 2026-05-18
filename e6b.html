@@ -683,10 +683,8 @@ function CoordConv() {
         const labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
             attribution: '© Esri', maxZoom: 19, opacity: 1
         });
-        osmLayer.addTo(leafletMap.current);
-
         // modes: 'map' | 'sat' | 'hybrid'
-        let mapMode = 'map';
+        let mapMode = 'hybrid';
         const modes = ['map','sat','hybrid'];
         const modeLabels = {map:'위성', sat:'혼합', hybrid:'지도'};
         const modeColors = {map:'#374151', sat:'#059669', hybrid:'#2563eb'};
@@ -704,6 +702,7 @@ function CoordConv() {
                 labelsLayer.addTo(leafletMap.current);
             }
         }
+        applyMapMode(mapMode);
 
         const layerCtrl = L.control({position:'topright'});
         layerCtrl.onAdd = function() {
