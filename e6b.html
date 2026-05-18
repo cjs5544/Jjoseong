@@ -754,9 +754,21 @@ function CoordConv() {
             iconSize:[0,0], iconAnchor:[0,0]
         });
 
+        let clickElev = null;
+
         leafletMap.current.on('click', function(e) {
             if (crosshairRef.current) leafletMap.current.removeLayer(crosshairRef.current);
             crosshairRef.current = L.marker(e.latlng, {icon: crosshairIcon, interactive: false}).addTo(leafletMap.current);
+            clickElev = null;
+            const clat = e.latlng.lat, clon = e.latlng.lng;
+            fetch('https://api.open-meteo.com/v1/elevation?latitude=' + clat.toFixed(5) + '&longitude=' + clon.toFixed(5))
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                    if (d.elevation && d.elevation[0] !== undefined) {
+                        clickElev = Math.round(d.elevation[0]);
+                    }
+                })
+                .catch(function(){});
         });
 
         const coordCtrl = L.control({position:'topleft'});
@@ -768,50 +780,17 @@ function CoordConv() {
         };
         coordCtrl.addTo(leafletMap.current);
 
-        let elevCache = {};
-        let elevTimer = null;
-        let lastElev = null;
-
-        function elevKey(lat, lon) {
-            return (Math.round(lat*100)/100) + ',' + (Math.round(lon*100)/100);
-        }
-
-        function updateCoordDisplay(lat, lon, elev) {
-            const elevStr = elev !== null
-                ? '<span style="color:#86efac;font-size:13px;">▲ ' + elev + 'm / ' + Math.round(elev * 3.28084) + 'ft</span>'
-                : '<span style="color:#64748b;font-size:12px;">▲ ---</span>';
+        leafletMap.current.on('mousemove', function(e) {
+            const lat = e.latlng.lat, lon = e.latlng.lng;
+            const elevStr = clickElev !== null
+                ? '<br><span style="color:#86efac;font-size:13px;">▲ ' + clickElev + 'm / ' + Math.round(clickElev * 3.28084) + 'ft</span>'
+                : '';
             coordCtrl.getContainer().innerHTML =
                 toICAO(lat,lon) +
                 '<br><span style="color:#93c5fd;font-size:14px;">' + toMGRS(lat,lon) + '</span>' +
-                '  ' + elevStr;
-        }
-
-        leafletMap.current.on('mousemove', function(e) {
-            const lat = e.latlng.lat, lon = e.latlng.lng;
-            const key = elevKey(lat, lon);
-            if (elevCache[key] !== undefined) {
-                lastElev = elevCache[key];
-            }
-            updateCoordDisplay(lat, lon, lastElev);
-            clearTimeout(elevTimer);
-            elevTimer = setTimeout(function() {
-                if (elevCache[key] !== undefined) return;
-                fetch('https://api.open-meteo.com/v1/elevation?latitude=' + lat.toFixed(5) + '&longitude=' + lon.toFixed(5))
-                    .then(function(r){ return r.json(); })
-                    .then(function(d){
-                        if (d.elevation && d.elevation[0] !== undefined) {
-                            const ev = Math.round(d.elevation[0]);
-                            elevCache[key] = ev;
-                            lastElev = ev;
-                            updateCoordDisplay(lat, lon, ev);
-                        }
-                    })
-                    .catch(function(){});
-            }, 800);
+                elevStr;
         });
         leafletMap.current.on('mouseout', function() {
-            clearTimeout(elevTimer);
-            lastElev = null;
             coordCtrl.getContainer().textContent = '지도 위에 마우스를 올리세요';
         });
 
