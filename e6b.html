@@ -991,6 +991,146 @@ function TabContent({ tab }) {
     return null;
 }
 
+    if (tab === 'tsd')   return html`<${TSDCalc}/>`;
+    if (tab === 'fuel')  return html`<${FuelCalc}/>`;
+    if (tab === 'da')    return html`<${DensityAlt}/>`;
+    if (tab === 'unit')  return html`<${UnitConv}/>`;
+    if (tab === 'coord') return html`<${CoordConv}/>`;
+    if (tab === 'altm')  return html`<${AltimeterConv}/>`;
+    return null;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 7. ALTIMETER CONVERSION
+// ══════════════════════════════════════════════════════════════════
+function AltimeterConv() {
+    const [qnh, setQnh]       = useState(1013.25);  // hPa
+    const [indAlt, setIndAlt] = useState(3000);      // ft
+    const [elev, setElev]     = useState(23);        // aerodrome elevation ft (RKSI=23ft)
+    const [oat, setOat]       = useState(15);        // OAT °C
+
+    // QNH hPa ↔ inHg
+    const qnhInHg = qnh * 0.02953;
+
+    // Pressure Altitude = Indicated Alt + (1013.25 - QNH) * 30
+    const pressAlt = Math.round(indAlt + (1013.25 - qnh) * 30);
+
+    // QFE: pressure at field elevation, derived from QNH
+    // QFE ≈ QNH * exp(-elev / 8434.5)  (barometric formula)
+    const qfe = qnh * Math.exp(-elev / 8434.5);
+    const qfeInHg = qfe * 0.02953;
+
+    // True Altitude: TA = PA + (OAT - ISA) * PA / 273
+    // ISA at PA: 15 - PA/500*1  => 15 - pressAlt/500
+    const isa = 15 - pressAlt / 500;
+    const trueAlt = Math.round(pressAlt * (oat + 273.15) / (isa + 273.15));
+
+    // Density Altitude
+    const T_std_K = (15 - pressAlt/500) + 273.15;
+    const T_act_K = oat + 273.15;
+    const P_ratio = Math.pow(T_std_K / 288.15, 5.2561);
+    const sigma = P_ratio * (288.15 / T_act_K);
+    const densAlt = Math.round(145442 * (1 - Math.pow(sigma, 0.235)));
+
+    // Transition Level (Korea standard)
+    // TA = 14,000 ft; TL based on QNH
+    const getTL = q => {
+        if (q >= 1013) return 'FL150';
+        if (q >= 1005) return 'FL160';
+        if (q >= 997)  return 'FL170';
+        if (q >= 990)  return 'FL180';
+        return 'FL190';
+    };
+    const tl = getTL(qnh);
+
+    // ATC Altimeter check (standard pressure altitude at field)
+    const fieldPA = Math.round(elev + (1013.25 - qnh) * 30);
+
+    const Row = ({ label, val, unit, sub, hi }) => html`
+        <div class=${'result-box rounded-xl p-3 flex flex-col gap-0.5' + (hi ? ' ring-2 ring-blue-500' : '')}>
+            <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${label}</span>
+            <div class="flex items-baseline gap-1.5">
+                <span class=${'font-black text-white leading-none ' + (hi ? 'text-2xl' : 'text-xl')}>${val}</span>
+                ${unit && html`<span class="text-[10px] text-slate-400 font-bold">${unit}</span>`}
+            </div>
+            ${sub && html`<span class="text-[10px] text-slate-400">${sub}</span>`}
+        </div>`;
+
+    return html`
+    <div class="fade-in space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <!-- 입력 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <${SectionHeader} icon="gauge" title="고도계 변환" badge="ALT" />
+                <div class="p-4 space-y-3">
+                    <${NumInput} label="QNH" value=${qnh} onChange=${setQnh} unit="hPa" min=900 max=1100 step=0.25 note="현재 지역 기압" />
+                    <${NumInput} label="지시 고도 (Indicated Alt)" value=${indAlt} onChange=${setIndAlt} unit="ft" min=-2000 max=60000 step=100 />
+                    <${NumInput} label="비행장 표고 (Aerodrome Elev)" value=${elev} onChange=${setElev} unit="ft" min=0 max=15000 step=1 note="RKSI=23, RKSS=18, RKPC=35, RKTN=116" />
+                    <${NumInput} label="외기온도 OAT" value=${oat} onChange=${setOat} unit="°C" min=-80 max=60 />
+                </div>
+
+                <!-- QNH 빠른 입력 -->
+                <div class="px-4 pb-4 space-y-2">
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">QNH 빠른 입력 (inHg)</label>
+                    <div class="relative flex items-center">
+                        <input type="number" value=${qnhInHg.toFixed(2)}
+                            onInput=${e => setQnh(parseFloat((parseFloat(e.target.value)||29.92) / 0.02953))}
+                            step=0.01 min=26.5 max=32.5
+                            class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 pr-14"/>
+                        <span class="absolute right-3 text-[10px] text-slate-400 font-bold">inHg</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 결과 -->
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <${Row} label="QNH (hPa)" val=${qnh.toFixed(2)} unit="hPa" hi=${true} />
+                    <${Row} label="QNH (inHg)" val=${qnhInHg.toFixed(2)} unit="inHg" hi=${true} />
+                    <${Row} label="QFE (hPa)" val=${qfe.toFixed(2)} unit="hPa" sub=${'비행장 표고 '+elev+'ft 기준'} />
+                    <${Row} label="QFE (inHg)" val=${qfeInHg.toFixed(2)} unit="inHg" />
+                    <${Row} label="압력 고도 PA" val=${pressAlt.toLocaleString()} unit="ft" sub="1013.25 hPa 기준" />
+                    <${Row} label="밀도 고도 DA" val=${densAlt.toLocaleString()} unit="ft" />
+                    <${Row} label="진고도 True Alt" val=${trueAlt.toLocaleString()} unit="ft" sub=${'ISA편차 '+(oat-isa>=0?'+':'')+(oat-isa).toFixed(1)+'°C'} />
+                    <${Row} label="비행장 PA" val=${fieldPA.toLocaleString()} unit="ft" sub="1013.25 hPa 기준" />
+                </div>
+
+                <!-- 전환 고도/레벨 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <${SectionHeader} icon="mountain" title="전환 고도 / 레벨 (Korea)" />
+                    <div class="p-4 space-y-3">
+                        <div class="result-box rounded-xl p-4 grid grid-cols-2 gap-4 text-center">
+                            <div>
+                                <div class="text-[9px] text-slate-400 font-black uppercase mb-1">전환 고도 TA</div>
+                                <div class="text-xl font-black text-white">14,000 <span class="text-xs text-slate-400">ft</span></div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">QNH 세팅 (고도)</div>
+                            </div>
+                            <div>
+                                <div class="text-[9px] text-slate-400 font-black uppercase mb-1">전환 레벨 TL</div>
+                                <div class="text-xl font-black text-amber-400">${tl}</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">표준기압 세팅 (FL)</div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-3 space-y-1.5 text-[10px]">
+                            <div class="font-black text-slate-600 uppercase tracking-wider mb-1">한국 TL 기준표</div>
+                            ${[
+                                {q:'≥ 1013',tl:'FL150'},
+                                {q:'1005–1012',tl:'FL160'},
+                                {q:'997–1004',tl:'FL170'},
+                                {q:'990–996',tl:'FL180'},
+                                {q:'< 990',tl:'FL190'},
+                            ].map((r,i) => html`<div key=${i} class=${'flex justify-between px-2 py-0.5 rounded ' + (tl===r.tl?'bg-blue-100 font-black text-blue-700':'text-slate-500')}>
+                                <span>QNH ${r.q} hPa</span><span>${r.tl}</span>
+                            </div>`)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
 // ══════════════════════════════════════════════════════════════════
 // MAIN APP
 // ══════════════════════════════════════════════════════════════════
@@ -999,6 +1139,7 @@ const TABS = [
     {id:'tsd',label:'시간·속도·거리',short:'TSD',icon:'timer'},
     {id:'fuel',label:'연료 계획',short:'Fuel',icon:'fuel'},
     {id:'da',label:'밀도 고도',short:'DA',icon:'mountain'},
+    {id:'altm',label:'고도계 변환',short:'Altm',icon:'gauge'},
     {id:'unit',label:'단위 환산',short:'Unit',icon:'repeat'},
     {id:'coord',label:'좌표 변환',short:'Coord',icon:'map-pin'},
 ];
