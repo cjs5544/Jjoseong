@@ -1050,37 +1050,64 @@ function AltimeterConv() {
 
     return html`
     <div class="fade-in space-y-4">
+
+        <!-- ★ 메인: QNH hPa ↔ inHg 변환 (상단 눈에 띄게) -->
+        <div class="bg-slate-900 rounded-2xl shadow-lg border border-blue-700 overflow-hidden">
+            <div class="px-4 pt-3 pb-0 flex items-center gap-2">
+                <span class="text-blue-400 text-base">📊</span>
+                <span class="text-[10px] font-black text-blue-400 uppercase tracking-widest">QNH 기압 변환</span>
+                <span class="ml-auto text-[9px] text-slate-500 font-bold">1 inHg = 33.8639 hPa</span>
+            </div>
+            <div class="p-4 flex items-end gap-3">
+                <div class="flex-1">
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">hPa 입력</label>
+                    <input type="number" value=${qnh}
+                        onInput=${e => setQnh(parseFloat(e.target.value)||1013.25)}
+                        step=0.25 min=900 max=1100
+                        class="w-full bg-slate-800 border-2 border-slate-600 focus:border-blue-500 rounded-xl px-3 py-2.5 text-2xl font-black text-white outline-none transition-colors"/>
+                    <div class="text-[9px] text-slate-500 mt-1 font-bold">hPa</div>
+                </div>
+                <div class="text-blue-500 text-xl font-black pb-7 select-none">⇄</div>
+                <div class="flex-1">
+                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">inHg 입력</label>
+                    <input type="number" value=${qnhInHg.toFixed(2)}
+                        onInput=${e => setQnh(parseFloat((parseFloat(e.target.value)||29.92) / 0.02953))}
+                        step=0.01 min=26.5 max=32.5
+                        class="w-full bg-slate-800 border-2 border-slate-600 focus:border-blue-500 rounded-xl px-3 py-2.5 text-2xl font-black text-white outline-none transition-colors"/>
+                    <div class="text-[9px] text-slate-500 mt-1 font-bold">inHg</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 border-t border-slate-700">
+                <div class="px-4 py-3 text-center border-r border-slate-700">
+                    <div class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">QNH</div>
+                    <div class="text-4xl font-black text-white leading-none">${qnh.toFixed(1)}</div>
+                    <div class="text-xs text-blue-400 font-bold mt-0.5">hPa</div>
+                </div>
+                <div class="px-4 py-3 text-center">
+                    <div class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">QNH</div>
+                    <div class="text-4xl font-black text-blue-400 leading-none">${qnhInHg.toFixed(2)}</div>
+                    <div class="text-xs text-slate-400 font-bold mt-0.5">inHg</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상세 고도 계산 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-            <!-- 입력 -->
+            <!-- 추가 입력 -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <${SectionHeader} icon="gauge" title="고도계 변환" badge="ALT" />
+                <${SectionHeader} icon="gauge" title="상세 고도 계산" badge="ALT" />
                 <div class="p-4 space-y-3">
-                    <${NumInput} label="QNH" value=${qnh} onChange=${setQnh} unit="hPa" min=900 max=1100 step=0.25 note="현재 지역 기압" />
                     <${NumInput} label="지시 고도 (Indicated Alt)" value=${indAlt} onChange=${setIndAlt} unit="ft" min=-2000 max=60000 step=100 />
                     <${NumInput} label="비행장 표고 (Aerodrome Elev)" value=${elev} onChange=${setElev} unit="ft" min=0 max=15000 step=1 note="RKSI=23, RKSS=18, RKPC=35, RKTN=116" />
                     <${NumInput} label="외기온도 OAT" value=${oat} onChange=${setOat} unit="°C" min=-80 max=60 />
-                </div>
-
-                <!-- QNH 빠른 입력 -->
-                <div class="px-4 pb-4 space-y-2">
-                    <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">QNH 빠른 입력 (inHg)</label>
-                    <div class="relative flex items-center">
-                        <input type="number" value=${qnhInHg.toFixed(2)}
-                            onInput=${e => setQnh(parseFloat((parseFloat(e.target.value)||29.92) / 0.02953))}
-                            step=0.01 min=26.5 max=32.5
-                            class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500 pr-14"/>
-                        <span class="absolute right-3 text-[10px] text-slate-400 font-bold">inHg</span>
-                    </div>
                 </div>
             </div>
 
             <!-- 결과 -->
             <div class="space-y-3">
                 <div class="grid grid-cols-2 gap-2">
-                    <${Row} label="QNH (hPa)" val=${qnh.toFixed(2)} unit="hPa" hi=${true} />
-                    <${Row} label="QNH (inHg)" val=${qnhInHg.toFixed(2)} unit="inHg" hi=${true} />
-                    <${Row} label="QFE (hPa)" val=${qfe.toFixed(2)} unit="hPa" sub=${'비행장 표고 '+elev+'ft 기준'} />
+                    <${Row} label="QFE (hPa)" val=${qfe.toFixed(1)} unit="hPa" sub=${'비행장 표고 '+elev+'ft 기준'} />
                     <${Row} label="QFE (inHg)" val=${qfeInHg.toFixed(2)} unit="inHg" />
                     <${Row} label="압력 고도 PA" val=${pressAlt.toLocaleString()} unit="ft" sub="1013.25 hPa 기준" />
                     <${Row} label="밀도 고도 DA" val=${densAlt.toLocaleString()} unit="ft" />
