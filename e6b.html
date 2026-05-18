@@ -686,6 +686,10 @@ function CoordConv() {
         const transportLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
             attribution: '© Esri', maxZoom: 19
         });
+        // OSM-based labels-only layer (transparent bg): covers Korean island/mountain names
+        const osmLabelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png', {
+            attribution: '© CartoDB © OpenStreetMap', maxZoom: 19, opacity: 0.9
+        });
         // modes: 'map' | 'sat' | 'hybrid'
         let mapMode = 'hybrid';
         const modes = ['map','sat','hybrid'];
@@ -697,6 +701,7 @@ function CoordConv() {
             leafletMap.current.removeLayer(satLayer);
             leafletMap.current.removeLayer(labelsLayer);
             leafletMap.current.removeLayer(transportLayer);
+            leafletMap.current.removeLayer(osmLabelsLayer);
             if (mode === 'map') {
                 osmLayer.addTo(leafletMap.current);
             } else if (mode === 'sat') {
@@ -705,6 +710,7 @@ function CoordConv() {
                 satLayer.addTo(leafletMap.current);
                 labelsLayer.addTo(leafletMap.current);
                 transportLayer.addTo(leafletMap.current);
+                osmLabelsLayer.addTo(leafletMap.current);
             }
         }
         applyMapMode(mapMode);
