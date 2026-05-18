@@ -1001,16 +1001,25 @@ function AltimeterConv() {
     const [elev, setElev]     = useState(23);        // aerodrome elevation ft (RKSI=23ft)
     const [oat, setOat]       = useState(15);        // OAT °C
 
-    // QNH hPa ↔ inHg
-    const qnhInHg = qnh * 0.02953;
+    // Local draft strings for the two converter inputs — typed freely, committed on blur/Enter
+    const [hpaStr,  setHpaStr]  = useState('1013.3');
+    const [inHgStr, setInHgStr] = useState('29.92');
 
-    // Refs for uncontrolled QNH inputs — only sync when not focused
-    const hpaRef  = useRef(null);
-    const inHgRef = useRef(null);
-    useEffect(() => {
-        if (hpaRef.current  && document.activeElement !== hpaRef.current)  hpaRef.current.value  = qnh.toFixed(1);
-        if (inHgRef.current && document.activeElement !== inHgRef.current) inHgRef.current.value = qnhInHg.toFixed(2);
-    }, [qnh]);
+    const commitHpa = (raw) => {
+        const v = parseFloat(raw) || 1013.25;
+        setQnh(v);
+        setHpaStr(v.toFixed(1));
+        setInHgStr((v * 0.02953).toFixed(2));
+    };
+    const commitInHg = (raw) => {
+        const v = (parseFloat(raw) || 29.92) / 0.02953;
+        setQnh(v);
+        setHpaStr(v.toFixed(1));
+        setInHgStr(parseFloat(raw).toFixed(2));
+    };
+
+    // QNH hPa ↔ inHg (for calculations below)
+    const qnhInHg = qnh * 0.02953;
 
     // Pressure Altitude = Indicated Alt + (1013.25 - QNH) * 30
     const pressAlt = Math.round(indAlt + (1013.25 - qnh) * 30);
@@ -1068,18 +1077,20 @@ function AltimeterConv() {
             <div class="p-3 flex items-center gap-2">
                 <div class="flex-1">
                     <div class="text-[9px] text-slate-400 font-black uppercase mb-1">hPa</div>
-                    <input ref=${hpaRef} type="number" defaultValue=${qnh}
-                        onBlur=${e    => setQnh(parseFloat(e.target.value)||1013.25)}
-                        onKeyDown=${e => e.key==='Enter' && e.target.blur()}
+                    <input type="number" value=${hpaStr}
+                        onInput=${e   => setHpaStr(e.target.value)}
+                        onBlur=${e    => commitHpa(e.target.value)}
+                        onKeyDown=${e => e.key==='Enter' && commitHpa(e.target.value)}
                         step=0.25 min=900 max=1100
                         class="w-full bg-slate-800 border border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xl font-black text-white outline-none transition-colors"/>
                 </div>
                 <div class="text-blue-500 text-base font-black mt-4 select-none">⇄</div>
                 <div class="flex-1">
                     <div class="text-[9px] text-slate-400 font-black uppercase mb-1">inHg</div>
-                    <input ref=${inHgRef} type="number" defaultValue=${qnhInHg.toFixed(2)}
-                        onBlur=${e    => setQnh((parseFloat(e.target.value)||29.92) / 0.02953)}
-                        onKeyDown=${e => e.key==='Enter' && e.target.blur()}
+                    <input type="number" value=${inHgStr}
+                        onInput=${e   => setInHgStr(e.target.value)}
+                        onBlur=${e    => commitInHg(e.target.value)}
+                        onKeyDown=${e => e.key==='Enter' && commitInHg(e.target.value)}
                         step=0.01 min=26.5 max=32.5
                         class="w-full bg-slate-800 border border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-xl font-black text-blue-400 outline-none transition-colors"/>
                 </div>
