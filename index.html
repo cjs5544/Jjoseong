@@ -4,19 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Incheon 119 Fire Aviation Unit - AW139 W&B / PA</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
-    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="libs/tailwind.js"></script>
+    <script src="libs/react.min.js"></script>
+    <script src="libs/react-dom.min.js"></script>
+    <script src="libs/prop-types.min.js"></script>
+    <script src="libs/recharts.js"></script>
+    <script src="libs/babel.min.js"></script>
+    <script src="libs/lucide.js"></script>
     <style>
-        @font-face {
-            font-family: 'Pretendard';
-            src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/pretendard@v1.3.8/dist/web/static/pretendard.css');
-        }
-        body { font-family: 'Pretendard', sans-serif; -webkit-print-color-adjust: exact; overflow-x: hidden; }
+        body { font-family: 'Apple SD Gothic Neo','Malgun Gothic',sans-serif; -webkit-print-color-adjust: exact; overflow-x: hidden; }
         @media screen { body { zoom: 0.85; } }
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button { opacity: 1; }
@@ -1364,6 +1360,9 @@
                 if (imgRef.current) {
                     setDimensions({ width: imgRef.current.clientWidth, height: imgRef.current.clientHeight });
                     setImgLoaded(true);
+                }
+                if (chartAreaRef.current) {
+                    chartAreaRef.current.scrollTop = chartAreaRef.current.scrollHeight;
                 }
             };
 
