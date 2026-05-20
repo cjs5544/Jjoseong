@@ -149,10 +149,18 @@ function WindCalc() {
             if(a>90||a<-90) a+=180;
             return a.toFixed(1);
         };
+        // 삼각형 무게중심 기준으로 바깥 방향 부호 결정
+        const cx=(O.x+A.x+B.x)/3, cy=(O.y+A.y+B.y)/3;
+        const outD=(x1,y1,x2,y2,d)=>{
+            const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
+            const mx=(x1+x2)/2,my=(y1+y2)/2;
+            const dot=(cx-mx)*(-dy/len)+(cy-my)*(dx/len);
+            return lbl(x1,y1,x2,y2, dot>0 ? -d : d);
+        };
         return {
             O,A,B,SW,SH,gx,gy,
             ahOA:ah(O.x,O.y,A.x,A.y), ahOB:ah(O.x,O.y,B.x,B.y), ahBA:ah(B.x,B.y,A.x,A.y),
-            lOA:lbl(O.x,O.y,A.x,A.y,14), lOB:lbl(O.x,O.y,B.x,B.y,-14), lBA:lbl(B.x,B.y,A.x,A.y,14),
+            lOA:outD(O.x,O.y,A.x,A.y,13), lOB:outD(O.x,O.y,B.x,B.y,13), lBA:outD(B.x,B.y,A.x,A.y,13),
             aOA:ang(O.x,O.y,A.x,A.y), aOB:ang(O.x,O.y,B.x,B.y), aBA:ang(B.x,B.y,A.x,A.y),
         };
     }, [calc, tc, tas, windFrom, windSpeed]);
@@ -189,9 +197,9 @@ function WindCalc() {
                             <circle cx=${vd.O.x.toFixed(1)} cy=${vd.O.y.toFixed(1)} r="5" fill="white" stroke="#94a3b8" stroke-width="2"/>
                             <circle cx=${vd.A.x.toFixed(1)} cy=${vd.A.y.toFixed(1)} r="4.5" fill="#22c55e" stroke="white" stroke-width="1.5"/>
                             <circle cx=${vd.B.x.toFixed(1)} cy=${vd.B.y.toFixed(1)} r="4.5" fill="#60a5fa" stroke="white" stroke-width="1.5"/>
-                            <text x=${vd.lOA.x.toFixed(1)} y=${vd.lOA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#15803d" font-weight="bold" transform=${'rotate('+vd.aOA+','+vd.lOA.x.toFixed(1)+','+vd.lOA.y.toFixed(1)+')'}>TC ${tc}° · GS ${calc.GS}kt</text>
-                            <text x=${vd.lOB.x.toFixed(1)} y=${vd.lOB.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#1d4ed8" font-weight="bold" transform=${'rotate('+vd.aOB+','+vd.lOB.x.toFixed(1)+','+vd.lOB.y.toFixed(1)+')'}>TH ${calc.TH} · TAS ${tas}kt</text>
-                            <text x=${vd.lBA.x.toFixed(1)} y=${vd.lBA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#b45309" font-weight="bold" transform=${'rotate('+vd.aBA+','+vd.lBA.x.toFixed(1)+','+vd.lBA.y.toFixed(1)+')'} >${windFrom}° / ${windSpeed}kt</text>
+                            <text x=${vd.lOA.x.toFixed(1)} y=${vd.lOA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="8" fill="#15803d" font-weight="bold" transform=${'rotate('+vd.aOA+','+vd.lOA.x.toFixed(1)+','+vd.lOA.y.toFixed(1)+')'}>TC ${tc}° · GS ${calc.GS}kt</text>
+                            <text x=${vd.lOB.x.toFixed(1)} y=${vd.lOB.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="8" fill="#1d4ed8" font-weight="bold" transform=${'rotate('+vd.aOB+','+vd.lOB.x.toFixed(1)+','+vd.lOB.y.toFixed(1)+')'}>TH ${calc.TH} · TAS ${tas}kt</text>
+                            <text x=${vd.lBA.x.toFixed(1)} y=${vd.lBA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="8" fill="#b45309" font-weight="bold" transform=${'rotate('+vd.aBA+','+vd.lBA.x.toFixed(1)+','+vd.lBA.y.toFixed(1)+')'} >${windFrom}° / ${windSpeed}kt</text>
                         </svg>
                         <div class="flex flex-wrap gap-3 mt-2 justify-center text-[10px] font-bold text-slate-500">
                             <div class="flex items-center gap-1"><div class="w-4 h-0.5 bg-green-500 rounded"></div>TC/GS</div>
