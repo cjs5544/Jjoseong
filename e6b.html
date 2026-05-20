@@ -1177,20 +1177,23 @@ function App() {
     return html`
     <div class="min-h-screen flex flex-col">
         <div class="sticky top-0 z-50 shadow-lg">
-            <header class="bg-slate-900 text-white px-4 py-3">
-                <div class="max-w-5xl mx-auto flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-2.5">
-                        <div class="p-1.5 bg-blue-600 rounded-lg text-lg">✈</div>
+            <header class="bg-slate-900 text-white px-4 sm:px-6 py-4">
+                <div class="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <div class="p-2 bg-blue-600 rounded-lg text-xl">🧮</div>
                         <div>
-                            <h1 class="text-sm sm:text-base font-black tracking-tight uppercase">E6B Flight Computer</h1>
-                            <p class="text-[9px] text-slate-400 font-bold uppercase">조종사용 비행 계산기</p>
+                            <h1 class="text-base sm:text-xl font-black tracking-tight uppercase leading-none">E6B Flight Computer</h1>
+                            <div class="flex items-center gap-3 mt-1.5">
+                                <span class="text-[10px] text-slate-400 uppercase tracking-tighter font-bold">Incheon 119 Fire Aviation Unit</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <a href="index.html" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-black rounded-lg transition-all uppercase tracking-wide">
-                            <span>🚁</span><span>W&B / PA</span>
-                        </a>
-                        <span class="text-[9px] text-slate-400 font-bold hidden sm:block">Incheon 119 Fire Aviation Unit</span>
+                    <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                        <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+                            <a href="index.html" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">🚁 W&B</a>
+                            <a href="index.html#pa" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">📊 Engine PA</a>
+                            <span class="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow flex items-center gap-1">🧮 E6B</span>
+                        </div>
                     </div>
                 </div>
             </header>
