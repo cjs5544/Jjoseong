@@ -134,6 +134,11 @@
                     { x: -0.070, y: 6400, label: '①' }, { x: 0.090, y: 6400, label: '②' },
                     { x: 0.120, y: 4400, label: '③' }, { x: -0.088, y: 4400, label: '④' },
                     { x: -0.070, y: 6400 }
+                ],
+                hoistOps: [
+                    { x: 0.145, y: 6400, label: '⑤' },
+                    { x: 0.185, y: 4800, label: '⑥' },
+                    { x: 0.120, y: 4400 }
                 ]
             },
             HL9695: {
@@ -171,6 +176,7 @@
             G: { sta: 4.789, bl: 0,      row: 2, col: 1 }, H: { sta: 4.789, bl: -0.737, row: 3, col: 1 },
             I: { sta: 5.600, bl: 0.737, row: 0, col: 2 }, L: { sta: 5.600, bl: 0.254, row: 1, col: 2 },
             M: { sta: 5.600, bl: -0.254, row: 2, col: 2 }, N: { sta: 5.600, bl: -0.737, row: 3, col: 2 },
+            HOIST: { sta: 4.500, bl: 1.503 },
         };
         const VARIABLE_SEATS = {
             HL9277: ['A', 'B', 'C', 'D', 'G', 'I', 'M'],
@@ -180,28 +186,30 @@
         // ── 기체별 좌석 버튼 위치 (top/left %) — 노즈=9시(좌), Stbd=위, Port=아래 ──
         const SEAT_BTN_POS = {
             HL9277: {
-                PLT: { top: '40.0%', left: '14.5%' },
-                CPT: { top: '65.0%', left: '14.5%' },
-                A:   { top: '35.1%', left: '21.0%' },
-                B:   { top: '46.0%', left: '21.0%' },
-                C:   { top: '57.4%', left: '21.0%' },
-                D:   { top: '70.0%', left: '21.0%' },
-                G:   { top: '51.9%', left: '29.2%' },
-                I:   { top: '34.1%', left: '35.3%' },
-                M:   { top: '69.0%', left: '35.5%' },
+                PLT:   { top: '40.0%', left: '14.5%' },
+                CPT:   { top: '65.0%', left: '14.5%' },
+                A:     { top: '35.1%', left: '21.0%' },
+                B:     { top: '46.0%', left: '21.0%' },
+                C:     { top: '57.4%', left: '21.0%' },
+                D:     { top: '70.0%', left: '21.0%' },
+                G:     { top: '51.9%', left: '29.2%' },
+                I:     { top: '34.1%', left: '35.3%' },
+                M:     { top: '69.0%', left: '35.5%' },
+                HOIST: { top: '10.0%', left: '30.0%' },
             },
             HL9695: {
-                PLT: { top: '34.0%', left: '18.4%' },
-                CPT: { top: '56.4%', left: '18.4%' },
-                A:   { top: '30.1%', left: '25.5%' },
-                B:   { top: '38.0%', left: '25.5%' },
-                C:   { top: '53.0%', left: '25.5%' },
-                D:   { top: '62.0%', left: '25.5%' },
-                G:   { top: '44.9%', left: '31.2%' },
-                I:   { top: '30.6%', left: '37.4%' },
-                L:   { top: '40.5%', left: '37.4%' },
-                N:   { top: '59.9%', left: '37.2%' },
-                M:   { top: '50.4%', left: '37.4%' },
+                PLT:   { top: '34.0%', left: '18.4%' },
+                CPT:   { top: '56.4%', left: '18.4%' },
+                A:     { top: '30.1%', left: '25.5%' },
+                B:     { top: '38.0%', left: '25.5%' },
+                C:     { top: '53.0%', left: '25.5%' },
+                D:     { top: '62.0%', left: '25.5%' },
+                G:     { top: '44.9%', left: '31.2%' },
+                I:     { top: '30.6%', left: '37.4%' },
+                L:     { top: '40.5%', left: '37.4%' },
+                N:     { top: '59.9%', left: '37.2%' },
+                M:     { top: '50.4%', left: '37.4%' },
+                HOIST: { top: '10.0%', left: '30.0%' },
             },
         };
         // ── 기체별 배치도 이미지 ──
@@ -255,11 +263,22 @@
                 return {};
             });
             const [visibleSeats, setVisibleSeats] = useState(() => {
-                try { const s = localStorage.getItem('aw139_visible_seats'); if (s) return JSON.parse(s); } catch {}
-                return {
-                    HL9277: [...VARIABLE_SEATS.HL9277],
-                    HL9695: [...VARIABLE_SEATS.HL9695],
+                const defaults = {
+                    HL9277: [...VARIABLE_SEATS.HL9277, 'HOIST'],
+                    HL9695: [...VARIABLE_SEATS.HL9695, 'HOIST'],
                 };
+                try {
+                    const s = localStorage.getItem('aw139_visible_seats');
+                    if (s) {
+                        const saved = JSON.parse(s);
+                        // HOIST가 없으면 자동 추가
+                        return {
+                            HL9277: saved.HL9277 ? (saved.HL9277.includes('HOIST') ? saved.HL9277 : [...saved.HL9277, 'HOIST']) : defaults.HL9277,
+                            HL9695: saved.HL9695 ? (saved.HL9695.includes('HOIST') ? saved.HL9695 : [...saved.HL9695, 'HOIST']) : defaults.HL9695,
+                        };
+                    }
+                } catch {}
+                return defaults;
             });
             const toggleVisibleSeat = (ac, sid) => setVisibleSeats(prev => {
                 const cur = prev[ac] || [];
@@ -518,7 +537,6 @@
                                     </button>
                                 </div>
                                 <div className="flex gap-2">
-                                    <a href="e6b.html" title="E6B 비행 계산기로 이동" className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white rounded-lg border border-amber-600 shadow-md transition-all active:scale-95 hover:bg-amber-600 text-[10px] font-black">E6B</a>
                                     <button onClick={saveItemsToLocal} title="현재 입력된 모든 웨이트/암 값을 이 브라우저에 저장합니다. 다음 접속 시 자동으로 불러옵니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={resetWbToDefaults} title="저장된 값을 삭제하고 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
                                     <button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
@@ -771,7 +789,9 @@
                                                         className={`flex flex-col items-center border-2 rounded px-1.5 py-0.5 text-[9px] font-black shadow leading-tight transition-all
                                                             ${dragMode && !isVisible
                                                                 ? 'bg-slate-100/80 border-slate-300 text-slate-400'
-                                                                : w > 0 ? 'bg-purple-100/90 border-purple-500 text-purple-700' : 'bg-white/80 border-purple-300 text-purple-500'}`}>
+                                                                : sid === 'HOIST'
+                                                                    ? w > 0 ? 'bg-amber-100/90 border-amber-500 text-amber-700' : 'bg-white/80 border-amber-400 text-amber-500'
+                                                                    : w > 0 ? 'bg-purple-100/90 border-purple-500 text-purple-700' : 'bg-white/80 border-purple-300 text-purple-500'}`}>
                                                         <span>{sid}</span>
                                                         {!dragMode && w > 0 && <span className="text-[7px]">{w}kg</span>}
                                                     </button>
@@ -817,7 +837,7 @@
                                         const isPilotSeat = isPlt || isCpt;
                                         const cfg = isPilotSeat ? null : SEAT_CONFIG[seatPopup.id];
                                         const curW = isPlt ? lateralPilotWeights.plt : isCpt ? lateralPilotWeights.cpt : (seatWeights[seatPopup.id] || 0);
-                                        const title = isPlt ? 'PLT (정조종사)' : isCpt ? 'COPT (부조종사)' : `Seat ${seatPopup.id}`;
+                                        const title = isPlt ? 'PLT (정조종사)' : isCpt ? 'COPT (부조종사)' : seatPopup.id === 'HOIST' ? '호이스트' : `Seat ${seatPopup.id}`;
                                         const sub = isPlt ? `${Math.round(pilotArms.plt*1000)}mm` : isCpt ? `${Math.round(pilotArms.cpt*1000)}mm` : `${cfg.bl>0?'+':''}${(cfg.bl*1000).toFixed(0)}mm`;
                                         const accentBorder = isPilotSeat ? 'border-indigo-300' : 'border-purple-300';
                                         const accentBtn = isPilotSeat ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700';
@@ -1096,7 +1116,7 @@
                                                 const ys = v => M.t + (1 - (v - yMin) / (yMax - yMin)) * CH;
                                                 const env = LATERAL_ENVELOPE[selectedAc].standard;
                                                 const envD = env.map((p, i) => `${i===0?'M':'L'}${xs(p.x).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(' ') + 'Z';
-                                                const hoist = selectedAc === 'HL9695' ? LATERAL_ENVELOPE.HL9695.hoistOps : null;
+                                                const hoist = LATERAL_ENVELOPE[selectedAc]?.hoistOps || null;
                                                 const hoistD = hoist ? hoist.map((p, i) => `${i===0?'M':'L'}${xs(p.x).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(' ') : null;
                                                 const cgX = xs(lateralStats.lateralCG);
                                                 const cgY = ys(stats.totalWeight);
@@ -1123,7 +1143,10 @@
                                                         <line x1={M.l} y1={M.t+CH} x2={M.l+CW} y2={M.t+CH} stroke="#94a3b8" strokeWidth="1" />
                                                         {/* BL=0 수직 녹색 점선 */}
                                                         <line x1={xs(0)} y1={M.t} x2={xs(0)} y2={M.t+CH} stroke="#22c55e" strokeDasharray="4 3" strokeWidth="1" opacity="0.7" />
-                                                        {/* HL9695: ⑤(-0.070,6400)↔⑨(0.145,6400) 및 ⑥(-0.066,6800)↔⑧(0.134,6800) 연결선 */}
+                                                        {/* 연결선: HL9277 ②↔⑤, HL9695 ⑤↔⑨ / ⑥↔⑧ */}
+                                                        {selectedAc==='HL9277' && <>
+                                                            <line x1={xs(0.090)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#ef4444" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
+                                                        </>}
                                                         {selectedAc==='HL9695' && <>
                                                             <line x1={xs(-0.070)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#ef4444" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
                                                             <line x1={xs(-0.066)} y1={ys(6800)} x2={xs(0.134)} y2={ys(6800)} stroke="#ef4444" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
@@ -1755,7 +1778,6 @@
                                     <button className="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow">Engine PA</button>
                                 </div>
                                 <div className="flex gap-2">
-                                    <a href="e6b.html" title="E6B 비행 계산기로 이동" className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white rounded-lg border border-amber-600 shadow-md transition-all active:scale-95 hover:bg-amber-600 text-[10px] font-black">E6B</a>
                                     <button onClick={saveAsDefault} title="기본값 저장 — 패널 보정 및 PA 보정으로 조정한 값을 새 기본값으로 저장합니다. (보정 작업을 마친 후 사용하세요)" className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={() => setCalib(userDefault)} title="기본값으로 초기화" className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
                                     <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
