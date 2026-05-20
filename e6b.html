@@ -118,8 +118,7 @@ function WindCalc() {
     const vd = useMemo(() => {
         if (!calc) return null;
         const GSraw = parseFloat(calc.GS);
-        const SW = 320, SH = 200, pad = 40;
-        // 상대 좌표 (O=원점)
+        const SW = 260, SH = 210, pad = 42;
         const Bxr = tas * Math.sin(toRad(calc.THraw));
         const Byr = -tas * Math.cos(toRad(calc.THraw));
         const Axr = GSraw * Math.sin(toRad(tc));
@@ -130,20 +129,22 @@ function WindCalc() {
         const ox = pad+(SW-2*pad-(maxX-minX)*sc)/2-minX*sc;
         const oy = pad+(SH-2*pad-(maxY-minY)*sc)/2-minY*sc;
         const O={x:ox,y:oy}, A={x:ox+Axr*sc,y:oy+Ayr*sc}, B={x:ox+Bxr*sc,y:oy+Byr*sc};
-        // 화살촉 polygon points
         const ah=(x1,y1,x2,y2)=>{
             const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,ux=dx/len,uy=dy/len,L=9,w=4.5;
             return [(x2).toFixed(1)+','+(y2).toFixed(1),
                     (x2-L*ux+w*uy).toFixed(1)+','+(y2-L*uy-w*ux).toFixed(1),
                     (x2-L*ux-w*uy).toFixed(1)+','+(y2-L*uy+w*ux).toFixed(1)].join(' ');
         };
-        // 선 중점의 수직 오프셋 (d>0: 진행방향 왼쪽)
         const lbl=(x1,y1,x2,y2,d)=>{
             const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
             return {x:(x1+x2)/2+(-dy/len)*d, y:(y1+y2)/2+(dx/len)*d};
         };
+        // 격자선 (20px 간격)
+        const gx=[], gy=[];
+        for(let i=0;i*20<=SW;i++) gx.push(i*20);
+        for(let i=0;i*20<=SH;i++) gy.push(i*20);
         return {
-            O,A,B,SW,SH,
+            O,A,B,SW,SH,gx,gy,
             ahOA:ah(O.x,O.y,A.x,A.y), ahOB:ah(O.x,O.y,B.x,B.y), ahBA:ah(B.x,B.y,A.x,A.y),
             lOA:lbl(O.x,O.y,A.x,A.y,14), lOB:lbl(O.x,O.y,B.x,B.y,-14), lBA:lbl(B.x,B.y,A.x,A.y,14),
         };
@@ -166,29 +167,31 @@ function WindCalc() {
             </div>
             <div class="flex flex-col gap-4">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <${SectionHeader} icon="compass" title="방위도" />
-                    <div class="p-4 flex justify-center items-center gap-4">
-                        <svg width="140" height="140" viewBox="0 0 160 160" style="max-width:140px;width:100%">
-                            <circle cx="80" cy="80" r="72" fill="#0f172a" stroke="#334155" stroke-width="1"/>
-                            <circle cx="80" cy="80" r="60" fill="none" stroke="#1e3a5f" stroke-width="0.5" stroke-dasharray="2,4"/>
-                            ${['N','E','S','W'].map((d,i) => html`
-                                <text key=${d} x=${80+52*sin(i*90*Math.PI/180)} y=${80-52*cos(i*90*Math.PI/180)+4}
-                                    text-anchor="middle" font-size="9" fill="#64748b" font-weight="bold">${d}</text>`)}
-                            <line x1="80" y1="80" x2=${80+48*sin(r(tc))} y2=${80-48*cos(r(tc))} stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
-                            <polygon points="0,-5 3,3 -3,3" fill="#22c55e" transform=${'translate('+(80+48*sin(r(tc)))+','+(80-48*cos(r(tc)))+') rotate('+tc+')'}/>
-                            ${calc && html`
-                                <line x1="80" y1="80" x2=${80+48*sin(r(calc.THraw))} y2=${80-48*cos(r(calc.THraw))} stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="4,2"/>
-                                <polygon points="0,-5 3,3 -3,3" fill="#60a5fa" transform=${'translate('+(80+48*sin(r(calc.THraw)))+','+(80-48*cos(r(calc.THraw)))+') rotate('+calc.THraw+')'}/>
-                            `}
-                            <line x1=${80-36*sin(r(windDeg))} y1=${80+36*cos(r(windDeg))} x2=${80+36*sin(r(windDeg))} y2=${80-36*cos(r(windDeg))} stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
-                            <polygon points="0,-5 3,3 -3,3" fill="#fbbf24" transform=${'translate('+(80+36*sin(r(windDeg)))+','+(80-36*cos(r(windDeg)))+') rotate('+windDeg+')'}/>
-                            <circle cx="80" cy="80" r="3" fill="#f1f5f9"/>
+                    <${SectionHeader} icon="activity" title="속도 벡터 다이어그램" badge="Vector" />
+                    <div class="p-3">
+                        ${vd ? html`
+                        <svg viewBox=${'0 0 '+vd.SW+' '+vd.SH} class="w-full rounded-lg" style="background:#f8fafc">
+                            ${vd.gx.map(x => html`<line key=${'gx'+x} x1=${x} y1="0" x2=${x} y2=${vd.SH} stroke="#e2e8f0" stroke-width="0.5"/>`)}
+                            ${vd.gy.map(y => html`<line key=${'gy'+y} x1="0" y1=${y} x2=${vd.SW} y2=${y} stroke="#e2e8f0" stroke-width="0.5"/>`)}
+                            <line x1=${vd.O.x.toFixed(1)} y1=${vd.O.y.toFixed(1)} x2=${vd.A.x.toFixed(1)} y2=${vd.A.y.toFixed(1)} stroke="#22c55e" stroke-width="3" stroke-linecap="round"/>
+                            <polygon points=${vd.ahOA} fill="#22c55e"/>
+                            <line x1=${vd.O.x.toFixed(1)} y1=${vd.O.y.toFixed(1)} x2=${vd.B.x.toFixed(1)} y2=${vd.B.y.toFixed(1)} stroke="#60a5fa" stroke-width="2.5" stroke-dasharray="6,3" stroke-linecap="round"/>
+                            <polygon points=${vd.ahOB} fill="#60a5fa"/>
+                            <line x1=${vd.B.x.toFixed(1)} y1=${vd.B.y.toFixed(1)} x2=${vd.A.x.toFixed(1)} y2=${vd.A.y.toFixed(1)} stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/>
+                            <polygon points=${vd.ahBA} fill="#fbbf24"/>
+                            <circle cx=${vd.O.x.toFixed(1)} cy=${vd.O.y.toFixed(1)} r="5" fill="white" stroke="#94a3b8" stroke-width="2"/>
+                            <circle cx=${vd.A.x.toFixed(1)} cy=${vd.A.y.toFixed(1)} r="4.5" fill="#22c55e" stroke="white" stroke-width="1.5"/>
+                            <circle cx=${vd.B.x.toFixed(1)} cy=${vd.B.y.toFixed(1)} r="4.5" fill="#60a5fa" stroke="white" stroke-width="1.5"/>
+                            <text x=${vd.lOA.x.toFixed(1)} y=${vd.lOA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#15803d" font-weight="bold">TC ${tc}° · GS ${calc.GS}kt</text>
+                            <text x=${vd.lOB.x.toFixed(1)} y=${vd.lOB.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#1d4ed8" font-weight="bold">TH ${calc.TH} · TAS ${tas}kt</text>
+                            <text x=${vd.lBA.x.toFixed(1)} y=${vd.lBA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#b45309" font-weight="bold">${windFrom}° / ${windSpeed}kt</text>
                         </svg>
-                        <div class="flex flex-col gap-2 text-[10px]">
-                            <div class="flex items-center gap-1.5"><div class="w-5 h-0.5 bg-green-500 rounded"></div><span class="text-slate-500">진침로(TC)</span></div>
-                            <div class="flex items-center gap-1.5"><div class="w-5 h-0 border-t-2 border-dashed border-blue-400"></div><span class="text-slate-500">진항로(TH)</span></div>
-                            <div class="flex items-center gap-1.5"><div class="w-5 h-0.5 bg-yellow-400 rounded"></div><span class="text-slate-500">바람</span></div>
+                        <div class="flex flex-wrap gap-3 mt-2 justify-center text-[10px] font-bold text-slate-500">
+                            <div class="flex items-center gap-1"><div class="w-4 h-0.5 bg-green-500 rounded"></div>TC/GS</div>
+                            <div class="flex items-center gap-1"><div class="w-4 h-0 border-t-2 border-dashed border-blue-400"></div>TH/TAS</div>
+                            <div class="flex items-center gap-1"><div class="w-4 h-0.5 bg-yellow-400 rounded"></div>바람</div>
                         </div>
+                        ` : html`<div class="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-600 font-bold">계산 불가</div>`}
                     </div>
                 </div>
                 ${calc ? html`
@@ -201,32 +204,6 @@ function WindCalc() {
                 ` : html`<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 font-bold">계산 불가: 풍속이 TAS보다 크거나 입력값을 확인하세요.</div>`}
             </div>
         </div>
-        ${vd ? html`
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <${SectionHeader} icon="activity" title="속도 벡터 다이어그램" badge="Vector" />
-            <div class="p-3 sm:p-4">
-                <svg viewBox=${'0 0 '+vd.SW+' '+vd.SH} class="w-full" style="max-height:200px;background:#f8fafc;border-radius:8px;overflow:visible">
-                    <line x1=${vd.O.x.toFixed(1)} y1=${vd.O.y.toFixed(1)} x2=${vd.A.x.toFixed(1)} y2=${vd.A.y.toFixed(1)} stroke="#22c55e" stroke-width="3" stroke-linecap="round"/>
-                    <polygon points=${vd.ahOA} fill="#22c55e"/>
-                    <line x1=${vd.O.x.toFixed(1)} y1=${vd.O.y.toFixed(1)} x2=${vd.B.x.toFixed(1)} y2=${vd.B.y.toFixed(1)} stroke="#60a5fa" stroke-width="2.5" stroke-dasharray="6,3" stroke-linecap="round"/>
-                    <polygon points=${vd.ahOB} fill="#60a5fa"/>
-                    <line x1=${vd.B.x.toFixed(1)} y1=${vd.B.y.toFixed(1)} x2=${vd.A.x.toFixed(1)} y2=${vd.A.y.toFixed(1)} stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/>
-                    <polygon points=${vd.ahBA} fill="#fbbf24"/>
-                    <circle cx=${vd.O.x.toFixed(1)} cy=${vd.O.y.toFixed(1)} r="5" fill="white" stroke="#94a3b8" stroke-width="2"/>
-                    <circle cx=${vd.A.x.toFixed(1)} cy=${vd.A.y.toFixed(1)} r="4.5" fill="#22c55e" stroke="white" stroke-width="1.5"/>
-                    <circle cx=${vd.B.x.toFixed(1)} cy=${vd.B.y.toFixed(1)} r="4.5" fill="#60a5fa" stroke="white" stroke-width="1.5"/>
-                    <text x=${vd.lOA.x.toFixed(1)} y=${vd.lOA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#15803d" font-weight="bold">TC ${tc}° · GS ${calc.GS}kt</text>
-                    <text x=${vd.lOB.x.toFixed(1)} y=${vd.lOB.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#1d4ed8" font-weight="bold">TH ${calc.TH} · TAS ${tas}kt</text>
-                    <text x=${vd.lBA.x.toFixed(1)} y=${vd.lBA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#b45309" font-weight="bold">${windFrom}° / ${windSpeed}kt</text>
-                </svg>
-                <div class="flex flex-wrap gap-4 mt-3 justify-center text-[10px] font-bold text-slate-500">
-                    <div class="flex items-center gap-1.5"><div class="w-5 h-0.5 bg-green-500 rounded"></div>실제 이동 (TC/GS)</div>
-                    <div class="flex items-center gap-1.5"><div class="w-5 h-0 border-t-2 border-dashed border-blue-400"></div>기수 방향 (TH/TAS)</div>
-                    <div class="flex items-center gap-1.5"><div class="w-5 h-0.5 bg-yellow-400 rounded"></div>바람 벡터</div>
-                </div>
-            </div>
-        </div>
-        ` : ''}
     </div>`;
 }
 
