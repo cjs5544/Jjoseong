@@ -143,10 +143,17 @@ function WindCalc() {
         const gx=[], gy=[];
         for(let i=0;i*20<=SW;i++) gx.push(i*20);
         for(let i=0;i*20<=SH;i++) gy.push(i*20);
+        // 텍스트 회전 각도 (뒤집히지 않도록 보정)
+        const ang=(x1,y1,x2,y2)=>{
+            let a=Math.atan2(y2-y1,x2-x1)*180/Math.PI;
+            if(a>90||a<-90) a+=180;
+            return a.toFixed(1);
+        };
         return {
             O,A,B,SW,SH,gx,gy,
             ahOA:ah(O.x,O.y,A.x,A.y), ahOB:ah(O.x,O.y,B.x,B.y), ahBA:ah(B.x,B.y,A.x,A.y),
             lOA:lbl(O.x,O.y,A.x,A.y,14), lOB:lbl(O.x,O.y,B.x,B.y,-14), lBA:lbl(B.x,B.y,A.x,A.y,14),
+            aOA:ang(O.x,O.y,A.x,A.y), aOB:ang(O.x,O.y,B.x,B.y), aBA:ang(B.x,B.y,A.x,A.y),
         };
     }, [calc, tc, tas, windFrom, windSpeed]);
 
@@ -182,9 +189,9 @@ function WindCalc() {
                             <circle cx=${vd.O.x.toFixed(1)} cy=${vd.O.y.toFixed(1)} r="5" fill="white" stroke="#94a3b8" stroke-width="2"/>
                             <circle cx=${vd.A.x.toFixed(1)} cy=${vd.A.y.toFixed(1)} r="4.5" fill="#22c55e" stroke="white" stroke-width="1.5"/>
                             <circle cx=${vd.B.x.toFixed(1)} cy=${vd.B.y.toFixed(1)} r="4.5" fill="#60a5fa" stroke="white" stroke-width="1.5"/>
-                            <text x=${vd.lOA.x.toFixed(1)} y=${vd.lOA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#15803d" font-weight="bold">TC ${tc}° · GS ${calc.GS}kt</text>
-                            <text x=${vd.lOB.x.toFixed(1)} y=${vd.lOB.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#1d4ed8" font-weight="bold">TH ${calc.TH} · TAS ${tas}kt</text>
-                            <text x=${vd.lBA.x.toFixed(1)} y=${vd.lBA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#b45309" font-weight="bold">${windFrom}° / ${windSpeed}kt</text>
+                            <text x=${vd.lOA.x.toFixed(1)} y=${vd.lOA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#15803d" font-weight="bold" transform=${'rotate('+vd.aOA+','+vd.lOA.x.toFixed(1)+','+vd.lOA.y.toFixed(1)+')'}>TC ${tc}° · GS ${calc.GS}kt</text>
+                            <text x=${vd.lOB.x.toFixed(1)} y=${vd.lOB.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#1d4ed8" font-weight="bold" transform=${'rotate('+vd.aOB+','+vd.lOB.x.toFixed(1)+','+vd.lOB.y.toFixed(1)+')'}>TH ${calc.TH} · TAS ${tas}kt</text>
+                            <text x=${vd.lBA.x.toFixed(1)} y=${vd.lBA.y.toFixed(1)} text-anchor="middle" dominant-baseline="central" font-size="9" fill="#b45309" font-weight="bold" transform=${'rotate('+vd.aBA+','+vd.lBA.x.toFixed(1)+','+vd.lBA.y.toFixed(1)+')'} >${windFrom}° / ${windSpeed}kt</text>
                         </svg>
                         <div class="flex flex-wrap gap-3 mt-2 justify-center text-[10px] font-bold text-slate-500">
                             <div class="flex items-center gap-1"><div class="w-4 h-0.5 bg-green-500 rounded"></div>TC/GS</div>
