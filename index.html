@@ -537,6 +537,7 @@
                                     </button>
                                 </div>
                                 <div className="flex gap-2">
+                                    <a href="e6b.html" title="E6B 비행 계산기로 이동" className="flex items-center gap-1.5 p-2 bg-slate-800 text-amber-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95 hover:bg-slate-700"><Icon name="calculator" size={16} /><span className="hidden sm:inline text-[10px] font-black">E6B</span></a>
                                     <button onClick={saveItemsToLocal} title="현재 입력된 모든 웨이트/암 값을 이 브라우저에 저장합니다. 다음 접속 시 자동으로 불러옵니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={resetWbToDefaults} title="저장된 값을 삭제하고 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
                                     <button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
@@ -747,9 +748,7 @@
                                             <img src={DIAGRAM_IMAGES[selectedAc]} alt="AW139 배치도"
                                                  className="absolute inset-0 w-full h-full object-cover"
                                                  onError={e => { e.target.style.visibility='hidden'; }}/>
-                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                <span className="text-slate-400 text-[10px]">배치도 이미지를 넣어주세요</span>
-                                            </div>
+
 
                                             {dragMode && (
                                                 <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-orange-500/90 text-white text-[8px] font-bold px-2 py-0.5 rounded-full pointer-events-none">
@@ -1145,15 +1144,15 @@
                                                         <line x1={xs(0)} y1={M.t} x2={xs(0)} y2={M.t+CH} stroke="#22c55e" strokeDasharray="4 3" strokeWidth="1" opacity="0.7" />
                                                         {/* 연결선: HL9277 ②↔⑤, HL9695 ⑤↔⑨ / ⑥↔⑧ */}
                                                         {selectedAc==='HL9277' && <>
-                                                            <line x1={xs(0.090)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#ef4444" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
+                                                            <line x1={xs(0.090)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#ef4444" strokeDasharray="5 5" strokeWidth="1" opacity="0.9"/>
                                                         </>}
                                                         {selectedAc==='HL9695' && <>
-                                                            <line x1={xs(-0.070)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#ef4444" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
-                                                            <line x1={xs(-0.066)} y1={ys(6800)} x2={xs(0.134)} y2={ys(6800)} stroke="#ef4444" strokeDasharray="5 3" strokeWidth="1" opacity="0.7"/>
+                                                            <line x1={xs(-0.070)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#ef4444" strokeDasharray="5 5" strokeWidth="1" opacity="0.9"/>
+                                                            <line x1={xs(-0.066)} y1={ys(6800)} x2={xs(0.134)} y2={ys(6800)} stroke="#ef4444" strokeDasharray="5 5" strokeWidth="1" opacity="0.9"/>
                                                         </>}
-                                                        <path d={envD} fill="#f8fafc" fillOpacity="0.6" stroke="#475569" strokeWidth="2" />
+                                                        <path d={envD} fill="#f8fafc" fillOpacity="0.6" stroke="#94a3b8" strokeWidth="2" />
                                                         {env.slice(0,-1).map((p, i) => (
-                                                            <circle key={i} cx={xs(p.x)} cy={ys(p.y)} r="3" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" />
+                                                            <circle key={i} cx={xs(p.x)} cy={ys(p.y)} r="3" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="1" />
                                                         ))}
                                                         {showLateralCoords && env.slice(0,-1).map((p, i) => {
                                                             const cx = xs(p.x), cy = ys(p.y);
@@ -1163,12 +1162,11 @@
                                                             const anchor = cx < M.l + CW * 0.25 ? 'start' : cx > M.l + CW * 0.75 ? 'end' : 'middle';
                                                             return (
                                                                 <g key={`lbl${i}`}>
-                                                                    {p.label && <text x={cx} y={cy + (aboveCenter ? -16 : 23)} textAnchor={anchor} fontSize="8" fontWeight="bold" fill="#7c3aed">{p.label}</text>}
                                                                     <text x={cx} y={cy + dy} textAnchor={anchor} fontSize="6.5" fontWeight="bold" fill="#475569">{coordTxt}</text>
                                                                 </g>
                                                             );
                                                         })}
-                                                        {hoistD && <path d={hoistD} fill="none" stroke="#f87171" strokeWidth="1.5" strokeDasharray="5 4" />}
+                                                        {hoistD && <path d={hoistD} fill="none" stroke="#f87171" strokeWidth="2" strokeDasharray="5 4" />}
                                                         {showLateralCoords && hoist && hoist.filter(p => p.label).map((p, i) => {
                                                             const cx = xs(p.x), cy = ys(p.y);
                                                             const coordTxt = `(${p.x.toFixed(3)}, ${p.y.toLocaleString()})`;
@@ -1177,8 +1175,7 @@
                                                             const anchor = cx > M.l + CW * 0.75 ? 'end' : 'middle';
                                                             return (
                                                                 <g key={`hlbl${i}`}>
-                                                                    <text x={cx} y={cy + (aboveCenter ? -16 : 23)} textAnchor={anchor} fontSize="8" fontWeight="bold" fill="#dc2626">{p.label}</text>
-                                                                    <text x={cx} y={cy + dy} textAnchor={anchor} fontSize="6.5" fontWeight="bold" fill="#dc2626">{coordTxt}</text>
+                                                                    <text x={cx} y={cy + dy} textAnchor={anchor} fontSize="6.5" fontWeight="bold" fill="#475569">{coordTxt}</text>
                                                                 </g>
                                                             );
                                                         })}
@@ -1778,6 +1775,7 @@
                                     <button className="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow">Engine PA</button>
                                 </div>
                                 <div className="flex gap-2">
+                                    <a href="e6b.html" title="E6B 비행 계산기로 이동" className="flex items-center gap-1.5 p-2 bg-slate-800 text-amber-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95 hover:bg-slate-700"><Icon name="calculator" size={16} /><span className="hidden sm:inline text-[10px] font-black">E6B</span></a>
                                     <button onClick={saveAsDefault} title="기본값 저장 — 패널 보정 및 PA 보정으로 조정한 값을 새 기본값으로 저장합니다. (보정 작업을 마친 후 사용하세요)" className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={() => setCalib(userDefault)} title="기본값으로 초기화" className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
                                     <button onClick={() => window.print()} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
