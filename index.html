@@ -168,13 +168,46 @@
             A: { sta: 3.415, bl: 0.737, row: 0, col: 0 }, B: { sta: 3.415, bl: 0.254, row: 1, col: 0 },
             C: { sta: 3.415, bl: -0.254, row: 2, col: 0 }, D: { sta: 3.415, bl: -0.737, row: 3, col: 0 },
             E: { sta: 4.789, bl: 0.737, row: 0, col: 1 }, F: { sta: 4.789, bl: 0.254, row: 1, col: 1 },
-            G: { sta: 4.789, bl: -0.254, row: 2, col: 1 }, H: { sta: 4.789, bl: -0.737, row: 3, col: 1 },
+            G: { sta: 4.789, bl: 0,      row: 2, col: 1 }, H: { sta: 4.789, bl: -0.737, row: 3, col: 1 },
             I: { sta: 5.600, bl: 0.737, row: 0, col: 2 }, L: { sta: 5.600, bl: 0.254, row: 1, col: 2 },
             M: { sta: 5.600, bl: -0.254, row: 2, col: 2 }, N: { sta: 5.600, bl: -0.737, row: 3, col: 2 },
         };
         const VARIABLE_SEATS = {
             HL9277: ['A', 'B', 'C', 'D', 'G', 'I', 'M'],
-            HL9695: ['A', 'G', 'I', 'M', 'N']
+            HL9695: ['A', 'G', 'I', 'L', 'N']
+        };
+
+        // ── 기체별 좌석 버튼 위치 (top/left %) — 노즈=9시(좌), Stbd=위, Port=아래 ──
+        const SEAT_BTN_POS = {
+            HL9277: {
+                PLT: { top: '40.0%', left: '14.5%' },
+                CPT: { top: '65.0%', left: '14.5%' },
+                A:   { top: '35.1%', left: '21.0%' },
+                B:   { top: '46.0%', left: '21.0%' },
+                C:   { top: '57.4%', left: '21.0%' },
+                D:   { top: '70.0%', left: '21.0%' },
+                G:   { top: '51.9%', left: '29.2%' },
+                I:   { top: '34.1%', left: '35.3%' },
+                M:   { top: '69.0%', left: '35.5%' },
+            },
+            HL9695: {
+                PLT: { top: '34.0%', left: '18.4%' },
+                CPT: { top: '56.4%', left: '18.4%' },
+                A:   { top: '30.1%', left: '25.5%' },
+                B:   { top: '38.0%', left: '25.5%' },
+                C:   { top: '53.0%', left: '25.5%' },
+                D:   { top: '62.0%', left: '25.5%' },
+                G:   { top: '44.9%', left: '31.2%' },
+                I:   { top: '30.6%', left: '37.4%' },
+                L:   { top: '40.5%', left: '37.4%' },
+                N:   { top: '59.9%', left: '37.2%' },
+                M:   { top: '50.4%', left: '37.4%' },
+            },
+        };
+        // ── 기체별 배치도 이미지 ──
+        const DIAGRAM_IMAGES = {
+            HL9277: './HL9277.jpg',
+            HL9695: './HL9695.png',
         };
         // STA 비례 X 좌표: Row1=3415mm, Row2=4789mm(+1374), Row3=5600mm(+811)
         // 170px / 2185mm = 0.0778px/mm. Row2 = 175 + 1374×0.0778 = 175+107 = 282
@@ -212,6 +245,7 @@
             const updateCustomLateralItem = (id, field, val) => setCustomLateralItems(prev => prev.map(i => i.id === id ? { ...i, [field]: val } : i));
             const deleteCustomLateralItem = (id) => setCustomLateralItems(prev => prev.filter(i => i.id !== id));
             const [pilotArms, setPilotArms] = useState({ plt: 0.550, cpt: -0.550 });
+            const [lateralPilotWeights, setLateralPilotWeights] = useState({ plt: 0, cpt: 0 });
             const [lateralEditPopup, setLateralEditPopup] = useState(null);
             const lepUpdate = (f, v) => setLateralEditPopup(p => p ? {...p, [f]: v} : null);
             const [blSpacingScale, setBlSpacingScale] = useState(100);
@@ -219,6 +253,38 @@
             const [seatWeights, setSeatWeights] = useState(() => {
                 try { const s = localStorage.getItem('aw139_seat_weights'); if (s) return JSON.parse(s); } catch {}
                 return {};
+            });
+            const [visibleSeats, setVisibleSeats] = useState(() => {
+                try { const s = localStorage.getItem('aw139_visible_seats'); if (s) return JSON.parse(s); } catch {}
+                return {
+                    HL9277: [...VARIABLE_SEATS.HL9277],
+                    HL9695: [...VARIABLE_SEATS.HL9695],
+                };
+            });
+            const toggleVisibleSeat = (ac, sid) => setVisibleSeats(prev => {
+                const cur = prev[ac] || [];
+                return { ...prev, [ac]: cur.includes(sid) ? cur.filter(s => s !== sid) : [...cur, sid] };
+            });
+
+            const [dragMode, setDragMode] = useState(false);
+            const [dragging, setDragging] = useState(null);
+            const seatDiagramRef = useRef(null);
+            const [btnPositions, setBtnPositions] = useState(() => {
+                const defaults = {
+                    HL9277: Object.fromEntries(Object.entries(SEAT_BTN_POS.HL9277).map(([k,v]) => [k, { ...v }])),
+                    HL9695: Object.fromEntries(Object.entries(SEAT_BTN_POS.HL9695).map(([k,v]) => [k, { ...v }])),
+                };
+                try {
+                    const s = localStorage.getItem('aw139_btn_pos_v2');
+                    if (s) {
+                        const saved = JSON.parse(s);
+                        return {
+                            HL9277: { ...defaults.HL9277, ...(saved.HL9277 || {}) },
+                            HL9695: { ...defaults.HL9695, ...(saved.HL9695 || {}) },
+                        };
+                    }
+                } catch {}
+                return defaults;
             });
 
             const [items, setItems] = useState(() => {
@@ -280,15 +346,48 @@
                 localStorage.setItem('aw139_seat_weights', JSON.stringify(seatWeights));
             }, [seatWeights]);
 
+            useEffect(() => {
+                localStorage.setItem('aw139_visible_seats', JSON.stringify(visibleSeats));
+            }, [visibleSeats]);
+
+            useEffect(() => {
+                localStorage.setItem('aw139_btn_pos_v2', JSON.stringify(btnPositions));
+            }, [btnPositions]);
+
+            useEffect(() => {
+                if (!dragging) return;
+                const onMove = (e) => {
+                    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+                    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+                    if (!seatDiagramRef.current) return;
+                    const rect = seatDiagramRef.current.getBoundingClientRect();
+                    const newLeft = Math.max(1, Math.min(99, dragging.startLeft + (cx - dragging.startX) / rect.width * 100));
+                    const newTop  = Math.max(1, Math.min(99, dragging.startTop  + (cy - dragging.startY) / rect.height * 100));
+                    setBtnPositions(prev => ({
+                        ...prev,
+                        [dragging.ac]: { ...prev[dragging.ac], [dragging.id]: { top: newTop.toFixed(1)+'%', left: newLeft.toFixed(1)+'%' } }
+                    }));
+                };
+                const onUp = () => setDragging(null);
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('mouseup', onUp);
+                window.addEventListener('touchmove', onMove, { passive: false });
+                window.addEventListener('touchend', onUp);
+                return () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('mouseup', onUp);
+                    window.removeEventListener('touchmove', onMove);
+                    window.removeEventListener('touchend', onUp);
+                };
+            }, [dragging]);
+
             const lateralStats = useMemo(() => {
                 // 장비/구조물: pilot 제외, items의 lateralArm 사용
                 const itemMoment = stats.tableData.filter(i => i.id !== 'pilot').reduce((sum, i) => sum + i.weight * (i.lateralArm || 0), 0);
-                // 조종사: pilotArms 기반
-                const pilotW = stats.tableData.find(i => i.id === 'pilot')?.weight || 0;
-                const hw = pilotW / 2;
-                const pilotMoment = hw * pilotArms.plt + hw * pilotArms.cpt;
+                // 조종사: lateral 전용 개별 무게 사용 (long CG와 독립)
+                const pilotMoment = lateralPilotWeights.plt * pilotArms.plt + lateralPilotWeights.cpt * pilotArms.cpt;
                 // 탑승자: 좌석 다이어그램 입력값 사용
-                const varSeats = VARIABLE_SEATS[selectedAc] || [];
+                const varSeats = visibleSeats[selectedAc] || [];
                 const seatMoment = varSeats.reduce((sum, id) => sum + (seatWeights[id] || 0) * (SEAT_CONFIG[id]?.bl || 0), 0);
                 // 임의 추가 항목
                 const customMoment = customLateralItems.reduce((sum, i) => sum + (i.weight || 0) * (i.arm || 0), 0);
@@ -297,7 +396,7 @@
                 const limits = getLateralLimits(stats.totalWeight, selectedAc);
                 const isWithinLimit = limits ? (lateralCG >= limits.left && lateralCG <= limits.right) : true;
                 return { totalLateralMoment, lateralCG, isWithinLimit, limits, seatMoment, itemMoment, customMoment };
-            }, [stats, selectedAc, seatWeights, customLateralItems, pilotArms]);
+            }, [stats, selectedAc, seatWeights, customLateralItems, pilotArms, lateralPilotWeights, visibleSeats]);
 
             const updateItem = (id, field, value) => {
                 setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
@@ -572,98 +671,137 @@
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                                     {/* ── LEFT: 배치도 + 테이블 ── */}
                                     <div className="flex flex-col gap-3">
-                                    {/* ── 좌석 배치도 ── */}
+                                    {/* ── 좌석 배치도 (사진 + 버튼 오버레이) ── */}
                                     <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
-                                        <div className="flex items-center justify-between mb-1">
+                                        {/* 헤더 */}
+                                        <div className="flex items-center justify-between mb-2">
                                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">좌석 배치도</p>
                                             <div className="flex items-center gap-1.5 no-print">
-                                                <span className="text-[9px] text-slate-400">BL</span>
-                                                <input type="range" min="60" max="160" value={blSpacingScale}
-                                                       onChange={e => setBlSpacingScale(Number(e.target.value))}
-                                                       className="w-16 h-1 accent-purple-500" />
+                                                {dragMode && (
+                                                    <button onClick={() => {
+                                                        const acData = btnPositions[selectedAc] || {};
+                                                        const lines = Object.entries(acData)
+                                                            .map(([k,v]) => `    ${k.padEnd(3)}: { top: '${v.top}', left: '${v.left}' },`).join('\n');
+                                                        navigator.clipboard.writeText(`// ${selectedAc}\n` + lines);
+                                                    }} className="px-1.5 py-0.5 bg-green-600 text-white rounded text-[8px] font-bold hover:bg-green-700">
+                                                        코드 복사
+                                                    </button>
+                                                )}
+                                                {dragMode && (
+                                                    <button onClick={() => {
+                                                        const reset = Object.fromEntries(Object.entries(SEAT_BTN_POS[selectedAc]).map(([k,v]) => [k, { ...v }]));
+                                                        setBtnPositions(prev => ({ ...prev, [selectedAc]: reset }));
+                                                    }} className="px-1.5 py-0.5 bg-slate-400 text-white rounded text-[8px] font-bold hover:bg-slate-500">
+                                                        초기화
+                                                    </button>
+                                                )}
+                                                <button onClick={() => setDragMode(v => !v)}
+                                                    className={`px-1.5 py-0.5 rounded text-[8px] font-bold border transition-all
+                                                        ${dragMode ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-500 border-slate-300 hover:border-orange-400 hover:text-orange-500'}`}>
+                                                    {dragMode ? '편집 완료' : '위치 편집'}
+                                                </button>
                                             </div>
                                         </div>
-                                        {/* Rotated SVG — BL horizontal, STA vertical */}
+
+                                        {/* 사진 컨테이너 */}
                                         {(() => {
-                                            const svgW = 300, svgH = 268;
-                                            const svgCX = 148;
-                                            const bsc = blSpacingScale;
-                                            const blX = bl => Math.round(svgCX + bl * bsc);
-                                            const CREW_Y = 38, R1_Y = 100, R2_Y = 156, R3_Y = 212;
-                                            const colToY = [R1_Y, R2_Y, R3_Y];
-                                            const cHW = 0.76 * bsc, iHW = 0.27 * bsc;
+                                            const acPos = btnPositions[selectedAc] || {};
+                                            const varSeats = visibleSeats[selectedAc] || [];
+                                            const makeDragHandlers = (id) => dragMode ? {
+                                                onMouseDown: (e) => {
+                                                    e.preventDefault();
+                                                    const pos = acPos[id] || { top:'50%', left:'50%' };
+                                                    setDragging({ id, ac: selectedAc, startX: e.clientX, startY: e.clientY,
+                                                        startLeft: parseFloat(pos.left), startTop: parseFloat(pos.top) });
+                                                },
+                                                onTouchStart: (e) => {
+                                                    const t = e.touches[0];
+                                                    const pos = acPos[id] || { top:'50%', left:'50%' };
+                                                    setDragging({ id, ac: selectedAc, startX: t.clientX, startY: t.clientY,
+                                                        startLeft: parseFloat(pos.left), startTop: parseFloat(pos.top) });
+                                                },
+                                            } : {};
                                             const pilotW = items.find(i=>i.id==='pilot')?.weight || 0;
                                             return (
-                                        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full" style={{maxHeight:'230px'}}>
-                                            {/* BL 기준선 (수직) */}
-                                            <line x1={blX(0)} y1="8" x2={blX(0)} y2={svgH-20} stroke="#22c55e" strokeDasharray="5 4" strokeWidth="1" opacity="0.65"/>
-                                            <line x1={blX(0.254)} y1="56" x2={blX(0.254)} y2={svgH-20} stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.4"/>
-                                            <line x1={blX(-0.254)} y1="56" x2={blX(-0.254)} y2={svgH-20} stroke="#94a3b8" strokeDasharray="2 5" strokeWidth="0.7" opacity="0.4"/>
-                                            <line x1={blX(0.550)} y1="8" x2={blX(0.550)} y2="56" stroke="#a5b4fc" strokeDasharray="2 4" strokeWidth="0.8" opacity="0.6"/>
-                                            <line x1={blX(-0.550)} y1="8" x2={blX(-0.550)} y2="56" stroke="#a5b4fc" strokeDasharray="2 4" strokeWidth="0.8" opacity="0.6"/>
-                                            {/* 기체 외형: 코 → 위, +BL → 우 */}
-                                            <path d={`M ${blX(-0.60)} 56 Q ${svgCX} 8 ${blX(0.60)} 56`} fill="none" stroke="#94a3b8" strokeWidth="1.5"/>
-                                            <rect x={blX(-0.76)} y={56} width={cHW*2} height={172} rx="3" fill="none" stroke="#94a3b8" strokeWidth="1.5"/>
-                                            <rect x={blX(-0.27)} y={197} width={iHW*2} height={46} rx="2" fill="none" stroke="#cbd5e1" strokeWidth="0.8" strokeDasharray="3 2"/>
-                                            {/* 행 구분선 */}
-                                            <line x1={blX(-0.76)} y1="128" x2={blX(0.76)} y2="128" stroke="#e2e8f0" strokeWidth="0.8"/>
-                                            <line x1={blX(-0.76)} y1="183" x2={blX(0.76)} y2="183" stroke="#e2e8f0" strokeWidth="0.8"/>
-                                            <line x1={blX(-0.60)} y1="56" x2={blX(0.60)} y2="56" stroke="#e2e8f0" strokeWidth="0.8"/>
-                                            {/* 행 레이블 */}
-                                            <text x={blX(-0.76)-2} y={R1_Y+4} textAnchor="end" fontSize="6" fontWeight="bold" fill="#64748b">Row1</text>
-                                            <text x={blX(-0.76)-2} y={R2_Y+4} textAnchor="end" fontSize="6" fontWeight="bold" fill="#64748b">Row2</text>
-                                            <text x={blX(-0.76)-2} y={R3_Y+4} textAnchor="end" fontSize="6" fontWeight="bold" fill="#64748b">Row3</text>
-                                            <text x={blX(-0.60)-2} y={CREW_Y+4} textAnchor="end" fontSize="6" fontWeight="bold" fill="#64748b">Crew</text>
-                                            {/* PLT/CPT (클릭하면 무게 입력) */}
-                                            {[{lbl:'PLT',bl:0.550},{lbl:'CPT',bl:-0.550}].map(({lbl,bl})=>{
-                                                const xc=blX(bl);
+                                        <div ref={seatDiagramRef}
+                                             className="relative w-full rounded-lg overflow-hidden bg-slate-200"
+                                             style={{ aspectRatio:'3/1', userSelect: dragMode ? 'none' : 'auto' }}>
+                                            <img src={DIAGRAM_IMAGES[selectedAc]} alt="AW139 배치도"
+                                                 className="absolute inset-0 w-full h-full object-cover"
+                                                 onError={e => { e.target.style.visibility='hidden'; }}/>
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                <span className="text-slate-400 text-[10px]">배치도 이미지를 넣어주세요</span>
+                                            </div>
+
+                                            {dragMode && (
+                                                <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-orange-500/90 text-white text-[8px] font-bold px-2 py-0.5 rounded-full pointer-events-none">
+                                                    버튼을 드래그해서 위치 조정
+                                                </div>
+                                            )}
+
+                                            {/* PLT / CPT 버튼 — lateral 전용 개별 무게 */}
+                                            {[{key:'PLT',wKey:'plt'},{key:'CPT',wKey:'cpt'}].map(({key,wKey}) => {
+                                                const pos = acPos[key];
+                                                if (!pos) return null;
+                                                const w = lateralPilotWeights[wKey];
                                                 return (
-                                                    <g key={lbl} style={{cursor:'pointer'}} onClick={()=>setSeatPopup({id:'_pilot'})}>
-                                                        <rect x={xc-17} y={CREW_Y-11} width={34} height={22} rx="3" fill="#e0e7ff" stroke="#6366f1" strokeWidth="1.5"/>
-                                                        <text x={xc} y={CREW_Y+3} textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4338ca">{lbl}</text>
-                                                        {pilotW>0 && <text x={xc} y={CREW_Y+14} textAnchor="middle" fontSize="5.5" fill="#6366f1">{pilotW/2}kg</text>}
-                                                    </g>
+                                                    <button key={key}
+                                                        style={{ position:'absolute', top: pos.top, left: pos.left, transform:'translate(-50%,-50%)', cursor: dragMode ? 'grab' : 'pointer' }}
+                                                        {...makeDragHandlers(key)}
+                                                        onClick={dragMode ? undefined : () => setSeatPopup({ id: `_${wKey}` })}
+                                                        className="flex flex-col items-center bg-indigo-100/90 border-2 border-indigo-500 rounded px-1.5 py-0.5 text-[9px] font-black text-indigo-700 shadow leading-tight">
+                                                        <span>{key}</span>
+                                                        {!dragMode && w > 0 && <span className="text-[7px] text-indigo-500">{w}kg</span>}
+                                                    </button>
                                                 );
                                             })}
-                                            {/* 탑승자 좌석 */}
-                                            {Object.entries(SEAT_CONFIG).map(([sid, cfg]) => {
-                                                const isVar = (VARIABLE_SEATS[selectedAc]||[]).includes(sid);
-                                                const xc = blX(cfg.bl);
-                                                const yc = colToY[cfg.col];
+
+                                            {/* 탑승자 좌석 버튼 */}
+                                            {Object.keys(acPos).filter(k => k !== 'PLT' && k !== 'CPT').map(sid => {
+                                                const pos = acPos[sid];
+                                                if (!pos) return null;
+                                                const isVisible = (visibleSeats[selectedAc] || []).includes(sid);
+                                                if (!dragMode && !isVisible) return null;
                                                 const w = seatWeights[sid] || 0;
-                                                const isInner = cfg.col === 2;
-                                                const bw = isInner ? 26 : 30, bh = isInner ? 18 : 20;
-                                                if (isVar) return (
-                                                    <g key={sid} style={{cursor:'pointer'}} onClick={()=>setSeatPopup({id:sid})}>
-                                                        <rect x={xc-bw/2} y={yc-bh/2} width={bw} height={bh} rx="3"
-                                                              fill={w>0?"#faf5ff":"#f5f3ff"} stroke={w>0?"#9333ea":"#c084fc"} strokeWidth="1.5"/>
-                                                        <text x={xc} y={w>0?yc-1:yc+3} textAnchor="middle" fontSize={isInner?7.5:8.5} fontWeight="bold" fill="#7c3aed">{sid}</text>
-                                                        {w>0 && <text x={xc} y={yc+bh/2-2} textAnchor="middle" fontSize="6" fill="#6d28d9">{w}kg</text>}
-                                                    </g>
-                                                );
                                                 return (
-                                                    <g key={sid}>
-                                                        <rect x={xc-bw/2} y={yc-bh/2} width={bw} height={bh} rx="2" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1"/>
-                                                        <text x={xc} y={yc+3} textAnchor="middle" fontSize={isInner?7:8} fontWeight="bold" fill="#94a3b8">{sid}</text>
-                                                    </g>
+                                                    <button key={sid}
+                                                        style={{ position:'absolute', top: pos.top, left: pos.left, transform:'translate(-50%,-50%)', cursor: dragMode ? 'grab' : 'pointer' }}
+                                                        {...makeDragHandlers(sid)}
+                                                        onClick={dragMode ? undefined : () => setSeatPopup({ id: sid })}
+                                                        className={`flex flex-col items-center border-2 rounded px-1.5 py-0.5 text-[9px] font-black shadow leading-tight transition-all
+                                                            ${dragMode && !isVisible
+                                                                ? 'bg-slate-100/80 border-slate-300 text-slate-400'
+                                                                : w > 0 ? 'bg-purple-100/90 border-purple-500 text-purple-700' : 'bg-white/80 border-purple-300 text-purple-500'}`}>
+                                                        <span>{sid}</span>
+                                                        {!dragMode && w > 0 && <span className="text-[7px]">{w}kg</span>}
+                                                    </button>
                                                 );
                                             })}
-                                            {/* BL 축 레이블 */}
-                                            <text x={blX(0)} y={svgH-5} textAnchor="middle" fontSize="7" fill="#22c55e">0</text>
-                                            <text x={blX(0.254)} y={svgH-5} textAnchor="middle" fontSize="5.5" fill="#94a3b8">+254</text>
-                                            <text x={blX(-0.254)} y={svgH-5} textAnchor="middle" fontSize="5.5" fill="#94a3b8">−254</text>
-                                            <text x={blX(0.737)} y={svgH-5} textAnchor="middle" fontSize="5.5" fill="#94a3b8">+737</text>
-                                            <text x={blX(-0.737)} y={svgH-5} textAnchor="middle" fontSize="5.5" fill="#94a3b8">−737</text>
-                                            <text x={svgW-4} y={svgH-14} textAnchor="end" fontSize="5.5" fill="#64748b">Stbd+</text>
-                                            <text x={4} y={svgH-14} textAnchor="start" fontSize="5.5" fill="#64748b">−Port</text>
-                                        </svg>
+                                        </div>
                                             );
                                         })()}
 
+                                        {/* 편집 모드: 좌석 숨김/표시 토글 */}
+                                        {dragMode && (
+                                            <div className="mt-2 flex flex-wrap gap-1 items-center">
+                                                <span className="text-[8px] font-bold text-slate-400 mr-0.5">표시:</span>
+                                                {Object.keys(SEAT_BTN_POS[selectedAc]).filter(k => k !== 'PLT' && k !== 'CPT').map(sid => {
+                                                    const isVisible = (visibleSeats[selectedAc] || []).includes(sid);
+                                                    return (
+                                                        <button key={sid} onClick={() => toggleVisibleSeat(selectedAc, sid)}
+                                                            className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all
+                                                                ${isVisible ? 'bg-purple-500 text-white border-purple-500' : 'bg-white text-slate-400 border-slate-300 line-through'}`}>
+                                                            {sid}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
                                         {/* 좌석 요약 칩 */}
-                                        {(VARIABLE_SEATS[selectedAc]||[]).some(id=>seatWeights[id]>0) && (
+                                        {(visibleSeats[selectedAc]||[]).some(id=>seatWeights[id]>0) && (
                                             <div className="mt-1.5 flex flex-wrap gap-1">
-                                                {(VARIABLE_SEATS[selectedAc]||[]).filter(id=>seatWeights[id]>0).map(id=>(
+                                                {(visibleSeats[selectedAc]||[]).filter(id=>seatWeights[id]>0).map(id=>(
                                                     <span key={id} className="px-1.5 py-0.5 bg-purple-50 border border-purple-200 rounded-full text-[7.5px] text-purple-700 font-bold">
                                                         {id}: {seatWeights[id]}kg
                                                     </span>
@@ -672,18 +810,24 @@
                                         )}
                                     </div>
 
-                                    {/* ── 팝업 (좌석 무게 / 조종사 무게) ── */}
+                                    {/* ── 팝업 (좌석 무게 / 조종사 개별 무게) ── */}
                                     {seatPopup && (() => {
-                                        const isPilot = seatPopup.id === '_pilot';
-                                        const cfg = isPilot ? null : SEAT_CONFIG[seatPopup.id];
-                                        const curW = isPilot
-                                            ? (items.find(i=>i.id==='pilot')?.weight || 0)
-                                            : (seatWeights[seatPopup.id] || 0);
-                                        const title = isPilot ? 'Pilot/Copilot' : `Seat ${seatPopup.id}`;
-                                        const sub = isPilot ? '총 무게 (PLT+CPT)' : `${cfg.bl>0?'+':''}${(cfg.bl*1000).toFixed(0)}mm`;
-                                        const accentBorder = isPilot ? 'border-indigo-300' : 'border-purple-300';
-                                        const accentBtn = isPilot ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700';
-                                        const accentTitle = isPilot ? 'text-indigo-700' : 'text-purple-700';
+                                        const isPlt = seatPopup.id === '_plt';
+                                        const isCpt = seatPopup.id === '_cpt';
+                                        const isPilotSeat = isPlt || isCpt;
+                                        const cfg = isPilotSeat ? null : SEAT_CONFIG[seatPopup.id];
+                                        const curW = isPlt ? lateralPilotWeights.plt : isCpt ? lateralPilotWeights.cpt : (seatWeights[seatPopup.id] || 0);
+                                        const title = isPlt ? 'PLT (정조종사)' : isCpt ? 'COPT (부조종사)' : `Seat ${seatPopup.id}`;
+                                        const sub = isPlt ? `${Math.round(pilotArms.plt*1000)}mm` : isCpt ? `${Math.round(pilotArms.cpt*1000)}mm` : `${cfg.bl>0?'+':''}${(cfg.bl*1000).toFixed(0)}mm`;
+                                        const accentBorder = isPilotSeat ? 'border-indigo-300' : 'border-purple-300';
+                                        const accentBtn = isPilotSeat ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700';
+                                        const accentTitle = isPilotSeat ? 'text-indigo-700' : 'text-purple-700';
+                                        const applyW = (v) => {
+                                            if (isPlt) setLateralPilotWeights(prev => ({...prev, plt: v}));
+                                            else if (isCpt) setLateralPilotWeights(prev => ({...prev, cpt: v}));
+                                            else setSeatWeights(prev => ({...prev, [seatPopup.id]: v}));
+                                            setSeatPopup(null);
+                                        };
                                         return (
                                             <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={()=>setSeatPopup(null)}>
                                                 <div className="absolute inset-0 bg-black/20"/>
@@ -695,26 +839,16 @@
                                                     <div className={`flex items-center border-2 ${accentBorder} rounded-lg px-2 py-1.5 bg-white focus-within:ring-1 focus-within:ring-purple-300`}>
                                                         <input type="number" autoFocus id="seatPopupInput"
                                                                defaultValue={curW||''} placeholder="0"
-                                                               onKeyDown={e=>{if(e.key==='Enter'){
-                                                                   const v=parseFloat(e.target.value)||0;
-                                                                   if(isPilot) updateItem('pilot','weight',v); else setSeatWeights(prev=>({...prev,[seatPopup.id]:v}));
-                                                                   setSeatPopup(null);
-                                                               }}}
+                                                               onKeyDown={e=>{if(e.key==='Enter'){ applyW(parseFloat(e.target.value)||0); }}}
                                                                className="flex-1 min-w-0 text-sm font-black text-right outline-none bg-transparent"/>
                                                         <span className="text-[10px] font-bold text-slate-400 ml-1 shrink-0">kg</span>
                                                     </div>
                                                     <div className="flex gap-1 mt-1.5">
                                                         {curW>0 && (
-                                                            <button onClick={()=>{
-                                                                if(isPilot) updateItem('pilot','weight',0); else setSeatWeights(prev=>({...prev,[seatPopup.id]:0}));
-                                                                setSeatPopup(null);
-                                                            }} className="px-2 py-1 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-[9px] font-black">삭제</button>
+                                                            <button onClick={()=>applyW(0)} className="px-2 py-1 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-[9px] font-black">삭제</button>
                                                         )}
-                                                        <button onClick={()=>{
-                                                            const v=parseFloat(document.getElementById('seatPopupInput').value)||0;
-                                                            if(isPilot) updateItem('pilot','weight',v); else setSeatWeights(prev=>({...prev,[seatPopup.id]:v}));
-                                                            setSeatPopup(null);
-                                                        }} className={`flex-1 py-1 ${accentBtn} text-white rounded-lg text-[10px] font-black transition-all active:scale-95`}>확인</button>
+                                                        <button onClick={()=>{ applyW(parseFloat(document.getElementById('seatPopupInput').value)||0); }}
+                                                            className={`flex-1 py-1 ${accentBtn} text-white rounded-lg text-[10px] font-black transition-all active:scale-95`}>확인</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -758,29 +892,27 @@
                                                                 </tr>
                                                             );
                                                         }
-                                                        // 2. 조종사 (PLT/CPT 행 클릭 → 팝업)
-                                                        const pilotItem = stats.tableData.find(i => i.id === 'pilot');
-                                                        const pilotTotalW = pilotItem?.weight || 0;
-                                                        const hw = pilotTotalW / 2;
-                                                        const openPilotPopup = () => setLateralEditPopup({type:'pilot',id:'pilot',label:'PLT / CPT',weight:pilotTotalW,arm:pilotArms.plt,armCpt:pilotArms.cpt});
+                                                        // 2. 조종사 (PLT/CPT 각각 독립 팝업 — long CG와 무관)
+                                                        const pltW = lateralPilotWeights.plt;
+                                                        const cptW = lateralPilotWeights.cpt;
                                                         rows.push(
-                                                            <tr key="plt" className={`${TR} bg-indigo-50/20`} onClick={openPilotPopup}>
-                                                                <td className={`${TD} font-bold text-indigo-700`}>PLT (부조종사)</td>
-                                                                <td className={`${TD} text-right font-mono text-indigo-500`}>{hw > 0 ? hw : <span className="text-slate-300">—</span>}</td>
+                                                            <tr key="plt" className={`${TR} bg-indigo-50/20 cursor-pointer`} onClick={() => setLateralEditPopup({type:'plt',id:'plt',label:'PLT (정조종사)',weight:pltW,arm:pilotArms.plt})}>
+                                                                <td className={`${TD} font-bold text-indigo-700`}>PLT (정조종사)</td>
+                                                                <td className={`${TD} text-right font-mono text-indigo-500`}>{pltW > 0 ? pltW : <span className="text-slate-300">—</span>}</td>
                                                                 <td className={`${TD} text-right font-mono text-indigo-400`}>{Math.round(pilotArms.plt*1000)}</td>
-                                                                <td className={`${TD} text-right font-mono font-bold text-rose-400`}>{(hw*pilotArms.plt).toFixed(1)}</td>
+                                                                <td className={`${TD} text-right font-mono font-bold text-rose-400`}>{(pltW*pilotArms.plt).toFixed(1)}</td>
                                                             </tr>
                                                         );
                                                         rows.push(
-                                                            <tr key="cpt" className={`${TR} bg-indigo-50/20`} onClick={openPilotPopup}>
-                                                                <td className={`${TD} font-bold text-indigo-700`}>CPT (기장)</td>
-                                                                <td className={`${TD} text-right font-mono text-indigo-500`}>{hw > 0 ? hw : <span className="text-slate-300">—</span>}</td>
+                                                            <tr key="cpt" className={`${TR} bg-indigo-50/20 cursor-pointer`} onClick={() => setLateralEditPopup({type:'cpt',id:'cpt',label:'COPT (부조종사)',weight:cptW,arm:pilotArms.cpt})}>
+                                                                <td className={`${TD} font-bold text-indigo-700`}>COPT (부조종사)</td>
+                                                                <td className={`${TD} text-right font-mono text-indigo-500`}>{cptW > 0 ? cptW : <span className="text-slate-300">—</span>}</td>
                                                                 <td className={`${TD} text-right font-mono text-indigo-400`}>{Math.round(pilotArms.cpt*1000)}</td>
-                                                                <td className={`${TD} text-right font-mono font-bold text-blue-500`}>{(hw*pilotArms.cpt).toFixed(1)}</td>
+                                                                <td className={`${TD} text-right font-mono font-bold text-blue-500`}>{(cptW*pilotArms.cpt).toFixed(1)}</td>
                                                             </tr>
                                                         );
                                                         // 3. 변동 좌석
-                                                        const varSeats = VARIABLE_SEATS[selectedAc] || [];
+                                                        const varSeats = visibleSeats[selectedAc] || [];
                                                         varSeats.forEach(id => {
                                                             const w = seatWeights[id];
                                                             if (!w) return;
@@ -863,13 +995,17 @@
                                     {/* ── Lateral Edit Popup ── */}
                                     {lateralEditPopup && (() => {
                                         const lep = lateralEditPopup;
-                                        const isPilot = lep.type === 'pilot';
+                                        const isPlt = lep.type === 'plt';
+                                        const isCpt = lep.type === 'cpt';
                                         const isCustom = lep.type === 'custom';
                                         const isSeat = lep.type === 'seat';
                                         const confirmEdit = () => {
-                                            if (isPilot) {
-                                                updateItem('pilot','weight', lep.weight || 0);
-                                                setPilotArms({ plt: lep.arm, cpt: lep.armCpt });
+                                            if (isPlt) {
+                                                setLateralPilotWeights(prev => ({...prev, plt: lep.weight || 0}));
+                                                setPilotArms(prev => ({...prev, plt: lep.arm}));
+                                            } else if (isCpt) {
+                                                setLateralPilotWeights(prev => ({...prev, cpt: lep.weight || 0}));
+                                                setPilotArms(prev => ({...prev, cpt: lep.arm}));
                                             } else if (isCustom) {
                                                 updateCustomLateralItem(lep.id,'label', lep.editLabel || '');
                                                 updateCustomLateralItem(lep.id,'weight', lep.weight || 0);
@@ -893,7 +1029,7 @@
                                                     {/* 무게 */}
                                                     <div className="mb-2.5">
                                                         <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">
-                                                            {isPilot ? 'Weight 합계 (PLT+CPT) kg' : 'Weight (kg)'}
+                                                            Weight (kg)
                                                         </label>
                                                         <input autoFocus type="number" value={lep.weight || ''} placeholder="0"
                                                                onChange={e => lepUpdate('weight', parseFloat(e.target.value) || 0)}
@@ -901,24 +1037,7 @@
                                                                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono text-right focus:ring-2 focus:ring-purple-400 outline-none" />
                                                     </div>
                                                     {/* 암 */}
-                                                    {isPilot ? (
-                                                        <div className="flex gap-2 mb-2.5">
-                                                            <div className="flex-1">
-                                                                <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">PLT Arm (mm)</label>
-                                                                <input type="number" value={Math.round((lep.arm||0)*1000)}
-                                                                       onChange={e => lepUpdate('arm',(parseFloat(e.target.value)||0)/1000)}
-                                                                       onKeyDown={e => e.key === 'Enter' && confirmEdit()}
-                                                                       className="w-full px-2 py-2 border border-indigo-200 rounded-xl text-sm font-mono text-right focus:ring-2 focus:ring-indigo-400 outline-none" />
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">CPT Arm (mm)</label>
-                                                                <input type="number" value={Math.round((lep.armCpt||0)*1000)}
-                                                                       onChange={e => lepUpdate('armCpt',(parseFloat(e.target.value)||0)/1000)}
-                                                                       onKeyDown={e => e.key === 'Enter' && confirmEdit()}
-                                                                       className="w-full px-2 py-2 border border-indigo-200 rounded-xl text-sm font-mono text-right focus:ring-2 focus:ring-indigo-400 outline-none" />
-                                                            </div>
-                                                        </div>
-                                                    ) : !isSeat && (
+                                                    {(isPlt || isCpt || !isSeat) && (
                                                         <div className="mb-2.5">
                                                             <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">CG Arm (mm)</label>
                                                             <input type="number" value={Math.round((lep.arm||0)*1000)}
@@ -1040,7 +1159,7 @@
                                                                 </g>
                                                             );
                                                         })}
-                                                        <circle cx={cgX} cy={cgY} r="6" fill={lateralStats.isWithinLimit ? '#10b981' : '#ef4444'} stroke="white" strokeWidth="2" />
+                                                        <circle cx={cgX} cy={cgY} r="3" fill={lateralStats.isWithinLimit ? '#10b981' : '#ef4444'} stroke="white" strokeWidth="1" />
                                                         <text x={M.l+CW/2} y={SH-6} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#64748b">BL (m)</text>
                                                         <text x="10" y={M.t+CH/2} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#64748b" transform={`rotate(-90,10,${M.t+CH/2})`}>Weight (kg)</text>
                                                     </svg>
