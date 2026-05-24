@@ -1077,37 +1077,37 @@ function CoordConv() {
                             </div>
                         </div>
                         ${valid ? html`
-                            <div class="result-box rounded-xl p-4 space-y-3">
-                                <div class="bg-blue-600 bg-opacity-20 border border-blue-500 rounded-lg px-3 py-2">
+                            <div class="result-box rounded-xl p-4">
+                                <div class="bg-blue-600 bg-opacity-20 border border-blue-500 rounded-lg px-3 py-2 mb-3">
                                     <div class="text-[9px] text-blue-300 font-black uppercase mb-1">ICAO 형식</div>
                                     <div class="font-mono text-base font-black text-white tracking-widest">${ld}${String(latDMS.d).padStart(2,'0')}${String(latDMS.m).padStart(2,'0')}${latDMS.s.toFixed(0).padStart(2,'0')} ${lo}${String(lonDMS.d).padStart(3,'0')}${String(lonDMS.m).padStart(2,'0')}${lonDMS.s.toFixed(0).padStart(2,'0')}</div>
                                 </div>
-                                <div class="border-b border-slate-700 pb-3" style=${'display:'+(type==='DD'?'none':'block')}>
+                                <div style=${'border-bottom:1px solid rgba(100,116,139,0.4);padding-bottom:12px;margin-bottom:12px;display:'+(type==='DD'?'none':'block')}>
                                     <div class="text-[9px] text-slate-400 font-black uppercase mb-1">십진도 DD</div>
                                     <div class="font-mono text-xs text-white font-bold space-y-0.5">
                                         <div>${ld} ${Math.abs(latDec).toFixed(6)}°</div>
                                         <div>${lo} ${Math.abs(lonDec).toFixed(6)}°</div>
                                     </div>
                                 </div>
-                                <div class="border-b border-slate-700 pb-3" style=${'display:'+(type==='DMS'?'none':'block')}>
+                                <div style=${'border-bottom:1px solid rgba(100,116,139,0.4);padding-bottom:12px;margin-bottom:12px;display:'+(type==='DMS'?'none':'block')}>
                                     <div class="text-[9px] text-slate-400 font-black uppercase mb-1">도분초 DMS</div>
                                     <div class="font-mono text-xs text-white font-bold space-y-0.5">
                                         <div>${ld} ${latDMS.d}° ${latDMS.m}' ${latDMS.s.toFixed(2)}"</div>
                                         <div>${lo} ${lonDMS.d}° ${lonDMS.m}' ${lonDMS.s.toFixed(2)}"</div>
                                     </div>
                                 </div>
-                                <div class="border-b border-slate-700 pb-3" style=${'display:'+(type==='DDM'?'none':'block')}>
+                                <div style=${'border-bottom:1px solid rgba(100,116,139,0.4);padding-bottom:12px;margin-bottom:12px;display:'+(type==='DDM'?'none':'block')}>
                                     <div class="text-[9px] text-slate-400 font-black uppercase mb-1">도분 DDM</div>
                                     <div class="font-mono text-xs text-white font-bold space-y-0.5">
                                         <div>${ld} ${latDMS.d}° ${(latDMS.m+latDMS.s/60).toFixed(4)}'</div>
                                         <div>${lo} ${lonDMS.d}° ${(lonDMS.m+lonDMS.s/60).toFixed(4)}'</div>
                                     </div>
                                 </div>
-                                <div class="border-b border-slate-700 pb-3" style=${'display:'+(type==='MGRS'?'none':'block')}>
+                                <div style=${'border-bottom:1px solid rgba(100,116,139,0.4);padding-bottom:12px;margin-bottom:12px;display:'+(type==='MGRS'?'none':'block')}>
                                     <div class="text-[9px] text-slate-400 font-black uppercase mb-1">MGRS</div>
                                     <div class="font-mono text-sm text-white font-black tracking-wider">${toMGRS(latDec,lonDec)}</div>
                                 </div>
-                                <div class="border-t border-slate-700 pt-3" style=${'display:'+(type==='NGP'?'none':'block')}>
+                                <div style=${'display:'+(type==='NGP'?'none':'block')}>
                                     <div class="text-[9px] text-slate-400 font-black uppercase mb-1">국가지점번호</div>
                                     <div class="font-mono text-sm text-white font-black tracking-wider">
                                         ${(()=>{try{const {E,N}=wgs84ToNgpUtmk(latDec,lonDec);return formatNgp(E,N);}catch(e){return '한국 영역 외';}})()}
