@@ -1052,8 +1052,18 @@ function CoordConv() {
                                             const {E,N}=parseNgp(ngpInput);
                                             const {lat,lon}=ngpUtmkToWgs84(E,N);
                                             const ngp=formatNgp(E,N);
+                                            const ld2=lat>=0?'N':'S',lo2=lon>=0?'E':'W';
+                                            const ad=Math.abs(lat),ao=Math.abs(lon);
+                                            const dd2=Math.floor(ad),dm2=Math.floor((ad-dd2)*60),ds2=((ad-dd2)*60-dm2)*60;
+                                            const od2=Math.floor(ao),om2=Math.floor((ao-od2)*60),os2=((ao-od2)*60-om2)*60;
+                                            const latDDM=ld2+' '+dd2+'° '+(dm2+(ds2/60)).toFixed(4)+"'";
+                                            const lonDDM=lo2+' '+od2+'° '+(om2+(os2/60)).toFixed(4)+"'";
+                                            const icao=ld2+String(dd2).padStart(2,'0')+String(dm2).padStart(2,'0')+ds2.toFixed(0).padStart(2,'0')+' '+lo2+String(od2).padStart(3,'0')+String(om2).padStart(2,'0')+os2.toFixed(0).padStart(2,'0');
                                             setNgpResult({ngp,lat:lat.toFixed(6),lon:lon.toFixed(6),
-                                                latDMS:ngpDmsStr(lat)+(lat>=0?' N':' S'),lonDMS:ngpDmsStr(lon)+(lon>=0?' E':' W'),
+                                                latDMS:ld2+' '+dd2+'° '+dm2+"' "+ds2.toFixed(2)+'"',
+                                                lonDMS:lo2+' '+od2+'° '+om2+"' "+os2.toFixed(2)+'"',
+                                                latDDM,lonDDM,icao,
+                                                mgrs:toMGRS(lat,lon),
                                                 utmkE:E,utmkN:N});
                                         }catch(e){setNgpError(e.message);}
                                     }} class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black rounded-xl transition-all">\ubcc0\ud658</button>
@@ -1075,8 +1085,18 @@ function CoordConv() {
                                         try{
                                             const {E,N}=wgs84ToNgpUtmk(latDD,lonDD);
                                             const ngp=formatNgp(E,N);
+                                            const ld2=latDD>=0?'N':'S',lo2=lonDD>=0?'E':'W';
+                                            const ad=Math.abs(latDD),ao=Math.abs(lonDD);
+                                            const dd2=Math.floor(ad),dm2=Math.floor((ad-dd2)*60),ds2=((ad-dd2)*60-dm2)*60;
+                                            const od2=Math.floor(ao),om2=Math.floor((ao-od2)*60),os2=((ao-od2)*60-om2)*60;
+                                            const latDDM=ld2+' '+dd2+'° '+(dm2+(ds2/60)).toFixed(4)+"'";
+                                            const lonDDM=lo2+' '+od2+'° '+(om2+(os2/60)).toFixed(4)+"'";
+                                            const icao=ld2+String(dd2).padStart(2,'0')+String(dm2).padStart(2,'0')+ds2.toFixed(0).padStart(2,'0')+' '+lo2+String(od2).padStart(3,'0')+String(om2).padStart(2,'0')+os2.toFixed(0).padStart(2,'0');
                                             setNgpResult({ngp,lat:latDD.toFixed(6),lon:lonDD.toFixed(6),
-                                                latDMS:ngpDmsStr(latDD)+(latDD>=0?' N':' S'),lonDMS:ngpDmsStr(lonDD)+(lonDD>=0?' E':' W'),
+                                                latDMS:ld2+' '+dd2+'° '+dm2+"' "+ds2.toFixed(2)+'"',
+                                                lonDMS:lo2+' '+od2+'° '+om2+"' "+os2.toFixed(2)+'"',
+                                                latDDM,lonDDM,icao,
+                                                mgrs:toMGRS(latDD,lonDD),
                                                 utmkE:E,utmkN:N});
                                         }catch(e){setNgpError(e.message);}
                                     }} class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black rounded-xl transition-all">\ubcc0\ud658</button>
@@ -1084,23 +1104,42 @@ function CoordConv() {
                                 ${ngpError && html`<div class="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-600 font-bold">\uc624\ub958: ${ngpError}</div>`}
                                 ${ngpResult && html`
                                     <div class="result-box rounded-xl p-4 space-y-3">
-                                        <div class="text-center border-b border-slate-700 pb-3">
-                                            <div class="text-[9px] text-slate-400 font-black uppercase mb-1">\uad6d\uac00\uc9c0\uc810\ubc88\ud638</div>
+                                        <div class="bg-blue-600 bg-opacity-20 border border-blue-500 rounded-lg px-3 py-2 text-center">
+                                            <div class="text-[9px] text-blue-300 font-black uppercase mb-1">국가지점번호</div>
                                             <div class="text-2xl font-black text-white tracking-widest font-mono">${ngpResult.ngp}</div>
                                         </div>
-                                        <div class="space-y-2 text-xs">
-                                            <div class="flex justify-between items-start gap-2">
-                                                <span class="text-slate-400 font-black shrink-0">\uc704\ub3c4</span>
-                                                <span class="text-white font-mono text-right">${ngpResult.lat}\u00b0 (${ngpResult.latDMS})</span>
+                                        <div class="border-b border-slate-700 pb-2">
+                                            <div class="text-[9px] text-slate-400 font-black uppercase mb-1">ICAO 형식</div>
+                                            <div class="font-mono text-xs text-white font-black">${ngpResult.icao}</div>
+                                        </div>
+                                        <div class="border-b border-slate-700 pb-2">
+                                            <div class="text-[9px] text-slate-400 font-black uppercase mb-1">십진도 DD</div>
+                                            <div class="font-mono text-xs text-white font-bold space-y-0.5">
+                                                <div>${parseFloat(ngpResult.lat)>=0?'N':'S'} ${Math.abs(parseFloat(ngpResult.lat)).toFixed(6)}°</div>
+                                                <div>${parseFloat(ngpResult.lon)>=0?'E':'W'} ${Math.abs(parseFloat(ngpResult.lon)).toFixed(6)}°</div>
                                             </div>
-                                            <div class="flex justify-between items-start gap-2">
-                                                <span class="text-slate-400 font-black shrink-0">\uacbd\ub3c4</span>
-                                                <span class="text-white font-mono text-right">${ngpResult.lon}\u00b0 (${ngpResult.lonDMS})</span>
+                                        </div>
+                                        <div class="border-b border-slate-700 pb-2">
+                                            <div class="text-[9px] text-slate-400 font-black uppercase mb-1">도분초 DMS</div>
+                                            <div class="font-mono text-xs text-white font-bold space-y-0.5">
+                                                <div>${ngpResult.latDMS}</div>
+                                                <div>${ngpResult.lonDMS}</div>
                                             </div>
-                                            <div class="flex justify-between items-start gap-2 pt-1 border-t border-slate-700">
-                                                <span class="text-slate-400 font-black shrink-0">UTM-K (E/N)</span>
-                                                <span class="text-blue-300 font-mono text-right">${ngpResult.utmkE.toLocaleString()} / ${ngpResult.utmkN.toLocaleString()}</span>
+                                        </div>
+                                        <div class="border-b border-slate-700 pb-2">
+                                            <div class="text-[9px] text-slate-400 font-black uppercase mb-1">도분 DDM</div>
+                                            <div class="font-mono text-xs text-white font-bold space-y-0.5">
+                                                <div>${ngpResult.latDDM}</div>
+                                                <div>${ngpResult.lonDDM}</div>
                                             </div>
+                                        </div>
+                                        <div class="border-b border-slate-700 pb-2">
+                                            <div class="text-[9px] text-slate-400 font-black uppercase mb-1">MGRS</div>
+                                            <div class="font-mono text-sm text-white font-black tracking-wider">${ngpResult.mgrs}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-[9px] text-slate-400 font-black uppercase mb-1">UTM-K (E / N)</div>
+                                            <div class="font-mono text-xs text-blue-300 font-bold">${ngpResult.utmkE.toLocaleString()} / ${ngpResult.utmkN.toLocaleString()}</div>
                                         </div>
                                     </div>`}
                                 <p class="text-[9px] text-slate-400">* UTM-K(GRS80) \uc5ed\ud22c\uc601 \uae30\ubc18, \uc815\ud655\ub3c4 \u00b110~30m \u00b7 \uad6c\uc870\u00b7\uad6c\uae09 \ubcf4\uc870\uc6a9</p>
@@ -1150,6 +1189,12 @@ function CoordConv() {
                                 <div>
                                     <div class="text-[9px] text-slate-400 font-black uppercase mb-1">MGRS</div>
                                     <div class="font-mono text-sm text-white font-black tracking-wider">${toMGRS(latDec,lonDec)}</div>
+                                </div>
+                                <div class="border-t border-slate-700 pt-3">
+                                    <div class="text-[9px] text-slate-400 font-black uppercase mb-1">국가지점번호</div>
+                                    <div class="font-mono text-sm text-white font-black tracking-wider">
+                                        ${(()=>{try{const {E,N}=wgs84ToNgpUtmk(latDec,lonDec);return formatNgp(E,N);}catch(e){return '한국 영역 외';}})()}
+                                    </div>
                                 </div>
                             </div>
                         ` : html`<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 font-bold">유효하지 않은 좌표입니다.</div>`}
