@@ -681,9 +681,7 @@ function CoordConv() {
     const [lonDd,setLonDd]=useState(126); const [lonDm,setLonDm]=useState(29.884); const [lonDdir,setLonDdir]=useState('E');
     const [mgrsIn, setMgrsIn] = useState('52S BG 78891 55375');
     const [ngpInput, setNgpInput] = useState('다사 5381 5262');
-    const [ngpMode, setNgpMode] = useState('ngp2ll');
-    const [ngpResult, setNgpResult] = useState(null);
-    const [ngpError, setNgpError] = useState('');
+
 
     const latDec = useMemo(() => {
         if (type==='DD') return latDD;
@@ -1056,80 +1054,12 @@ function CoordConv() {
                         `}
                         <div class="space-y-3" style=${'display:'+(type==='MGRS'||type==='NGP'?'none':'block')}>
                         ${type==='NGP' && html`
-                            <div class="space-y-3">
-                                <div class="flex gap-2">
-                                    ${[['ngp2ll','국가지점번호 \u2192 \uc704\uacbd\ub3c4'],['ll2ngp','\uc704\uacbd\ub3c4 \u2192 \uad6d\uac00\uc9c0\uc810\ubc88\ud638']].map(([m,l]) => html`
-                                        <button key=${m} onClick=${()=>{setNgpMode(m);setNgpResult(null);setNgpError('');}}
-                                            class=${'flex-1 py-2 text-xs font-black rounded-lg '+(ngpMode===m?'bg-blue-600 text-white':'bg-slate-100 text-slate-500')}>
-                                            ${l}
-                                        </button>`)}
-                                </div>
-                                ${ngpMode==='ngp2ll' ? html`
-                                    <div>
-                                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">\uad6d\uac00\uc9c0\uc810\ubc88\ud638 \uc785\ub825</label>
-                                        <input type="text" value=${ngpInput} onInput=${e=>setNgpInput(e.target.value)}
-                                            placeholder="\uc608: \ub2e4\uc0ac 5381 5262"
-                                            class="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold font-mono outline-none focus:ring-2 focus:ring-blue-500"/>
-                                        <p class="text-[9px] text-slate-400 mt-1">\ud55c\uae00 2\uc790 + \uc22b\uc790 8\uc790\ub9ac (10m\ub2e8\uc704) | \uc774\uc21c\uc2e0\ub3d9\uc0c1:\ub2e4\uc0ac 5381 5262 | \uc778\uccad:\ub2e4\ubc14 9302 8621</p>
-                                    </div>
-                                    <button onClick=${()=>{
-                                        setNgpError(''); setNgpResult(null);
-                                        try{
-                                            const {E,N}=parseNgp(ngpInput);
-                                            const {lat,lon}=ngpUtmkToWgs84(E,N);
-                                            const ngp=formatNgp(E,N);
-                                            const ld2=lat>=0?'N':'S',lo2=lon>=0?'E':'W';
-                                            const ad=Math.abs(lat),ao=Math.abs(lon);
-                                            const dd2=Math.floor(ad),dm2=Math.floor((ad-dd2)*60),ds2=((ad-dd2)*60-dm2)*60;
-                                            const od2=Math.floor(ao),om2=Math.floor((ao-od2)*60),os2=((ao-od2)*60-om2)*60;
-                                            const latDDM=ld2+' '+dd2+'° '+(dm2+(ds2/60)).toFixed(4)+"'";
-                                            const lonDDM=lo2+' '+od2+'° '+(om2+(os2/60)).toFixed(4)+"'";
-                                            const icao=ld2+String(dd2).padStart(2,'0')+String(dm2).padStart(2,'0')+ds2.toFixed(0).padStart(2,'0')+' '+lo2+String(od2).padStart(3,'0')+String(om2).padStart(2,'0')+os2.toFixed(0).padStart(2,'0');
-                                            setNgpResult({ngp,lat:lat.toFixed(6),lon:lon.toFixed(6),
-                                                latDMS:ld2+' '+dd2+'° '+dm2+"' "+ds2.toFixed(2)+'"',
-                                                lonDMS:lo2+' '+od2+'° '+om2+"' "+os2.toFixed(2)+'"',
-                                                latDDM,lonDDM,icao,
-                                                mgrs:toMGRS(lat,lon),
-                                                utmkE:E,utmkN:N});
-                                        }catch(e){setNgpError(e.message);}
-                                    }} class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black rounded-xl transition-all">\ubcc0\ud658</button>
-                                ` : html`
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label class="text-[9px] font-black text-slate-400 uppercase">\uc704\ub3c4 (\u00b0N)</label>
-                                            <input type="number" value=${latDD} onInput=${e=>setLatDD(parseFloat(e.target.value)||0)} step="0.000001"
-                                                class="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500"/>
-                                        </div>
-                                        <div>
-                                            <label class="text-[9px] font-black text-slate-400 uppercase">\uacbd\ub3c4 (\u00b0E)</label>
-                                            <input type="number" value=${lonDD} onInput=${e=>setLonDD(parseFloat(e.target.value)||0)} step="0.000001"
-                                                class="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-1 focus:ring-blue-500"/>
-                                        </div>
-                                    </div>
-                                    <button onClick=${()=>{
-                                        setNgpError(''); setNgpResult(null);
-                                        try{
-                                            const {E,N}=wgs84ToNgpUtmk(latDD,lonDD);
-                                            const ngp=formatNgp(E,N);
-                                            const ld2=latDD>=0?'N':'S',lo2=lonDD>=0?'E':'W';
-                                            const ad=Math.abs(latDD),ao=Math.abs(lonDD);
-                                            const dd2=Math.floor(ad),dm2=Math.floor((ad-dd2)*60),ds2=((ad-dd2)*60-dm2)*60;
-                                            const od2=Math.floor(ao),om2=Math.floor((ao-od2)*60),os2=((ao-od2)*60-om2)*60;
-                                            const latDDM=ld2+' '+dd2+'° '+(dm2+(ds2/60)).toFixed(4)+"'";
-                                            const lonDDM=lo2+' '+od2+'° '+(om2+(os2/60)).toFixed(4)+"'";
-                                            const icao=ld2+String(dd2).padStart(2,'0')+String(dm2).padStart(2,'0')+ds2.toFixed(0).padStart(2,'0')+' '+lo2+String(od2).padStart(3,'0')+String(om2).padStart(2,'0')+os2.toFixed(0).padStart(2,'0');
-                                            setNgpResult({ngp,lat:latDD.toFixed(6),lon:lonDD.toFixed(6),
-                                                latDMS:ld2+' '+dd2+'° '+dm2+"' "+ds2.toFixed(2)+'"',
-                                                lonDMS:lo2+' '+od2+'° '+om2+"' "+os2.toFixed(2)+'"',
-                                                latDDM,lonDDM,icao,
-                                                mgrs:toMGRS(latDD,lonDD),
-                                                utmkE:E,utmkN:N});
-                                        }catch(e){setNgpError(e.message);}
-                                    }} class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black rounded-xl transition-all">\ubcc0\ud658</button>
-                                `}
-                                ${ngpError && html`<div class="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-600 font-bold">\uc624\ub958: ${ngpError}</div>`}
-                                <!-- NGP 결과: valid 공통 결과박스로 통합 표시 -->
-                                <p class="text-[9px] text-slate-400">* UTM-K(GRS80) \uc5ed\ud22c\uc601 \uae30\ubc18, \uc815\ud655\ub3c4 \u00b110~30m \u00b7 \uad6c\uc870\u00b7\uad6c\uae09 \ubcf4\uc870\uc6a9</p>
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black text-slate-400 uppercase">국가지점번호 입력</label>
+                                <input type="text" value=${ngpInput} onInput=${e=>setNgpInput(e.target.value)}
+                                    placeholder="예: 다사 5381 5262"
+                                    class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold font-mono outline-none focus:ring-2 focus:ring-blue-500"/>
+                                <p class="text-[9px] text-slate-400">한글 2자 + 숫자 8자리 (10m 단위) | 이순신동상: 다사 5381 5262 | 인천: 다바 9302 8621</p>
                             </div>
                         `}
 
@@ -1183,12 +1113,7 @@ function CoordConv() {
                                         ${(()=>{try{const {E,N}=wgs84ToNgpUtmk(latDec,lonDec);return formatNgp(E,N);}catch(e){return '한국 영역 외';}})()}
                                     </div>
                                 </div>
-                                <div class="pt-1">
-                                    <div class="text-[9px] text-slate-400 font-black uppercase mb-1">UTM-K (E / N)</div>
-                                    <div class="font-mono text-xs text-blue-300 font-bold">
-                                        ${(()=>{try{const {E,N}=wgs84ToNgpUtmk(latDec,lonDec);return E.toLocaleString()+' / '+N.toLocaleString();}catch(e){return '-';}})()}
-                                    </div>
-                                </div>
+
                             </div>
                         ` : html`<div class="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 font-bold">유효하지 않은 좌표입니다.</div>`}
                     </div>
