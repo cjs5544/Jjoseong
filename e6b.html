@@ -1052,7 +1052,6 @@ function CoordConv() {
                                 <p class="text-[9px] text-slate-400">형식: 구역번호 위도밴드 격자문자2 동 북 (공백 생략 가능)</p>
                             </div>
                         `}
-                        <div class="space-y-3" style=${'display:'+(type==='MGRS'||type==='NGP'?'none':'block')}>
                         ${type==='NGP' && html`
                             <div class="space-y-2">
                                 <label class="text-[9px] font-black text-slate-400 uppercase">국가지점번호 입력</label>
@@ -1062,6 +1061,7 @@ function CoordConv() {
                                 <p class="text-[9px] text-slate-400">한글 2자 + 숫자 8자리 (10m 단위) | 이순신동상: 다사 5381 5262 | 인천: 다바 9302 8621</p>
                             </div>
                         `}
+                        <div class="space-y-3" style=${'display:'+(type==='MGRS'||type==='NGP'?'none':'block')}>
 
                             <div class="space-y-1">
                                 <label class="text-[9px] font-black text-slate-400 uppercase">위도 (Latitude)</label>
