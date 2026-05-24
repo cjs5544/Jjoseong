@@ -928,7 +928,31 @@ function CoordConv() {
             return div;
         };
         layerCtrl.addTo(leafletMap.current);
-        markerRef.current = L.marker([37.51887, 126.49807]).addTo(leafletMap.current);
+        // Leaflet 기본 마커 아이콘 경로 수동 설정 (CDN 이미지 로드 오류 방지)
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        });
+
+        // 커스텀 파란 핀 아이콘 (divIcon — 이미지 불필요)
+        const pinIcon = L.divIcon({
+            className: '',
+            html: '<div style="position:relative;width:0;height:0;">'
+                + '<div style="position:absolute;left:-11px;top:-34px;width:22px;height:34px;">'
+                + '<svg viewBox="0 0 22 34" xmlns="http://www.w3.org/2000/svg">'
+                + '<path d="M11 0C5 0 0 5 0 11c0 8 11 23 11 23S22 19 22 11C22 5 17 0 11 0z" fill="#2563eb" stroke="#1d4ed8" stroke-width="1"/>'
+                + '<circle cx="11" cy="11" r="5" fill="white"/>'
+                + '</svg>'
+                + '</div>'
+                + '</div>',
+            iconSize: [0, 0],
+            iconAnchor: [0, 0],
+            popupAnchor: [0, -34]
+        });
+
+        markerRef.current = L.marker([37.51887, 126.49807], {icon: pinIcon}).addTo(leafletMap.current);
 
         const crosshairIcon = L.divIcon({
             className:'',
