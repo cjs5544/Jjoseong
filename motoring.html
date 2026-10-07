@@ -203,9 +203,11 @@
                 <div class="flex items-center gap-1 sm:gap-1.5">
                     <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500"></span>
                     <h2 class="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">ENG 1</h2>
-                    <span id="cycleBadge1" class="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap tracking-wider">
-                        ● ○ ○
-                    </span>
+                    <div id="cycleBadge1" class="flex items-center gap-0.5 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 whitespace-nowrap shadow-sm">
+                        <button type="button" onclick="setEngineCycle(1, 1)" id="cycleDot1_1" title="ENG 1: Cycle 1 (60초 쿨다운)" class="p-0.5 text-[10px] sm:text-[11px] font-black text-blue-600 dark:text-blue-400 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer">●</button>
+                        <button type="button" onclick="setEngineCycle(1, 2)" id="cycleDot1_2" title="ENG 1: Cycle 2 (60초 쿨다운)" class="p-0.5 text-[10px] sm:text-[11px] font-black text-slate-400 dark:text-slate-500 hover:text-amber-500 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer">○</button>
+                        <button type="button" onclick="setEngineCycle(1, 3)" id="cycleDot1_3" title="ENG 1: Cycle 3 (30분 쿨다운)" class="p-0.5 text-[10px] sm:text-[11px] font-black text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer">○</button>
+                    </div>
                 </div>
                 <div id="statusTag1" class="text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
                     READY
@@ -310,7 +312,7 @@
 
             <!-- 하단 리셋 버튼 -->
             <div class="flex items-center justify-between pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-800/80">
-                <span class="text-[8px] sm:text-[9px] text-slate-400">1·2차:60s / 3차:30m</span>
+                <span id="cycleDesc1" class="text-[8px] sm:text-[9px] text-slate-400"><span class="text-blue-500 font-bold">1차</span>: 60s 쿨다운</span>
                 <button onclick="resetEngineCycle(1)" class="text-[9px] sm:text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors whitespace-nowrap">
                     🔄 리셋
                 </button>
@@ -326,9 +328,11 @@
                 <div class="flex items-center gap-1 sm:gap-1.5">
                     <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-500"></span>
                     <h2 class="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">ENG 2</h2>
-                    <span id="cycleBadge2" class="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap tracking-wider">
-                        ● ○ ○
-                    </span>
+                    <div id="cycleBadge2" class="flex items-center gap-0.5 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 whitespace-nowrap shadow-sm">
+                        <button type="button" onclick="setEngineCycle(2, 1)" id="cycleDot2_1" title="ENG 2: Cycle 1 (60초 쿨다운)" class="p-0.5 text-[10px] sm:text-[11px] font-black text-blue-600 dark:text-blue-400 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer">●</button>
+                        <button type="button" onclick="setEngineCycle(2, 2)" id="cycleDot2_2" title="ENG 2: Cycle 2 (60초 쿨다운)" class="p-0.5 text-[10px] sm:text-[11px] font-black text-slate-400 dark:text-slate-500 hover:text-amber-500 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer">○</button>
+                        <button type="button" onclick="setEngineCycle(2, 3)" id="cycleDot2_3" title="ENG 2: Cycle 3 (30분 쿨다운)" class="p-0.5 text-[10px] sm:text-[11px] font-black text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer">○</button>
+                    </div>
                 </div>
                 <div id="statusTag2" class="text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
                     READY
@@ -433,7 +437,7 @@
 
             <!-- 하단 리셋 버튼 -->
             <div class="flex items-center justify-between pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-800/80">
-                <span class="text-[8px] sm:text-[9px] text-slate-400">1·2차:60s / 3차:30m</span>
+                <span id="cycleDesc2" class="text-[8px] sm:text-[9px] text-slate-400"><span class="text-blue-500 font-bold">1차</span>: 60s 쿨다운</span>
                 <button onclick="resetEngineCycle(2)" class="text-[9px] sm:text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors whitespace-nowrap">
                     🔄 리셋
                 </button>
@@ -953,6 +957,41 @@
             renderAll();
         }
 
+        // 사용자 직접 사이클 도트 선택 (도트 클릭 시 해당 사이클 타이머 즉시 전환)
+        function setEngineCycle(id, targetCycle) {
+            targetCycle = parseInt(targetCycle, 10);
+            if (![1, 2, 3].includes(targetCycle)) return;
+            const eng = appState.engines[id];
+            if (!eng) return;
+
+            eng.cycle = targetCycle;
+
+            if (eng.state === 'READY') {
+                eng.elapsed = 0.0;
+                eng.coolStart = null;
+                eng.coolEnd = null;
+                eng.lastCountdown = null;
+                if (targetCycle > 1) {
+                    eng.lastStopTime = Date.now();
+                } else {
+                    eng.lastStopTime = null;
+                }
+            } else if (eng.state === 'COOLING') {
+                // 냉각 중 사이클 도트 변경 시 해당 사이클의 쿨타임(1·2차: 60s, 3차: 30분)으로 타이머 즉시 전환
+                const coolSec = (targetCycle === 3) ? RFM.COOL_3 : RFM.COOL_1;
+                eng.coolTotal = coolSec;
+                eng.coolStart = Date.now();
+                eng.coolEnd = Date.now() + (coolSec * 1000);
+            } else if (eng.state === 'RUNNING') {
+                // 가동 중 변경 시 정지 후 진입할 쿨다운을 해당 사이클 규격으로 예약
+            }
+
+            saveState();
+            renderAll();
+            playChime();
+            vibrate([100, 50, 100]);
+        }
+
         function resetEngineCycle(id) {
             const eng = appState.engines[id];
             if (eng.state === 'COOLING') {
@@ -1157,16 +1196,48 @@
                 if (targetEcho) targetEcho.innerText = target.toFixed(1);
                 if (targetEchoBar) targetEchoBar.innerText = target.toFixed(1);
 
-                // 사이클 도트 배지 (●○○ / ●●○ / ●●●)
-                if (cycleB) {
-                    const dots = (eng.cycle === 1) ? '● ○ ○' : (eng.cycle === 2) ? '● ● ○' : '● ● ●';
-                    cycleB.innerText = dots;
-                    if (eng.cycle === 3) {
-                        cycleB.className = "px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 whitespace-nowrap tracking-wider";
+                // 사이클 도트 배지 및 개별 버튼 인터랙션 (●○○ / ●●○ / ●●●)
+                const badgeBox = document.getElementById(`cycleBadge${id}`);
+                const dot1 = document.getElementById(`cycleDot${id}_1`);
+                const dot2 = document.getElementById(`cycleDot${id}_2`);
+                const dot3 = document.getElementById(`cycleDot${id}_3`);
+                const cycleDesc = document.getElementById(`cycleDesc${id}`);
+
+                if (badgeBox && dot1 && dot2 && dot3) {
+                    if (eng.cycle === 1) {
+                        badgeBox.className = "flex items-center gap-0.5 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 whitespace-nowrap shadow-sm";
+                        dot1.innerText = '●';
+                        dot1.className = "p-0.5 text-[10px] sm:text-[11px] font-black text-blue-600 dark:text-blue-400 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer";
+                        dot2.innerText = '○';
+                        dot2.className = "p-0.5 text-[10px] sm:text-[11px] font-black text-slate-400 dark:text-slate-500 hover:text-amber-500 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer";
+                        dot3.innerText = '○';
+                        dot3.className = "p-0.5 text-[10px] sm:text-[11px] font-black text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer";
                     } else if (eng.cycle === 2) {
-                        cycleB.className = "px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 whitespace-nowrap tracking-wider";
+                        badgeBox.className = "flex items-center gap-0.5 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 whitespace-nowrap shadow-sm";
+                        dot1.innerText = '●';
+                        dot1.className = "p-0.5 text-[10px] sm:text-[11px] font-black text-amber-600 dark:text-amber-400 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer";
+                        dot2.innerText = '●';
+                        dot2.className = "p-0.5 text-[10px] sm:text-[11px] font-black text-amber-600 dark:text-amber-400 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer";
+                        dot3.innerText = '○';
+                        dot3.className = "p-0.5 text-[10px] sm:text-[11px] font-black text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer";
+                    } else { // cycle === 3
+                        badgeBox.className = "flex items-center gap-0.5 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 whitespace-nowrap shadow-sm";
+                        dot1.innerText = '●';
+                        dot1.className = "p-0.5 text-[10px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer";
+                        dot2.innerText = '●';
+                        dot2.className = "p-0.5 text-[10px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer";
+                        dot3.innerText = '●';
+                        dot3.className = "p-0.5 text-[10px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400 hover:scale-125 active:scale-95 leading-none transition-transform cursor-pointer";
+                    }
+                }
+
+                if (cycleDesc) {
+                    if (eng.cycle === 1) {
+                        cycleDesc.innerHTML = `<span class="text-blue-500 font-bold">1차</span>: 60s 쿨다운`;
+                    } else if (eng.cycle === 2) {
+                        cycleDesc.innerHTML = `<span class="text-amber-500 font-bold">2차</span>: 60s 쿨다운`;
                     } else {
-                        cycleB.className = "px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap tracking-wider";
+                        cycleDesc.innerHTML = `<span class="text-rose-500 font-bold">3차</span>: 30분 쿨다운`;
                     }
                 }
 
