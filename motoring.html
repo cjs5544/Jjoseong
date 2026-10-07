@@ -1,62 +1,25 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AW139 Motoring Timer & Starter Duty Cycle Tracker</title>
+    <title>AW139 Motoring Timer - Incheon 119 Air Aviation</title>
     <!-- 오프라인 로컬 libs 폴더 우선 참조, 없을 경우를 위한 CDN 폴백 -->
     <script src="libs/tailwind.js" onerror="this.onerror=null; const s=document.createElement('script'); s.src='https://cdn.tailwindcss.com'; document.head.appendChild(s);"></script>
-    <script src="libs/lucide.js" onerror="this.onerror=null;"></script>
+    <script>
+        // Tailwind dark mode config fallback
+        if (window.tailwind) {
+            tailwind.config = { darkMode: 'class' };
+        }
+    </script>
     <style>
-        /* 기본 폰트 및 리셋 */
+        /* 기본 폰트 및 모바일 최적화 터치 스타일 */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', Roboto, sans-serif;
             -webkit-print-color-adjust: exact;
-            background-color: #0b0f19;
-            color: #f1f5f9;
             user-select: none;
             -webkit-user-select: none;
             touch-action: manipulation;
-        }
-
-        /* 항공 콕핏 다크 스타일 */
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(51, 65, 85, 0.6);
-        }
-
-        .glass-panel-glow {
-            box-shadow: 0 0 25px rgba(30, 58, 138, 0.15);
-        }
-
-        /* 점멸 애니메이션 */
-        @keyframes emergency-pulse {
-            0%, 100% { background-color: rgba(239, 68, 68, 0.15); border-color: #ef4444; }
-            50% { background-color: rgba(239, 68, 68, 0.45); border-color: #dc2626; box-shadow: 0 0 30px rgba(239, 68, 68, 0.6); }
-        }
-
-        @keyframes amber-pulse {
-            0%, 100% { border-color: #f59e0b; }
-            50% { border-color: #fbbf24; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
-        }
-
-        @keyframes green-pulse {
-            0%, 100% { border-color: #10b981; }
-            50% { border-color: #34d399; box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
-        }
-
-        .alert-flash-red {
-            animation: emergency-pulse 0.6s infinite;
-        }
-
-        .alert-flash-amber {
-            animation: amber-pulse 1s infinite;
-        }
-
-        .alert-flash-green {
-            animation: green-pulse 1.2s infinite;
         }
 
         /* SVG 게이지 회전 보정 */
@@ -71,420 +34,430 @@
 
         /* 버튼 탭 햅틱 느낌 */
         button:active {
-            transform: scale(0.98);
+            transform: scale(0.97);
         }
 
-        /* 스크롤바 */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        /* 경보 애니메이션 */
+        @keyframes emergency-pulse {
+            0%, 100% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+            50% { border-color: #dc2626; box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); }
+        }
+
+        @keyframes amber-pulse {
+            0%, 100% { border-color: #f59e0b; }
+            50% { border-color: #fbbf24; box-shadow: 0 0 20px rgba(245, 158, 11, 0.5); }
+        }
+
+        .alert-flash-red {
+            animation: emergency-pulse 0.6s infinite;
+        }
+
+        .alert-flash-amber {
+            animation: amber-pulse 1s infinite;
+        }
+
+        /* 스크롤바 얇게 */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #64748b; border-radius: 4px; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between p-2 sm:p-4 bg-slate-950 text-slate-100">
+<body id="appBody" class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between p-2 sm:p-3 transition-colors duration-200">
 
     <!-- ================= 상단 통합 네비게이션 헤더 ================= -->
-    <header class="w-full max-w-5xl mx-auto glass-panel rounded-2xl p-3 sm:p-4 mb-3 border border-slate-800 shadow-xl">
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+    <header class="w-full max-w-6xl mx-auto bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3 mb-2 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
             
-            <!-- 좌측: 유닛 타이틀 및 기체 선택 -->
-            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl sm:text-3xl">🚁</span>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs sm:text-sm font-black tracking-wider text-slate-200 uppercase">Incheon 119 Air Aviation</span>
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">PT6C-67C</span>
-                        </div>
-                        <h1 class="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-                            <span>AW139 Motoring Timer</span>
-                            <span class="text-[11px] font-medium text-slate-400">RFM Rev.33 Duty Cycle</span>
-                        </h1>
+            <!-- 좌측: 유닛명 + 기체 선택 (모바일 줄바꿈 방지 whitespace-nowrap) -->
+            <div class="flex items-center gap-2 whitespace-nowrap">
+                <span class="text-xl">🚁</span>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-black tracking-tight text-slate-800 dark:text-slate-200">인천119 AW139</span>
+                        <span class="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">PT6C-67C</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-tight">
+                        모터링 타이머 & 듀티 사이클
                     </div>
                 </div>
 
                 <!-- 기체 토글 (HL9695 2호기 / HL9277 3호기) -->
-                <div class="flex bg-slate-900 rounded-lg p-0.5 border border-slate-700">
-                    <button id="btnAc9695" onclick="setAircraft('HL9695')" class="px-2.5 py-1 rounded-md text-[11px] font-black transition-all bg-blue-600 text-white shadow">
-                        HL9695 <span class="text-[9px] text-blue-200">(2호기)</span>
+                <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 ml-1">
+                    <button id="btnAc9695" onclick="setAircraft('HL9695')" class="px-2 py-1 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow">
+                        HL9695<span class="hidden sm:inline">(2호기)</span>
                     </button>
-                    <button id="btnAc9277" onclick="setAircraft('HL9277')" class="px-2.5 py-1 rounded-md text-[11px] font-black transition-all text-slate-400 hover:text-white">
-                        HL9277 <span class="text-[9px] text-slate-400">(3호기)</span>
+                    <button id="btnAc9277" onclick="setAircraft('HL9277')" class="px-2 py-1 rounded-md text-[10px] font-black transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
+                        HL9277<span class="hidden sm:inline">(3호기)</span>
                     </button>
                 </div>
             </div>
 
-            <!-- 우측: 상단 4단 연동 네비게이션 & 설정 토글 -->
-            <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-                <!-- 4단 네비게이션 토글 바 -->
-                <div class="flex bg-slate-900 rounded-lg p-0.5 border border-slate-700">
-                    <a href="index.html" class="px-2.5 py-1.5 rounded-md text-[11px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">
-                        <span>🚁</span> W&B
+            <!-- 우측: 상단 4단 토글 네비게이션 + 주야간 + 설정 (모바일 한 줄 유지) -->
+            <div class="flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
+                
+                <!-- 4단 네비게이션 링크 그룹 -->
+                <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+                    <a href="index.html" class="px-2 py-1 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all flex items-center gap-0.5">
+                        <span>🚁</span><span class="hidden sm:inline">W&B</span>
                     </a>
-                    <a href="index.html#pa" class="px-2.5 py-1.5 rounded-md text-[11px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">
-                        <span>📊</span> Engine PA
+                    <a href="index.html#pa" class="px-2 py-1 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all flex items-center gap-0.5">
+                        <span>📊</span><span class="hidden sm:inline">PA</span>
                     </a>
-                    <a href="e6b.html" class="px-2.5 py-1.5 rounded-md text-[11px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">
-                        <span>🧮</span> E6B
+                    <a href="e6b.html" class="px-2 py-1 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all flex items-center gap-0.5">
+                        <span>🧮</span><span class="hidden sm:inline">E6B</span>
                     </a>
-                    <span class="px-2.5 py-1.5 rounded-md text-[11px] font-black bg-blue-600 text-white shadow flex items-center gap-1">
-                        <span>⏱️</span> Motoring
+                    <span class="px-2 py-1 rounded-md text-[10px] font-black bg-blue-600 text-white shadow flex items-center gap-0.5">
+                        <span>⏱️</span><span>모터링</span>
                     </span>
                 </div>
 
-                <!-- 콜아웃 언어 및 오디오/화면잠금방지 상태 -->
-                <div class="flex items-center gap-1.5">
-                    <button id="btnVoiceLang" onclick="toggleVoiceLang()" title="콜아웃 음성 언어 전환 (English / 한국어)" class="px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[10px] font-bold text-amber-400 hover:text-amber-300">
-                        🗣️ <span id="txtVoiceLang">EN</span>
-                    </button>
-                    <button id="btnSoundTest" onclick="testAudio()" title="경보음 및 음성 테스트" class="p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white text-xs">
-                        🔊
-                    </button>
-                    <span id="wakeLockBadge" title="화면 꺼짐 방지(Screen Wake Lock) 활성 여부" class="p-1.5 rounded-lg bg-slate-900 border border-emerald-700/50 text-[10px] text-emerald-400 font-bold">
-                        ⚡ON
-                    </span>
-                </div>
+                <!-- 주/야간 모드 토글 버튼 -->
+                <button id="btnThemeToggle" onclick="toggleTheme()" title="주간/야간 모드 전환" class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-700 dark:text-amber-400">
+                    <span id="txtThemeIcon">☀️</span>
+                </button>
+
+                <!-- 콜아웃 언어 토글 (EN / KO) -->
+                <button id="btnVoiceLang" onclick="toggleVoiceLang()" title="콜아웃 음성 언어" class="px-1.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    🗣️<span id="txtVoiceLang">EN</span>
+                </button>
+
+                <!-- 사운드 테스트 -->
+                <button onclick="testAudio()" title="사운드 테스트" class="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">
+                    🔊
+                </button>
+
+                <!-- 화면 잠금 방지 상태 배지 -->
+                <span id="wakeLockBadge" title="화면 꺼짐 방지 상태" class="px-1.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">
+                    ⚡ON
+                </span>
             </div>
 
         </div>
     </header>
 
-    <!-- ================= 메인 인터페이스 영역 ================= -->
-    <main class="w-full max-w-5xl mx-auto flex-1 flex flex-col gap-3">
-
-        <!-- 1. 제어 헤더: 엔진 선택 탭 (ENG 1 / ENG 2) & 모드 토글 (Dry / Wet) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            
-            <!-- 엔진 선택 탭 -->
-            <div class="glass-panel rounded-2xl p-2.5 flex items-center justify-between border border-slate-800">
-                <span class="text-xs font-bold text-slate-400 px-2 flex items-center gap-1.5">
-                    <span>⚙️</span> TARGET ENGINE
-                </span>
-                <div class="flex bg-slate-900 rounded-xl p-1 border border-slate-700/80 gap-1 flex-1 max-w-[280px]">
-                    <button id="btnEng1" onclick="switchEngine(1)" class="flex-1 py-2 rounded-lg text-xs font-black transition-all bg-emerald-600 text-white shadow flex items-center justify-center gap-1.5">
-                        <span>ENG 1</span>
-                        <span id="eng1Badge" class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950/80 text-emerald-300 font-semibold border border-emerald-500/40">READY</span>
-                    </button>
-                    <button id="btnEng2" onclick="switchEngine(2)" class="flex-1 py-2 rounded-lg text-xs font-black transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1.5">
-                        <span>ENG 2</span>
-                        <span id="eng2Badge" class="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-semibold border border-slate-700">READY</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 작업 모드 토글 (Dry vs Wet) -->
-            <div class="glass-panel rounded-2xl p-2.5 flex items-center justify-between border border-slate-800">
-                <span class="text-xs font-bold text-slate-400 px-2 flex items-center gap-1.5">
-                    <span>🛢️</span> MOTORING MODE
-                </span>
-                <div class="flex bg-slate-900 rounded-xl p-1 border border-slate-700/80 gap-1 flex-1 max-w-[320px]">
-                    <button id="btnModeDry" onclick="setMotoringMode('DRY')" class="flex-1 py-2 rounded-lg text-xs font-black transition-all bg-sky-600 text-white shadow flex flex-col items-center">
-                        <span>DRY MOTORING</span>
-                        <span class="text-[8px] opacity-80 font-normal">잔류연료 배출 / 건조</span>
-                    </button>
-                    <button id="btnModeWet" onclick="setMotoringMode('WET')" class="flex-1 py-2 rounded-lg text-xs font-black transition-all text-slate-400 hover:text-white flex flex-col items-center">
-                        <span>WET MOTORING</span>
-                        <span class="text-[8px] opacity-80 font-normal">방청유 플러싱 / 누설점검</span>
-                    </button>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- 2. 목표 가동 시간 프리셋 설정 바 (15s / 20s / 30s / 45s Max) -->
-        <div class="glass-panel rounded-2xl p-3 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-black text-amber-400 flex items-center gap-1">
-                    <span>🎯</span> TARGET DURATION:
-                </span>
-                <span id="targetDurationLabel" class="text-sm font-black text-white px-2 py-0.5 rounded bg-slate-900 border border-amber-500/40 text-amber-300">
-                    20 초
-                </span>
-                <span class="text-[11px] text-slate-400">
-                    (5초 전 카운트다운 ➔ 0초 시 <span class="text-rose-400 font-bold">"CUT"</span> 콜아웃)
-                </span>
-            </div>
-
-            <!-- 프리셋 버튼들 -->
-            <div class="flex items-center gap-1.5 flex-wrap">
-                <button onclick="setTargetDuration(15)" class="target-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:border-amber-400 hover:text-amber-300" data-sec="15">15s</button>
-                <button onclick="setTargetDuration(20)" class="target-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 font-black shadow border border-amber-400" data-sec="20">20s</button>
-                <button onclick="setTargetDuration(30)" class="target-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:border-amber-400 hover:text-amber-300" data-sec="30">30s</button>
-                <button onclick="setTargetDuration(45)" class="target-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 border border-rose-600/60 text-rose-400 hover:bg-rose-950/30" data-sec="45">45s (RFM Max)</button>
-                <div class="flex items-center bg-slate-900 rounded-lg border border-slate-700 ml-1">
-                    <button onclick="adjustTargetDuration(-5)" class="px-2 py-1 text-slate-400 hover:text-white font-bold text-xs">-5s</button>
-                    <button onclick="adjustTargetDuration(5)" class="px-2 py-1 text-slate-400 hover:text-white font-bold text-xs border-l border-slate-800">+5s</button>
-                </div>
+    <!-- ================= 상단 옵션 툴바 (목표시간 프리셋 + 모터링 모드) ================= -->
+    <section class="w-full max-w-6xl mx-auto bg-white dark:bg-slate-900 rounded-xl p-2 sm:p-2.5 mb-2 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-2 flex-wrap text-xs">
+        
+        <!-- 모터링 모드 토글 (Dry vs Wet) -->
+        <div class="flex items-center gap-1.5 whitespace-nowrap">
+            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">모드:</span>
+            <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+                <button id="btnModeDry" onclick="setMotoringMode('DRY')" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-sky-600 text-white shadow">
+                    Dry 모터링
+                </button>
+                <button id="btnModeWet" onclick="setMotoringMode('WET')" class="px-2 py-0.5 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                    Wet 모터링
+                </button>
             </div>
         </div>
 
-        <!-- 3. 핵심 대시보드: 듀얼 게이지 & 타이머 & 사이클 상태 디스플레이 -->
-        <div id="mainDashboardCard" class="glass-panel glass-panel-glow rounded-3xl p-4 sm:p-6 border border-slate-800 flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300">
+        <!-- 목표 가동 시간 프리셋 (모바일 한 줄로 콤팩트 배치) -->
+        <div class="flex items-center gap-1.5 whitespace-nowrap">
+            <span class="text-[11px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                <span>🎯</span>목표:
+            </span>
+            <div class="flex items-center gap-1">
+                <button onclick="setTargetDuration(15)" class="target-btn px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300" data-sec="15">15s</button>
+                <button onclick="setTargetDuration(20)" class="target-btn px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500 text-slate-950 shadow border border-amber-400" data-sec="20">20s</button>
+                <button onclick="setTargetDuration(30)" class="target-btn px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300" data-sec="30">30s</button>
+                <button onclick="setTargetDuration(45)" class="target-btn px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 border border-rose-500/40 text-rose-600 dark:text-rose-400" data-sec="45">45s(Max)</button>
+            </div>
+            <span id="targetDurationSummary" class="text-[10px] font-bold text-slate-500 dark:text-slate-400 hidden sm:inline">
+                (5초 전 카운트다운 ➔ 0초 "CUT")
+            </span>
+        </div>
+
+    </section>
+
+    <!-- ================= 메인: 좌우 독립 듀얼 엔진 대시보드 ================= -->
+    <main class="w-full max-w-6xl mx-auto flex-1 grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
+
+        <!-- =================== ENG 1 독립 제어 패널 =================== -->
+        <div id="cardEng1" class="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between relative overflow-hidden transition-all duration-200">
             
-            <!-- 상단 사이클 차수 배지 & 긴급 상태 알림 바 -->
-            <div class="w-full flex items-center justify-between mb-2">
-                <div class="flex items-center gap-2">
-                    <span id="cycleBadge" class="px-3 py-1 rounded-full text-xs font-black bg-blue-600/30 text-blue-300 border border-blue-500/50">
+            <!-- 상단 헤더: 엔진 타이틀 + 사이클 배지 + 상태 -->
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <h2 class="text-sm font-black text-slate-800 dark:text-slate-100">ENG 1 (좌측)</h2>
+                    <span id="cycleBadge1" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30">
                         CYCLE 1 / 3
                     </span>
-                    <span id="dutyRuleNotice" class="text-[11px] text-slate-400 hidden sm:inline">
-                        1·2차: 45초 ON / 60초 쿨다운 | 3차: 30분 락아웃
-                    </span>
                 </div>
-                <div id="engineStatusTag" class="text-xs font-extrabold px-2.5 py-0.5 rounded bg-slate-900 text-emerald-400 border border-emerald-500/40">
-                    ENG 1 : READY
+                <div id="statusTag1" class="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    READY
                 </div>
             </div>
 
-            <!-- 중앙 대형 원형 듀얼 게이지 (외측: RFM 45s 한계 / 내측: 세팅 목표치) -->
-            <div class="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center my-2">
-                <svg class="w-full h-full gauge-svg" viewBox="0 0 240 240">
-                    <!-- 외측 링 배경 (RFM 45s 절대 한계 트랙) -->
-                    <circle cx="120" cy="120" r="105" stroke="#1e293b" stroke-width="8" fill="none" stroke-linecap="round"></circle>
-                    <!-- 외측 링 35s 주의 마커 (각도 계산: 35/45 * 360deg) -->
-                    <!-- 외측 링 진행 바 (실제 경과시간 / 45초) -->
-                    <circle id="outerGaugeBar" class="gauge-circle" cx="120" cy="120" r="105" stroke="#3b82f6" stroke-width="8" fill="none" stroke-dasharray="659.7" stroke-dashoffset="659.7" stroke-linecap="round"></circle>
+            <!-- 중앙: 듀얼 게이지 & 대형 타이머 -->
+            <div class="flex items-center justify-center my-2 relative">
+                <div class="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center">
+                    <svg class="w-full h-full gauge-svg" viewBox="0 0 200 200">
+                        <!-- 외측: RFM 45s 한계선 트랙 (반지름 85) -->
+                        <circle cx="100" cy="100" r="85" stroke="currentColor" class="text-slate-200 dark:text-slate-800" stroke-width="7" fill="none"></circle>
+                        <circle id="outerBar1" class="gauge-circle" cx="100" cy="100" r="85" stroke="#3b82f6" stroke-width="7" fill="none" stroke-dasharray="534" stroke-dashoffset="534" stroke-linecap="round"></circle>
 
-                    <!-- 내측 링 배경 (사용자 타겟 목표 트랙) -->
-                    <circle cx="120" cy="120" r="88" stroke="#0f172a" stroke-width="12" fill="none" stroke-linecap="round"></circle>
-                    <!-- 내측 링 진행 바 (실제 경과시간 / 목표시간) -->
-                    <circle id="innerGaugeBar" class="gauge-circle" cx="120" cy="120" r="88" stroke="#10b981" stroke-width="12" fill="none" stroke-dasharray="552.9" stroke-dashoffset="552.9" stroke-linecap="round"></circle>
-                </svg>
+                        <!-- 내측: 목표시간 트랙 (반지름 70) -->
+                        <circle cx="100" cy="100" r="70" stroke="currentColor" class="text-slate-100 dark:text-slate-900" stroke-width="10" fill="none"></circle>
+                        <circle id="innerBar1" class="gauge-circle" cx="100" cy="100" r="70" stroke="#10b981" stroke-width="10" fill="none" stroke-dasharray="440" stroke-dashoffset="440" stroke-linecap="round"></circle>
+                    </svg>
 
-                <!-- 게이지 중앙 정보 디스플레이 -->
-                <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-4 pointer-events-none">
-                    
-                    <!-- 상태 모드 헤드라인 (CRANKING / COOLING / READY / CUT) -->
-                    <div id="gaugeStateHeader" class="text-[11px] sm:text-xs font-black tracking-widest text-slate-400 uppercase mb-1">
-                        STANDBY
-                    </div>
-
-                    <!-- 대형 디지털 시간 표출 -->
-                    <div id="mainTimerDigits" class="text-5xl sm:text-6xl font-black tracking-tight text-white font-mono drop-shadow-lg">
-                        00.0<span class="text-2xl font-bold text-slate-400">s</span>
-                    </div>
-
-                    <!-- 서브 타겟 및 RFM 한계 정보 (상시 동시 표출) -->
-                    <div class="mt-2 flex flex-col items-center gap-0.5">
-                        <div id="targetDisplaySub" class="text-xs font-bold text-amber-300">
-                            TARGET: <span id="targetSubSec">20.0</span>s
+                    <!-- 중앙 수치 정보 -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-2">
+                        <span id="stateText1" class="text-[10px] font-black tracking-wider text-slate-400 uppercase">STANDBY</span>
+                        <div id="digits1" class="text-4xl sm:text-5xl font-black font-mono text-slate-800 dark:text-white tracking-tight my-0.5">
+                            00.0<span class="text-lg font-bold text-slate-400">s</span>
                         </div>
-                        <div id="rfmAbsoluteLimitSub" class="text-[10px] font-semibold text-slate-400 px-2 py-0.5 rounded bg-slate-900/90 border border-slate-800">
-                            RFM MAX: 45.0s <span id="rfmMarginText" class="text-emerald-400 font-bold">(마진 45.0s)</span>
+                        <div class="flex flex-col items-center gap-0.5 text-[9px] font-bold">
+                            <span class="text-amber-500">목표: <span id="targetEcho1">20.0</span>s</span>
+                            <span id="rfmRemain1" class="text-slate-400">RFM 한계 45s (마진 45.0s)</span>
                         </div>
                     </div>
 
-                    <!-- 쿨다운 진행 중일 때 카운트다운 안내 배너 -->
-                    <div id="coolingOverlayText" class="hidden text-rose-400 font-black text-xs mt-2 animate-pulse">
-                        ⚠️ MOTORING LOCKED
+                    <!-- CUT 오버레이 -->
+                    <div id="cutOverlay1" class="absolute inset-0 flex items-center justify-center bg-rose-600/90 rounded-full text-white font-black text-3xl tracking-widest hidden alert-flash-red pointer-events-none">
+                        CUT!
                     </div>
-
-                </div>
-
-                <!-- 종료 시 시각적 대형 "CUT!" 오버레이 -->
-                <div id="cutOverlayBanner" class="absolute inset-0 flex items-center justify-center bg-rose-600/90 rounded-full text-white font-black text-5xl tracking-widest hidden alert-flash-red pointer-events-none">
-                    CUT!
                 </div>
             </div>
 
-            <!-- 하단 쿨다운 실시간 진행 바 (진행 중일 때 표출) -->
-            <div id="cooldownProgressSection" class="w-full max-w-md mt-1 hidden">
-                <div class="flex justify-between text-xs font-bold mb-1">
-                    <span class="text-cyan-400 flex items-center gap-1">
-                        <span>❄️</span> REQUIRED COOLING TIME
-                    </span>
-                    <span id="cooldownRemainingLabel" class="text-cyan-300 font-mono font-bold">
-                        60s / 60s
-                    </span>
+            <!-- 쿨다운 프로그레스 바 영역 -->
+            <div id="cooldownBox1" class="w-full bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200 dark:border-slate-800 mb-2 hidden">
+                <div class="flex justify-between text-[10px] font-bold mb-1">
+                    <span class="text-cyan-600 dark:text-cyan-400">❄️ 필수 냉각 대기 (Cooling)</span>
+                    <span id="cooldownLabel1" class="text-cyan-700 dark:text-cyan-300 font-mono">60s / 60s</span>
                 </div>
-                <div class="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-cyan-800/50 p-0.5">
-                    <div id="cooldownProgressBar" class="h-full bg-cyan-400 rounded-full transition-all duration-300" style="width: 100%;"></div>
-                </div>
-                <div class="text-[10px] text-center text-slate-400 mt-1">
-                    냉각 종료 시 자동 알림음(차임)과 음성("Cooling Complete")이 출력됩니다.
+                <div class="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div id="cooldownBar1" class="h-full bg-cyan-500 rounded-full transition-all duration-200" style="width: 100%;"></div>
                 </div>
             </div>
 
-            <!-- 4. 대형 제어 버튼부 (Glove-Friendly Touch Area) -->
-            <div class="w-full max-w-lg grid grid-cols-3 gap-2 sm:gap-3 mt-4">
-                
-                <!-- START 버튼 (크고 누르기 편한 대형 버튼) -->
-                <button id="btnStart" onclick="startMotoring()" class="col-span-2 h-20 sm:h-24 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-lg sm:text-2xl shadow-xl border border-emerald-400/40 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xl sm:text-2xl">⚡</span>
-                        <span>START MOTORING</span>
-                    </div>
-                    <span class="text-[10px] sm:text-xs font-semibold text-emerald-100 opacity-90">목표 시간 도달 시 자동 카운트 & CUT</span>
+            <!-- 조작 버튼부 (Glove-Friendly 대형 버튼) -->
+            <div class="grid grid-cols-3 gap-2 pt-1">
+                <button id="btnStart1" onclick="startEngine(1)" class="col-span-2 h-14 sm:h-16 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base sm:text-lg shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                    <span>⚡</span><span>START</span>
                 </button>
-
-                <!-- STOP / CUT 버튼 -->
-                <button id="btnStop" onclick="stopMotoring(false)" disabled class="col-span-1 h-20 sm:h-24 rounded-2xl bg-rose-700 hover:bg-rose-600 disabled:opacity-40 disabled:pointer-events-none text-white font-black text-base sm:text-xl shadow-xl border border-rose-500/50 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
-                    <div class="flex items-center gap-1">
-                        <span>🛑</span>
-                        <span>STOP</span>
-                    </div>
-                    <span class="text-[9px] font-semibold text-rose-200">즉시 중단 & 쿨다운</span>
+                <button id="btnStop1" onclick="stopEngine(1, false)" disabled class="col-span-1 h-14 sm:h-16 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:pointer-events-none text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-1 active:scale-95 transition-all">
+                    <span>🛑</span><span>STOP</span>
                 </button>
-
             </div>
 
-            <!-- 사이클 리셋 및 비상 조작 바 -->
-            <div class="w-full max-w-lg flex items-center justify-between mt-3 pt-3 border-t border-slate-800/80">
-                <span class="text-[11px] text-slate-500 flex items-center gap-1">
-                    <span>🛡️</span> 비정상 종료 시에도 타임스탬프 자동 보존
+            <!-- 하단 리셋 버튼 -->
+            <div class="flex items-center justify-between pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80">
+                <span class="text-[9px] text-slate-400">1·2차: 60s / 3차: 30분 냉각 강제</span>
+                <button onclick="resetEngineCycle(1)" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors">
+                    🔄 사이클 리셋
+                </button>
+            </div>
+
+        </div>
+
+        <!-- =================== ENG 2 독립 제어 패널 =================== -->
+        <div id="cardEng2" class="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between relative overflow-hidden transition-all duration-200">
+            
+            <!-- 상단 헤더: 엔진 타이틀 + 사이클 배지 + 상태 -->
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                    <h2 class="text-sm font-black text-slate-800 dark:text-slate-100">ENG 2 (우측)</h2>
+                    <span id="cycleBadge2" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                        CYCLE 1 / 3
+                    </span>
+                </div>
+                <div id="statusTag2" class="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    READY
+                </div>
+            </div>
+
+            <!-- 중앙: 듀얼 게이지 & 대형 타이머 -->
+            <div class="flex items-center justify-center my-2 relative">
+                <div class="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center">
+                    <svg class="w-full h-full gauge-svg" viewBox="0 0 200 200">
+                        <!-- 외측: RFM 45s 한계선 트랙 (반지름 85) -->
+                        <circle cx="100" cy="100" r="85" stroke="currentColor" class="text-slate-200 dark:text-slate-800" stroke-width="7" fill="none"></circle>
+                        <circle id="outerBar2" class="gauge-circle" cx="100" cy="100" r="85" stroke="#3b82f6" stroke-width="7" fill="none" stroke-dasharray="534" stroke-dashoffset="534" stroke-linecap="round"></circle>
+
+                        <!-- 내측: 목표시간 트랙 (반지름 70) -->
+                        <circle cx="100" cy="100" r="70" stroke="currentColor" class="text-slate-100 dark:text-slate-900" stroke-width="10" fill="none"></circle>
+                        <circle id="innerBar2" class="gauge-circle" cx="100" cy="100" r="70" stroke="#10b981" stroke-width="10" fill="none" stroke-dasharray="440" stroke-dashoffset="440" stroke-linecap="round"></circle>
+                    </svg>
+
+                    <!-- 중앙 수치 정보 -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none p-2">
+                        <span id="stateText2" class="text-[10px] font-black tracking-wider text-slate-400 uppercase">STANDBY</span>
+                        <div id="digits2" class="text-4xl sm:text-5xl font-black font-mono text-slate-800 dark:text-white tracking-tight my-0.5">
+                            00.0<span class="text-lg font-bold text-slate-400">s</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-0.5 text-[9px] font-bold">
+                            <span class="text-amber-500">목표: <span id="targetEcho2">20.0</span>s</span>
+                            <span id="rfmRemain2" class="text-slate-400">RFM 한계 45s (마진 45.0s)</span>
+                        </div>
+                    </div>
+
+                    <!-- CUT 오버레이 -->
+                    <div id="cutOverlay2" class="absolute inset-0 flex items-center justify-center bg-rose-600/90 rounded-full text-white font-black text-3xl tracking-widest hidden alert-flash-red pointer-events-none">
+                        CUT!
+                    </div>
+                </div>
+            </div>
+
+            <!-- 쿨다운 프로그레스 바 영역 -->
+            <div id="cooldownBox2" class="w-full bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-200 dark:border-slate-800 mb-2 hidden">
+                <div class="flex justify-between text-[10px] font-bold mb-1">
+                    <span class="text-cyan-600 dark:text-cyan-400">❄️ 필수 냉각 대기 (Cooling)</span>
+                    <span id="cooldownLabel2" class="text-cyan-700 dark:text-cyan-300 font-mono">60s / 60s</span>
+                </div>
+                <div class="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div id="cooldownBar2" class="h-full bg-cyan-500 rounded-full transition-all duration-200" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <!-- 조작 버튼부 (Glove-Friendly 대형 버튼) -->
+            <div class="grid grid-cols-3 gap-2 pt-1">
+                <button id="btnStart2" onclick="startEngine(2)" class="col-span-2 h-14 sm:h-16 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base sm:text-lg shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                    <span>⚡</span><span>START</span>
+                </button>
+                <button id="btnStop2" onclick="stopEngine(2, false)" disabled class="col-span-1 h-14 sm:h-16 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:pointer-events-none text-white font-black text-sm sm:text-base shadow-md flex items-center justify-center gap-1 active:scale-95 transition-all">
+                    <span>🛑</span><span>STOP</span>
+                </button>
+            </div>
+
+            <!-- 하단 리셋 버튼 -->
+            <div class="flex items-center justify-between pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80">
+                <span class="text-[9px] text-slate-400">1·2차: 60s / 3차: 30분 냉각 강제</span>
+                <button onclick="resetEngineCycle(2)" class="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors">
+                    🔄 사이클 리셋
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ================= 하단 부가 섹션 (SOP 패널 & 이력 로그) ================= -->
+    <div class="w-full max-w-6xl mx-auto flex flex-col gap-2 mt-2">
+        
+        <!-- 1. SOP 절차 접이식 패널 (자료 수신 대기 슬롯) -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+            <button onclick="toggleSop()" class="w-full p-2.5 flex items-center justify-between text-left text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <span class="flex items-center gap-1.5">
+                    <span>📋</span><span>AW139 모터링 표준 작업 절차 (SOP) 매뉴얼 열람</span>
+                    <span id="sopBadge" class="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/30">DRY</span>
                 </span>
-                <button id="btnResetCycle" onclick="confirmResetCycle()" class="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-rose-400 hover:border-rose-500/50 text-xs font-bold transition-all">
-                    🔄 RESET CYCLE
-                </button>
-            </div>
-
-        </div>
-
-        <!-- 5. 모터링 표준 작업 절차(SOP) 접이식 열람 패널 (사용자 공식 매뉴얼 수신 대기 슬롯) -->
-        <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
-            <button onclick="toggleSopPanel()" class="w-full p-3 flex items-center justify-between text-left text-xs font-black text-slate-300 hover:text-white hover:bg-slate-900/50 transition-all">
-                <div class="flex items-center gap-2">
-                    <span class="text-base">📋</span>
-                    <span>AW139 모터링 표준 작업 절차 (SOP) 매뉴얼</span>
-                    <span id="sopModeIndicator" class="text-[10px] px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800">
-                        DRY MOTORING
-                    </span>
-                </div>
-                <span id="sopToggleIcon" class="text-slate-400 text-sm">▼ 열기</span>
+                <span id="sopArrow" class="text-slate-400 text-xs">▼ 열기</span>
             </button>
-
-            <!-- 접이식 내용 영역 -->
-            <div id="sopContentPanel" class="p-4 border-t border-slate-800/80 bg-slate-950/60 hidden">
-                <div class="rounded-xl border border-dashed border-slate-700 p-4 bg-slate-900/40 text-center">
-                    <div class="text-amber-400 text-sm font-bold mb-1 flex items-center justify-center gap-1.5">
-                        <span>📑</span> 공식 기술문서(RFM / AMP ATA 71) 자료 수신 대기 슬롯
-                    </div>
-                    <p class="text-xs text-slate-400 leading-relaxed max-w-xl mx-auto">
-                        항공 안전 원칙 준수를 위해 임의로 가공하지 않으며, 운용자료 전달 시 본 영역에 
-                        <strong>Dry Motoring(잔류연료 배출) / Wet Motoring(방청유 플러싱) 공식 절차 및 CB 차단 확인 항목</strong>이 
-                        체계적으로 표출됩니다.
-                    </p>
-                    <div class="mt-3 inline-flex items-center gap-2 text-[11px] text-slate-500 bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">
-                        <span>* 현재는 상단 스타터 듀티 사이클(최대 45초 / 냉각 60초 / 30분) 한계가 엄격히 강제 제어됩니다.</span>
-                    </div>
-                </div>
+            <div id="sopPanel" class="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 text-center text-xs text-slate-500 hidden">
+                <div class="font-bold text-amber-600 dark:text-amber-400 mb-0.5">📑 공식 기술문서(RFM / AMP ATA 71) 자료 수신 대기 슬롯</div>
+                <p class="text-[11px] text-slate-400">
+                    항공 안전 원칙 준수를 위해 임의로 작성하지 않으며, 공식 매뉴얼 전달 시 Dry/Wet 점검 절차가 일점일획 오차 없이 표출됩니다.
+                </p>
             </div>
         </div>
 
-        <!-- 6. 작업 이력 자동 누적 테이블 & CSV 내보내기 -->
-        <div class="glass-panel rounded-2xl p-4 border border-slate-800">
-            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-sm font-black text-white flex items-center gap-1">
-                        <span>📊</span> MOTORING HISTORY LOG
-                    </span>
-                    <span id="logCountBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
-                        0 건
-                    </span>
+        <!-- 2. 작업 이력 로그 테이블 (콤팩트 뷰) -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="flex items-center justify-between mb-2 flex-wrap gap-1.5">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-black text-slate-800 dark:text-slate-200">📊 작업 이력</span>
+                    <span id="logCount" class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">0 건</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="exportToCsv()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow flex items-center gap-1.5 transition-all">
-                        <span>📥</span> CSV 내보내기
+                <div class="flex items-center gap-1">
+                    <button onclick="exportCsv()" class="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold shadow transition-all">
+                        📥 CSV 내보내기
                     </button>
-                    <button onclick="clearLogs()" class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-rose-400 text-xs font-bold transition-all">
-                        기록 삭제
+                    <button onclick="clearLogs()" class="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-500 text-[10px] font-bold transition-all">
+                        삭제
                     </button>
                 </div>
             </div>
 
-            <!-- 테이블 -->
-            <div class="overflow-x-auto rounded-xl border border-slate-800">
-                <table class="w-full text-left text-xs">
-                    <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-800 text-[11px]">
+            <div class="overflow-x-auto rounded-lg border border-slate-100 dark:border-slate-800 max-h-36 overflow-y-auto">
+                <table class="w-full text-left text-[11px]">
+                    <thead class="bg-slate-50 dark:bg-slate-950 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800 sticky top-0">
                         <tr>
-                            <th class="p-2.5">일시</th>
-                            <th class="p-2.5">기체</th>
-                            <th class="p-2.5">엔진</th>
-                            <th class="p-2.5">모드</th>
-                            <th class="p-2.5">가동시간</th>
-                            <th class="p-2.5">사이클</th>
-                            <th class="p-2.5">냉각상태</th>
-                            <th class="p-2.5">비고</th>
+                            <th class="p-1.5">일시</th>
+                            <th class="p-1.5">기체</th>
+                            <th class="p-1.5">엔진</th>
+                            <th class="p-1.5">모드</th>
+                            <th class="p-1.5">시간</th>
+                            <th class="p-1.5">사이클</th>
+                            <th class="p-1.5">상태</th>
                         </tr>
                     </thead>
-                    <tbody id="logTableBody" class="divide-y divide-slate-800/60 font-mono text-slate-300">
-                        <tr>
-                            <td colspan="8" class="p-4 text-center text-slate-500 font-sans">기록된 모터링 이력이 없습니다.</td>
-                        </tr>
+                    <tbody id="logBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-slate-600 dark:text-slate-300">
+                        <tr><td colspan="7" class="p-3 text-center text-slate-400 font-sans">이력이 없습니다.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-    </main>
+    </div>
 
-    <!-- ================= 하단 푸터 ================= -->
-    <footer class="w-full max-w-5xl mx-auto text-center text-[11px] text-slate-500 py-3 mt-2">
-        Incheon 119 Fire Aviation Unit • AW139 PT6C-67C Motoring & Starter Duty Cycle Tracker
+    <!-- 하단 푸터 -->
+    <footer class="w-full max-w-6xl mx-auto text-center text-[10px] text-slate-400 py-2">
+        Incheon 119 Fire Aviation Unit • AW139 Dual-Engine Motoring Timer
     </footer>
 
-    <!-- ================= 자바스크립트 코어 엔진 ================= -->
+    <!-- ================= 자바스크립트 코어 로직 ================= -->
     <script>
-        /**
-         * AW139 Motoring Timer & Starter Duty Cycle Tracker
-         * - Single Offline Application with Timestamp Persistence
-         * - Dual Limit Display (Target & RFM 45s Absolute)
-         * - Web Speech API & Web Audio API Integrated
-         */
-
-        // 1. 상태 상수 정의
-        const RFM_LIMITS = {
-            MAX_RUN_TIME: 45.0,        // 최대 연속 크랭킹 한계 (초)
-            COOLDOWN_CYCLE_1: 60,      // 1회차 후 필수 냉각 시간 (초)
-            COOLDOWN_CYCLE_2: 60,      // 2회차 후 필수 냉각 시간 (초)
-            COOLDOWN_CYCLE_3: 1800,    // 3회차 후 필수 냉각 시간 (30분 = 1,800초)
-            PRE_COUNTDOWN_TIME: 5.0    // 음성 카운트다운 시작 시점 (목표 5초 전)
+        const RFM = {
+            MAX_RUN: 45.0,
+            COOL_1: 60,
+            COOL_2: 60,
+            COOL_3: 1800,
+            COUNTDOWN_LEAD: 5.0
         };
 
-        const STORAGE_KEY_STATE = 'AW139_MOTORING_STATE_V1';
-        const STORAGE_KEY_LOGS = 'AW139_MOTORING_LOGS_V1';
+        const KEY_STATE = 'AW139_DUAL_MOTOR_V2';
+        const KEY_LOGS = 'AW139_DUAL_LOGS_V2';
+        const KEY_THEME = 'AW139_APP_THEME';
 
-        // 2. 전역 애플리케이션 상태 (ENG 1 & ENG 2 독립 관리)
         let appState = {
-            activeAircraft: 'HL9695', // 'HL9695' | 'HL9277'
-            activeEngine: 1,          // 1 | 2
-            motoringMode: 'DRY',      // 'DRY' | 'WET'
-            targetDuration: 20.0,     // 기본 목표 시간: 20초 (최대 45.0s)
-            voiceLang: 'EN',          // 'EN' | 'KO'
+            aircraft: 'HL9695',
+            mode: 'DRY',
+            targetSec: 20.0,
+            voiceLang: 'EN',
+            theme: 'dark', // 'light' | 'dark'
             engines: {
-                1: {
-                    cycle: 1,             // 1, 2, 3
-                    state: 'READY',       // 'READY' | 'RUNNING' | 'COOLING' | 'LOCKED'
-                    runStartTime: null,   // epoch ms
-                    runElapsed: 0.0,      // 최근 가동 시간(초)
-                    cooldownStart: null,  // epoch ms
-                    cooldownEnd: null,    // epoch ms (절대 타임스탬프)
-                    cooldownTotal: 60     // 해당 차수 총 냉각 초
-                },
-                2: {
-                    cycle: 1,
-                    state: 'READY',
-                    runStartTime: null,
-                    runElapsed: 0.0,
-                    cooldownStart: null,
-                    cooldownEnd: null,
-                    cooldownTotal: 60
-                }
+                1: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null },
+                2: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null }
             }
         };
 
         let logs = [];
-        let timerInterval = null;
-        let lastSpokenCountdown = null; // 음성 중복 방지
-
-        // 3. Audio & Web Speech 합성 시스템
+        let mainLoop = null;
         let audioCtx = null;
 
-        function getAudioContext() {
+        // 1. 테마 제어 (주간 / 야간 모드)
+        function initTheme() {
+            const savedTheme = localStorage.getItem(KEY_THEME) || 'dark';
+            appState.theme = savedTheme;
+            applyTheme(savedTheme);
+        }
+
+        function toggleTheme() {
+            appState.theme = (appState.theme === 'dark') ? 'light' : 'dark';
+            localStorage.setItem(KEY_THEME, appState.theme);
+            applyTheme(appState.theme);
+        }
+
+        function applyTheme(theme) {
+            const root = document.documentElement;
+            const icon = document.getElementById('txtThemeIcon');
+            if (theme === 'dark') {
+                root.classList.add('dark');
+                if (icon) icon.innerText = '🌙';
+            } else {
+                root.classList.remove('dark');
+                if (icon) icon.innerText = '☀️';
+            }
+        }
+
+        // 2. 오디오 & TTS 음성 합성
+        function getAudio() {
             if (!audioCtx) {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                if (AudioContextClass) {
-                    audioCtx = new AudioContextClass();
-                }
+                const Cls = window.AudioContext || window.webkitAudioContext;
+                if (Cls) audioCtx = new Cls();
             }
             if (audioCtx && audioCtx.state === 'suspended') {
                 audioCtx.resume();
@@ -492,789 +465,608 @@
             return audioCtx;
         }
 
-        // 단순 비프음 생성 (Web Audio API)
-        function playBeep(freq = 880, duration = 0.15, type = 'sine') {
+        function beep(freq = 880, dur = 0.12, type = 'sine') {
             try {
-                const ctx = getAudioContext();
+                const ctx = getAudio();
                 if (!ctx) return;
                 const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
+                const g = ctx.createGain();
                 osc.type = type;
                 osc.frequency.setValueAtTime(freq, ctx.currentTime);
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
+                g.gain.setValueAtTime(0.3, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
+                osc.connect(g);
+                g.connect(ctx.destination);
                 osc.start();
-                osc.stop(ctx.currentTime + duration);
-            } catch (e) {
-                console.warn('Audio play error:', e);
-            }
+                osc.stop(ctx.currentTime + dur);
+            } catch (e) {}
         }
 
-        // 쿨다운 완료 2단 상승 차임벨
         function playChime() {
             try {
-                const ctx = getAudioContext();
+                const ctx = getAudio();
                 if (!ctx) return;
-                const now = ctx.currentTime;
-                
-                const playTone = (freq, time, dur) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(freq, time);
-                    gain.gain.setValueAtTime(0.35, time);
-                    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start(time);
-                    osc.stop(time + dur);
+                const t = ctx.currentTime;
+                const tone = (f, st, d) => {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'triangle';
+                    o.frequency.setValueAtTime(f, st);
+                    g.gain.setValueAtTime(0.35, st);
+                    g.gain.exponentialRampToValueAtTime(0.001, st + d);
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.start(st);
+                    o.stop(st + d);
                 };
-
-                playTone(880, now, 0.35);        // A5
-                playTone(1320, now + 0.2, 0.6);   // E6
+                tone(880, t, 0.3);
+                tone(1320, t + 0.18, 0.5);
             } catch (e) {}
         }
 
-        // CUT 도달 시 3연타 고주파 경고음
-        function playCutAlertBeep() {
-            try {
-                playBeep(1200, 0.12, 'square');
-                setTimeout(() => playBeep(1200, 0.12, 'square'), 160);
-                setTimeout(() => playBeep(1400, 0.25, 'square'), 320);
-            } catch (e) {}
+        function playCutAlert() {
+            beep(1200, 0.12, 'square');
+            setTimeout(() => beep(1200, 0.12, 'square'), 140);
+            setTimeout(() => beep(1400, 0.25, 'square'), 280);
         }
 
-        // TTS 음성 콜아웃 (Web Speech API)
         function speak(text, isUrgent = false) {
             try {
                 if (!('speechSynthesis' in window)) return;
-                window.speechSynthesis.cancel(); // 진행 중인 음성 취소하고 즉시 콜아웃
-
-                const utter = new SpeechSynthesisUtterance(text);
-                utter.rate = isUrgent ? 1.25 : 1.05;
-                utter.pitch = isUrgent ? 1.15 : 1.0;
-                utter.volume = 1.0;
-                utter.lang = (appState.voiceLang === 'KO') ? 'ko-KR' : 'en-US';
-
-                window.speechSynthesis.speak(utter);
-            } catch (e) {
-                console.warn('TTS speak error:', e);
-            }
-        }
-
-        // 햅틱 진동
-        function vibrate(pattern) {
-            try {
-                if ('vibrate' in navigator) {
-                    navigator.vibrate(pattern);
-                }
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(text);
+                u.rate = isUrgent ? 1.25 : 1.05;
+                u.pitch = isUrgent ? 1.15 : 1.0;
+                u.lang = (appState.voiceLang === 'KO') ? 'ko-KR' : 'en-US';
+                window.speechSynthesis.speak(u);
             } catch (e) {}
         }
 
-        // 4. 화면 꺼짐 방지 (Screen Wake Lock API)
-        let wakeLockSentinel = null;
-        async function requestWakeLock() {
+        function vibrate(p) {
+            try {
+                if ('vibrate' in navigator) navigator.vibrate(p);
+            } catch (e) {}
+        }
+
+        // 3. 화면 꺼짐 방지
+        async function reqWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
-                    wakeLockSentinel = await navigator.wakeLock.request('screen');
-                    const badge = document.getElementById('wakeLockBadge');
-                    if (badge) {
-                        badge.className = 'p-1.5 rounded-lg bg-slate-900 border border-emerald-500 text-[10px] text-emerald-400 font-bold';
-                        badge.innerText = '⚡ON';
-                    }
+                    await navigator.wakeLock.request('screen');
+                    const b = document.getElementById('wakeLockBadge');
+                    if (b) { b.innerText = '⚡ON'; b.className = 'px-1.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold'; }
                 }
-            } catch (err) {
-                const badge = document.getElementById('wakeLockBadge');
-                if (badge) {
-                    badge.className = 'p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[10px] text-slate-500 font-bold';
-                    badge.innerText = '⚡OFF';
-                }
-            }
+            } catch (e) {}
         }
 
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                requestWakeLock();
-                // 백그라운드 복귀 시 타임스탬프 즉시 재동기화
-                checkAndSyncTimestamps();
+                reqWakeLock();
+                syncTimestamps();
             }
         });
 
-        // 5. 세션 상태 영속성 (Zero-Reset LocalStorage 동기화)
+        // 4. 상태 영속성 (Zero-Reset LocalStorage)
         function saveState() {
-            try {
-                localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(appState));
-            } catch (e) {}
+            try { localStorage.setItem(KEY_STATE, JSON.stringify(appState)); } catch (e) {}
         }
 
         function loadState() {
             try {
-                const saved = localStorage.getItem(STORAGE_KEY_STATE);
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    // 객체 병합
-                    appState = { ...appState, ...parsed };
+                const s = localStorage.getItem(KEY_STATE);
+                if (s) {
+                    const p = JSON.parse(s);
+                    appState = { ...appState, ...p };
                 }
             } catch (e) {}
         }
 
         function saveLogs() {
-            try {
-                localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
-            } catch (e) {}
+            try { localStorage.setItem(KEY_LOGS, JSON.stringify(logs)); } catch (e) {}
         }
 
         function loadLogs() {
             try {
-                const saved = localStorage.getItem(STORAGE_KEY_LOGS);
-                if (saved) {
-                    logs = JSON.parse(saved);
-                }
+                const l = localStorage.getItem(KEY_LOGS);
+                if (l) logs = JSON.parse(l);
             } catch (e) {}
         }
 
-        // 6. 비정상 종료 복원 및 타임스탬프 기반 자동 전이
-        function checkAndSyncTimestamps() {
+        // 5. 비정상 종료 복원
+        function syncTimestamps() {
             const now = Date.now();
-            [1, 2].forEach(engId => {
-                const eng = appState.engines[engId];
-
-                // 쿨다운 진행 중 상태 검사
+            [1, 2].forEach(id => {
+                const eng = appState.engines[id];
                 if (eng.state === 'COOLING') {
-                    if (eng.cooldownEnd && now >= eng.cooldownEnd) {
-                        // 꺼져 있던 동안 냉각 완료됨!
-                        finishCooldown(engId, true);
+                    if (eng.coolEnd && now >= eng.coolEnd) {
+                        finishCooldown(id, true);
                     }
-                } 
-                // 가동(RUNNING) 중 비정상 종료 검사
-                else if (eng.state === 'RUNNING') {
-                    // 브라우저가 꺼진 상태였으므로 안전을 위해 강제 정지 처리 후 쿨다운 진입
-                    const elapsed = Math.min(RFM_LIMITS.MAX_RUN_TIME, (now - (eng.runStartTime || now)) / 1000);
-                    eng.runElapsed = elapsed;
-                    stopMotoringInternal(engId, true, '비정상 종료 감지 자동 냉각 전환');
+                } else if (eng.state === 'RUNNING') {
+                    // 꺼진 동안 크랭킹 중단 처리 후 쿨다운 전환
+                    const el = Math.min(RFM.MAX_RUN, (now - (eng.runStart || now)) / 1000);
+                    eng.elapsed = el;
+                    stopEngineInternal(id, true, '비정상 종료 안전 쿨다운 전환');
                 }
             });
             saveState();
-            updateUI();
+            renderAll();
         }
 
-        // 7. 엔진 모터링 제어 로직 (START / STOP / CUT)
-        function startMotoring() {
-            getAudioContext(); // 사용자 제스처로 Audio Unlock
-            requestWakeLock();
-
-            const curEngId = appState.activeEngine;
-            const curEng = appState.engines[curEngId];
-
-            if (curEng.state === 'COOLING') {
-                alert(`⚠️ ENG ${curEngId}는 현재 필수 냉각 대기 중입니다! 스타터 보호를 위해 가동이 금지됩니다.`);
+        // 6. 엔진 가동 및 정지 로직
+        function startEngine(id) {
+            getAudio();
+            reqWakeLock();
+            const eng = appState.engines[id];
+            if (eng.state === 'COOLING') {
+                alert(`⚠️ ENG ${id}는 현재 냉각 대기 중입니다! 스타터 보호를 위해 가동할 수 없습니다.`);
                 return;
             }
+            if (eng.state === 'RUNNING') return;
 
-            if (curEng.state === 'RUNNING') return;
-
-            // 모터링 시작
-            curEng.state = 'RUNNING';
-            curEng.runStartTime = Date.now();
-            curEng.runElapsed = 0.0;
-            lastSpokenCountdown = null;
+            eng.state = 'RUNNING';
+            eng.runStart = Date.now();
+            eng.elapsed = 0.0;
+            eng.lastCountdown = null;
 
             saveState();
-            updateUI();
+            renderAll();
 
-            // 음성 알림
-            speak(appState.voiceLang === 'KO' ? `엔진 ${curEngId} 모터링 시작` : `Engine ${curEngId} Motoring Start`);
-            playBeep(660, 0.15);
+            const msg = (appState.voiceLang === 'KO') ? `엔진 ${id} 모터링 시작` : `Engine ${id} Start`;
+            speak(msg);
+            beep(660, 0.15);
             vibrate([100, 50, 100]);
         }
 
-        function stopMotoring(isAutoCut = false) {
-            const curEngId = appState.activeEngine;
-            stopMotoringInternal(curEngId, false, isAutoCut ? '목표 시간 도달 CUT' : '수동 정지');
+        function stopEngine(id, isAutoCut = false) {
+            stopEngineInternal(id, false, isAutoCut ? '목표 도달 CUT' : '수동 정지');
         }
 
-        function stopMotoringInternal(engId, isCrashRecovered = false, reason = '') {
-            const eng = appState.engines[engId];
+        function stopEngineInternal(id, isCrash = false, reason = '') {
+            const eng = appState.engines[id];
             if (eng.state !== 'RUNNING') return;
 
             const now = Date.now();
-            const elapsed = Math.min(RFM_LIMITS.MAX_RUN_TIME, (now - (eng.runStartTime || now)) / 1000);
-            eng.runElapsed = elapsed;
+            const el = Math.min(RFM.MAX_RUN, (now - (eng.runStart || now)) / 1000);
+            eng.elapsed = el;
 
-            // 쿨다운 시간 결정 (1,2회차: 60초 / 3회차: 1,800초 = 30분)
-            let cooldownSec = RFM_LIMITS.COOLDOWN_CYCLE_1;
-            if (eng.cycle === 3) {
-                cooldownSec = RFM_LIMITS.COOLDOWN_CYCLE_3;
-            }
-
+            let coolSec = (eng.cycle === 3) ? RFM.COOL_3 : RFM.COOL_1;
             eng.state = 'COOLING';
-            eng.cooldownStart = now;
-            eng.cooldownEnd = now + (cooldownSec * 1000);
-            eng.cooldownTotal = cooldownSec;
+            eng.coolStart = now;
+            eng.coolEnd = now + (coolSec * 1000);
+            eng.coolTotal = coolSec;
 
-            // 작업 이력 로그에 기록
-            addLogRecord({
-                timestamp: new Date().toLocaleString('ko-KR'),
-                aircraft: appState.activeAircraft,
-                engine: `ENG ${engId}`,
-                mode: `${appState.motoringMode} Motoring`,
-                duration: `${elapsed.toFixed(1)}s`,
+            // 로그 기록
+            addLog({
+                timestamp: new Date().toLocaleTimeString('ko-KR', { hour12: false }),
+                aircraft: appState.aircraft,
+                engine: `ENG ${id}`,
+                mode: appState.mode,
+                duration: `${el.toFixed(1)}s`,
                 cycle: `${eng.cycle}차`,
-                coolingStatus: '쿨다운 진행 중',
-                reason: reason || '-'
+                status: '냉각 중'
             });
 
             saveState();
-            updateUI();
+            renderAll();
 
-            if (!isCrashRecovered) {
-                vibrate([300, 100, 300]);
-            }
+            if (!isCrash) vibrate([300, 100, 300]);
         }
 
-        // 쿨다운 완료 처리
-        function finishCooldown(engId, isSilentRecover = false) {
-            const eng = appState.engines[engId];
-            eng.cooldownStart = null;
-            eng.cooldownEnd = null;
+        function finishCooldown(id, isSilent = false) {
+            const eng = appState.engines[id];
+            eng.coolStart = null;
+            eng.coolEnd = null;
 
             if (eng.cycle < 3) {
                 eng.cycle += 1;
                 eng.state = 'READY';
-                if (!isSilentRecover) {
+                if (!isSilent) {
                     playChime();
                     vibrate([500, 200, 500]);
                     const msg = (appState.voiceLang === 'KO') 
-                        ? `엔진 ${engId} 냉각 완료. ${eng.cycle}회차 준비 완료.` 
-                        : `Engine ${engId} Cooling Complete. Ready for cycle ${eng.cycle}.`;
+                        ? `엔진 ${id} 냉각 완료. ${eng.cycle}회차 준비.` 
+                        : `Engine ${id} Cooling Complete. Cycle ${eng.cycle} ready.`;
                     speak(msg);
                 }
             } else {
-                // 3회차 30분 쿨다운 완료 ➔ 사이클 1로 리셋
                 eng.cycle = 1;
                 eng.state = 'READY';
-                if (!isSilentRecover) {
+                if (!isSilent) {
                     playChime();
                     vibrate([500, 200, 500, 200, 800]);
                     const msg = (appState.voiceLang === 'KO') 
-                        ? `엔진 ${engId} 30분 냉각 완료. 스타터 락 해제.` 
-                        : `Engine ${engId} 30 minutes cooling complete. Starter lockout released.`;
+                        ? `엔진 ${id} 30분 냉각 완료. 락 해제.` 
+                        : `Engine ${id} 30 minutes cooling complete. Lockout released.`;
                     speak(msg);
                 }
             }
 
-            // 로그의 냉각상태 업데이트
-            if (logs.length > 0 && logs[0].engine === `ENG ${engId}`) {
-                logs[0].coolingStatus = '냉각 완료';
+            if (logs.length > 0 && logs[0].engine === `ENG ${id}`) {
+                logs[0].status = '냉각 완료';
                 saveLogs();
                 renderLogs();
             }
 
             saveState();
-            updateUI();
+            renderAll();
         }
 
-        // 타이머 메인 인터벌 루프 (초정밀 타임스탬프 계산)
-        function startTimerLoop() {
-            if (timerInterval) clearInterval(timerInterval);
+        function resetEngineCycle(id) {
+            const eng = appState.engines[id];
+            if (eng.state === 'COOLING') {
+                if (!confirm(`⚠️ ENG ${id}는 현재 냉각 중입니다!\n강제 초기화하면 스타터 소손 위험이 있습니다. 리셋하시겠습니까?`)) return;
+            } else {
+                if (!confirm(`ENG ${id}의 사이클을 Cycle 1로 리셋하시겠습니까?`)) return;
+            }
 
-            timerInterval = setInterval(() => {
+            eng.cycle = 1;
+            eng.state = 'READY';
+            eng.elapsed = 0.0;
+            eng.coolStart = null;
+            eng.coolEnd = null;
+            saveState();
+            renderAll();
+            speak(appState.voiceLang === 'KO' ? `엔진 ${id} 리셋 완료` : `Engine ${id} Reset`);
+        }
+
+        // 7. 실시간 타이머 인터벌 루프
+        function startLoop() {
+            if (mainLoop) clearInterval(mainLoop);
+            mainLoop = setInterval(() => {
                 const now = Date.now();
-                const curEngId = appState.activeEngine;
-                const curEng = appState.engines[curEngId];
+                const target = appState.targetSec;
 
-                // 1. 현재 선택된 엔진이 가동(RUNNING) 중일 때
-                if (curEng.state === 'RUNNING') {
-                    const elapsed = (now - curEng.runStartTime) / 1000;
-                    curEng.runElapsed = elapsed;
+                [1, 2].forEach(id => {
+                    const eng = appState.engines[id];
+                    if (eng.state === 'RUNNING') {
+                        const el = (now - eng.runStart) / 1000;
+                        eng.elapsed = el;
 
-                    // 5초 전 음성 카운트다운 로직
-                    const target = appState.targetDuration;
-                    const remainToTarget = target - elapsed;
-
-                    if (remainToTarget <= RFM_LIMITS.PRE_COUNTDOWN_TIME && remainToTarget > 0) {
-                        const countdownSec = Math.ceil(remainToTarget);
-                        if (lastSpokenCountdown !== countdownSec) {
-                            lastSpokenCountdown = countdownSec;
-                            playBeep(920, 0.08);
-                            vibrate(80);
-                            
-                            // 음성 콜아웃: "Five", "Four", "Three", "Two", "One"
-                            const wordsEn = { 5: 'Five', 4: 'Four', 3: 'Three', 2: 'Two', 1: 'One' };
-                            const wordsKo = { 5: '오', 4: '사', 3: '삼', 2: '이', 1: '일' };
-                            const word = (appState.voiceLang === 'KO') ? wordsKo[countdownSec] : wordsEn[countdownSec];
-                            if (word) speak(word, true);
+                        // 5초 전 음성 카운트다운
+                        const rem = target - el;
+                        if (rem <= RFM.COUNTDOWN_LEAD && rem > 0) {
+                            const secFloor = Math.ceil(rem);
+                            if (eng.lastCountdown !== secFloor) {
+                                eng.lastCountdown = secFloor;
+                                beep(920, 0.08);
+                                vibrate(80);
+                                const enWords = { 5: 'Five', 4: 'Four', 3: 'Three', 2: 'Two', 1: 'One' };
+                                const koWords = { 5: '오', 4: '사', 3: '삼', 2: '이', 1: '일' };
+                                const w = (appState.voiceLang === 'KO') ? koWords[secFloor] : enWords[secFloor];
+                                if (w) speak(`ENG ${id}, ${w}`, true);
+                            }
                         }
-                    }
 
-                    // 목표 도달 (또는 45초 RFM 절대한계 도달)
-                    if (elapsed >= target) {
-                        // CUT 콜아웃 및 정지
-                        playCutAlertBeep();
-                        vibrate([400, 100, 400]);
-                        const cutWord = (appState.voiceLang === 'KO') ? '컷!' : 'CUT!';
-                        speak(cutWord, true);
-                        showCutOverlay();
-                        stopMotoring(true);
-                        return;
-                    }
+                        // 목표 도달 시 CUT
+                        if (el >= target) {
+                            playCutAlert();
+                            vibrate([400, 100, 400]);
+                            const cutWord = (appState.voiceLang === 'KO') ? `엔진 ${id} 컷!` : `Engine ${id} CUT!`;
+                            speak(cutWord, true);
+                            triggerCutVisual(id);
+                            stopEngine(id, true);
+                            return;
+                        }
 
-                    // 혹시라도 45초 초과 시 절대 강제 정지
-                    if (elapsed >= RFM_LIMITS.MAX_RUN_TIME) {
-                        playCutAlertBeep();
-                        speak('EMERGENCY CUT! OVER LIMIT!', true);
-                        stopMotoring(true);
-                        return;
-                    }
-                }
-
-                // 2. 두 엔진 모두의 쿨다운 시간 검사
-                [1, 2].forEach(engId => {
-                    const eng = appState.engines[engId];
-                    if (eng.state === 'COOLING') {
-                        if (eng.cooldownEnd && now >= eng.cooldownEnd) {
-                            finishCooldown(engId, false);
+                        // 45초 절대 한계
+                        if (el >= RFM.MAX_RUN) {
+                            playCutAlert();
+                            speak(`Engine ${id} Emergency Cut!`, true);
+                            stopEngine(id, true);
+                            return;
+                        }
+                    } else if (eng.state === 'COOLING') {
+                        if (eng.coolEnd && now >= eng.coolEnd) {
+                            finishCooldown(id, false);
                         }
                     }
                 });
 
-                updateUI();
-            }, 50); // 50ms 주기로 부드럽게 렌더링
+                renderAll();
+            }, 60);
         }
 
-        // CUT 오버레이 일시 표출
-        function showCutOverlay() {
-            const overlay = document.getElementById('cutOverlayBanner');
-            if (overlay) {
-                overlay.classList.remove('hidden');
-                setTimeout(() => {
-                    overlay.classList.add('hidden');
-                }, 2200);
+        function triggerCutVisual(id) {
+            const ov = document.getElementById(`cutOverlay${id}`);
+            if (ov) {
+                ov.classList.remove('hidden');
+                setTimeout(() => ov.classList.add('hidden'), 2200);
             }
         }
 
-        // 8. UI 업데이트 및 듀얼 게이지 렌더링
-        function updateUI() {
-            const curEngId = appState.activeEngine;
-            const curEng = appState.engines[curEngId];
-            const targetSec = appState.targetDuration;
+        // 8. 렌더링 함수
+        function renderAll() {
+            const target = appState.targetSec;
+            const now = Date.now();
 
-            // 상단 엔진 선택 버튼 상태
-            const btnEng1 = document.getElementById('btnEng1');
-            const btnEng2 = document.getElementById('btnEng2');
-            const eng1Badge = document.getElementById('eng1Badge');
-            const eng2Badge = document.getElementById('eng2Badge');
-
-            if (curEngId === 1) {
-                btnEng1.className = "flex-1 py-2 rounded-lg text-xs font-black transition-all bg-emerald-600 text-white shadow flex items-center justify-center gap-1.5";
-                btnEng2.className = "flex-1 py-2 rounded-lg text-xs font-black transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1.5";
-            } else {
-                btnEng1.className = "flex-1 py-2 rounded-lg text-xs font-black transition-all text-slate-400 hover:text-white flex items-center justify-center gap-1.5";
-                btnEng2.className = "flex-1 py-2 rounded-lg text-xs font-black transition-all bg-emerald-600 text-white shadow flex items-center justify-center gap-1.5";
-            }
-
-            // 각 엔진 뱃지 텍스트 갱신
             [1, 2].forEach(id => {
-                const e = appState.engines[id];
-                const badge = (id === 1) ? eng1Badge : eng2Badge;
-                if (badge) {
-                    if (e.state === 'RUNNING') {
-                        badge.innerText = `RUN ${e.runElapsed.toFixed(0)}s`;
-                        badge.className = "text-[9px] px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 font-black";
-                    } else if (e.state === 'COOLING') {
-                        const remSec = Math.max(0, Math.ceil((e.cooldownEnd - Date.now()) / 1000));
-                        badge.innerText = `COOL ${remSec}s`;
-                        badge.className = "text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 font-bold border border-cyan-500/50";
-                    } else {
-                        badge.innerText = `READY (C${e.cycle})`;
-                        badge.className = "text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-semibold border border-slate-700";
+                const eng = appState.engines[id];
+                const card = document.getElementById(`cardEng${id}`);
+                const cycleB = document.getElementById(`cycleBadge${id}`);
+                const statusT = document.getElementById(`statusTag${id}`);
+                const stateTxt = document.getElementById(`stateText${id}`);
+                const digits = document.getElementById(`digits${id}`);
+                const targetEcho = document.getElementById(`targetEcho${id}`);
+                const rfmRemain = document.getElementById(`rfmRemain${id}`);
+                const coolBox = document.getElementById(`cooldownBox${id}`);
+                const coolLabel = document.getElementById(`cooldownLabel${id}`);
+                const coolBar = document.getElementById(`cooldownBar${id}`);
+                const btnStart = document.getElementById(`btnStart${id}`);
+                const btnStop = document.getElementById(`btnStop${id}`);
+
+                const innerBar = document.getElementById(`innerBar${id}`);
+                const outerBar = document.getElementById(`outerBar${id}`);
+                const innerCirc = 440; // 2 * PI * 70
+                const outerCirc = 534; // 2 * PI * 85
+
+                if (targetEcho) targetEcho.innerText = target.toFixed(1);
+
+                // 사이클 배지
+                if (cycleB) {
+                    cycleB.innerText = `CYCLE ${eng.cycle} / 3`;
+                    cycleB.className = (eng.cycle === 3)
+                        ? "px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30"
+                        : "px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30";
+                }
+
+                // 가동(RUNNING) 상태
+                if (eng.state === 'RUNNING') {
+                    const el = eng.elapsed;
+                    const rfmLeft = Math.max(0, RFM.MAX_RUN - el);
+
+                    if (statusT) {
+                        statusT.innerText = `RUNNING (${el.toFixed(1)}s)`;
+                        statusT.className = "text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/40";
                     }
+                    if (stateTxt) stateTxt.innerText = "CRANKING";
+                    if (digits) {
+                        digits.innerHTML = `${el.toFixed(1)}<span class="text-lg font-bold text-slate-400">s</span>`;
+                        digits.className = "text-4xl sm:text-5xl font-black font-mono text-amber-500 tracking-tight my-0.5";
+                    }
+                    if (rfmRemain) rfmRemain.innerText = `RFM 한계 (마진 ${rfmLeft.toFixed(1)}s)`;
+
+                    // 게이지 바 계산
+                    const inProg = Math.min(1.0, el / target);
+                    const outProg = Math.min(1.0, el / RFM.MAX_RUN);
+                    innerBar.style.strokeDashoffset = innerCirc * (1 - inProg);
+                    outerBar.style.strokeDashoffset = outerCirc * (1 - outProg);
+
+                    if (el >= target - RFM.COUNTDOWN_LEAD) {
+                        innerBar.setAttribute('stroke', '#f59e0b');
+                        card.classList.add('alert-flash-amber');
+                    } else {
+                        innerBar.setAttribute('stroke', '#10b981');
+                        card.classList.remove('alert-flash-amber');
+                    }
+
+                    coolBox.classList.add('hidden');
+                    btnStart.disabled = true;
+                    btnStart.classList.add('opacity-40');
+                    btnStop.disabled = false;
                 }
-            });
+                // 쿨다운(COOLING) 상태
+                else if (eng.state === 'COOLING') {
+                    const total = eng.coolTotal || 60;
+                    const remSec = Math.max(0, (eng.coolEnd - now) / 1000);
+                    const prog = Math.min(1.0, (total - remSec) / total);
 
-            // 상단 사이클 차수 표기
-            const cycleBadge = document.getElementById('cycleBadge');
-            if (cycleBadge) {
-                cycleBadge.innerText = `CYCLE ${curEng.cycle} / 3`;
-                if (curEng.cycle === 3) {
-                    cycleBadge.className = "px-3 py-1 rounded-full text-xs font-black bg-rose-600/30 text-rose-300 border border-rose-500/50";
-                } else {
-                    cycleBadge.className = "px-3 py-1 rounded-full text-xs font-black bg-blue-600/30 text-blue-300 border border-blue-500/50";
-                }
-            }
+                    const m = Math.floor(remSec / 60);
+                    const s = Math.floor(remSec % 60);
+                    const timeStr = (total > 60)
+                        ? `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+                        : `${remSec.toFixed(1)}s`;
 
-            // 엔진 상태 태그
-            const engineStatusTag = document.getElementById('engineStatusTag');
-            if (engineStatusTag) {
-                engineStatusTag.innerText = `ENG ${curEngId} : ${curEng.state}`;
-                if (curEng.state === 'RUNNING') {
-                    engineStatusTag.className = "text-xs font-extrabold px-2.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-500/60";
-                } else if (curEng.state === 'COOLING') {
-                    engineStatusTag.className = "text-xs font-extrabold px-2.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/60";
-                } else {
-                    engineStatusTag.className = "text-xs font-extrabold px-2.5 py-0.5 rounded bg-slate-900 text-emerald-400 border border-emerald-500/40";
-                }
-            }
+                    if (statusT) {
+                        statusT.innerText = (total > 60) ? "30M 락아웃 냉각" : "60S 냉각 중";
+                        statusT.className = "text-[10px] font-black px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/40";
+                    }
+                    if (stateTxt) stateTxt.innerText = "COOLING LOCKED";
+                    if (digits) {
+                        digits.innerHTML = timeStr;
+                        digits.className = "text-4xl sm:text-5xl font-black font-mono text-cyan-500 tracking-tight my-0.5";
+                    }
+                    if (rfmRemain) rfmRemain.innerText = `재가동 잠금 상태`;
 
-            // 게이지 SVG 엘리먼트
-            const innerBar = document.getElementById('innerGaugeBar');
-            const outerBar = document.getElementById('outerGaugeBar');
-            const digits = document.getElementById('mainTimerDigits');
-            const stateHeader = document.getElementById('gaugeStateHeader');
-            const targetSubSec = document.getElementById('targetSubSec');
-            const rfmMarginText = document.getElementById('rfmMarginText');
-            const card = document.getElementById('mainDashboardCard');
-            const coolingOverlayText = document.getElementById('coolingOverlayText');
-            const cooldownSection = document.getElementById('cooldownProgressSection');
+                    innerBar.setAttribute('stroke', '#06b6d4');
+                    outerBar.setAttribute('stroke', '#0891b2');
+                    innerBar.style.strokeDashoffset = innerCirc * (1 - prog);
+                    outerBar.style.strokeDashoffset = outerCirc * (1 - prog);
 
-            const innerCircumference = 552.9; // 2 * PI * 88
-            const outerCircumference = 659.7; // 2 * PI * 105
-
-            if (targetSubSec) targetSubSec.innerText = targetSec.toFixed(1);
-
-            // ================= 1. 모터링 가동(RUNNING) 중 디스플레이 =================
-            if (curEng.state === 'RUNNING') {
-                const elapsed = curEng.runElapsed;
-                const rfmRemain = Math.max(0, RFM_LIMITS.MAX_RUN_TIME - elapsed);
-
-                if (stateHeader) stateHeader.innerText = 'MOTORING IN PROGRESS';
-                if (digits) {
-                    digits.innerHTML = `${elapsed.toFixed(1)}<span class="text-2xl font-bold text-slate-400">s</span>`;
-                }
-                if (rfmMarginText) {
-                    rfmMarginText.innerText = `(한계 마진 ${rfmRemain.toFixed(1)}s)`;
-                }
-
-                // 내측 게이지: 목표 시간 기준 (0% ~ 100%)
-                const innerProgress = Math.min(1.0, elapsed / targetSec);
-                const innerOffset = innerCircumference * (1 - innerProgress);
-                innerBar.style.strokeDashoffset = innerOffset;
-
-                // 외측 게이지: RFM 45s 한계 기준 (0% ~ 100%)
-                const outerProgress = Math.min(1.0, elapsed / RFM_LIMITS.MAX_RUN_TIME);
-                const outerOffset = outerCircumference * (1 - outerProgress);
-                outerBar.style.strokeDashoffset = outerOffset;
-
-                // 색상 변화 (목표 5초 전 앰버, 종료 레드)
-                if (elapsed >= targetSec - RFM_LIMITS.PRE_COUNTDOWN_TIME) {
-                    innerBar.setAttribute('stroke', '#f59e0b');
-                    card.classList.add('alert-flash-amber');
-                } else {
-                    innerBar.setAttribute('stroke', '#10b981');
                     card.classList.remove('alert-flash-amber');
+                    coolBox.classList.remove('hidden');
+                    if (coolLabel) coolLabel.innerText = `${Math.ceil(remSec)}s / ${total}s`;
+                    if (coolBar) coolBar.style.width = `${prog * 100}%`;
+
+                    btnStart.disabled = true;
+                    btnStart.classList.add('opacity-30');
+                    btnStop.disabled = true;
                 }
+                // 대기(READY) 상태
+                else {
+                    if (statusT) {
+                        statusT.innerText = `READY`;
+                        statusT.className = "text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30";
+                    }
+                    if (stateTxt) stateTxt.innerText = "STANDBY";
+                    if (digits) {
+                        digits.innerHTML = `00.0<span class="text-lg font-bold text-slate-400">s</span>`;
+                        digits.className = "text-4xl sm:text-5xl font-black font-mono text-slate-800 dark:text-white tracking-tight my-0.5";
+                    }
+                    if (rfmRemain) rfmRemain.innerText = `RFM 한계 45s (마진 45.0s)`;
 
-                coolingOverlayText.classList.add('hidden');
-                cooldownSection.classList.add('hidden');
+                    innerBar.setAttribute('stroke', '#10b981');
+                    outerBar.setAttribute('stroke', '#3b82f6');
+                    innerBar.style.strokeDashoffset = innerCirc;
+                    outerBar.style.strokeDashoffset = outerCirc;
 
-                // 버튼 상태
-                document.getElementById('btnStart').disabled = true;
-                document.getElementById('btnStart').classList.add('opacity-50');
-                document.getElementById('btnStop').disabled = false;
-            } 
-            // ================= 2. 쿨다운(COOLING) 대기 중 디스플레이 =================
-            else if (curEng.state === 'COOLING') {
-                const now = Date.now();
-                const totalCooldown = curEng.cooldownTotal || 60;
-                const remainingSec = Math.max(0, (curEng.cooldownEnd - now) / 1000);
-                const progress = Math.min(1.0, (totalCooldown - remainingSec) / totalCooldown);
-
-                if (stateHeader) stateHeader.innerText = (curEng.cycle === 3) ? '30-MIN LOCKOUT COOLING' : 'COOLDOWN COUNTDOWN';
-                
-                // 분:초 형식 포맷
-                const mins = Math.floor(remainingSec / 60);
-                const secs = Math.floor(remainingSec % 60);
-                const formattedTime = (totalCooldown > 60)
-                    ? `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-                    : `${remainingSec.toFixed(1)}s`;
-
-                if (digits) {
-                    digits.innerHTML = formattedTime;
-                    digits.className = "text-5xl sm:text-6xl font-black tracking-tight text-cyan-400 font-mono drop-shadow-lg";
+                    card.classList.remove('alert-flash-amber');
+                    coolBox.classList.add('hidden');
+                    btnStart.disabled = false;
+                    btnStart.classList.remove('opacity-30', 'opacity-40');
+                    btnStop.disabled = true;
                 }
-
-                // 게이지 채우기
-                innerBar.setAttribute('stroke', '#06b6d4');
-                outerBar.setAttribute('stroke', '#0891b2');
-                innerBar.style.strokeDashoffset = innerCircumference * (1 - progress);
-                outerBar.style.strokeDashoffset = outerCircumference * (1 - progress);
-
-                card.classList.remove('alert-flash-amber');
-                coolingOverlayText.classList.remove('hidden');
-                cooldownSection.classList.remove('hidden');
-
-                // 쿨다운 진행 바 업데이트
-                document.getElementById('cooldownRemainingLabel').innerText = `${Math.ceil(remainingSec)}s / ${totalCooldown}s`;
-                document.getElementById('cooldownProgressBar').style.width = `${progress * 100}%`;
-
-                // 버튼 제어 (스타트 차단)
-                document.getElementById('btnStart').disabled = true;
-                document.getElementById('btnStart').classList.add('opacity-30');
-                document.getElementById('btnStop').disabled = true;
-            } 
-            // ================= 3. 대기(READY / STANDBY) 디스플레이 =================
-            else {
-                if (stateHeader) stateHeader.innerText = 'READY FOR MOTORING';
-                if (digits) {
-                    digits.innerHTML = `00.0<span class="text-2xl font-bold text-slate-400">s</span>`;
-                    digits.className = "text-5xl sm:text-6xl font-black tracking-tight text-white font-mono drop-shadow-lg";
-                }
-                if (rfmMarginText) {
-                    rfmMarginText.innerText = `(마진 45.0s)`;
-                }
-
-                innerBar.setAttribute('stroke', '#10b981');
-                outerBar.setAttribute('stroke', '#3b82f6');
-                innerBar.style.strokeDashoffset = innerCircumference;
-                outerBar.style.strokeDashoffset = outerCircumference;
-
-                card.classList.remove('alert-flash-amber');
-                coolingOverlayText.classList.add('hidden');
-                cooldownSection.classList.add('hidden');
-
-                document.getElementById('btnStart').disabled = false;
-                document.getElementById('btnStart').classList.remove('opacity-30', 'opacity-50');
-                document.getElementById('btnStop').disabled = true;
-            }
+            });
         }
 
-        // 9. 엔진 및 모드 전환 함수
-        function switchEngine(id) {
-            getAudioContext();
-            appState.activeEngine = id;
-            saveState();
-            updateUI();
-        }
-
+        // 9. 설정 토글 핸들러
         function setAircraft(tail) {
-            getAudioContext();
-            appState.activeAircraft = tail;
-            const btn9695 = document.getElementById('btnAc9695');
-            const btn9277 = document.getElementById('btnAc9277');
-
+            appState.aircraft = tail;
+            const b9695 = document.getElementById('btnAc9695');
+            const b9277 = document.getElementById('btnAc9277');
             if (tail === 'HL9695') {
-                btn9695.className = "px-2.5 py-1 rounded-md text-[11px] font-black transition-all bg-blue-600 text-white shadow";
-                btn9277.className = "px-2.5 py-1 rounded-md text-[11px] font-black transition-all text-slate-400 hover:text-white";
+                b9695.className = "px-2 py-1 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow";
+                b9277.className = "px-2 py-1 rounded-md text-[10px] font-black transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white";
             } else {
-                btn9695.className = "px-2.5 py-1 rounded-md text-[11px] font-black transition-all text-slate-400 hover:text-white";
-                btn9277.className = "px-2.5 py-1 rounded-md text-[11px] font-black transition-all bg-blue-600 text-white shadow";
+                b9695.className = "px-2 py-1 rounded-md text-[10px] font-black transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white";
+                b9277.className = "px-2 py-1 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow";
             }
             saveState();
         }
 
-        function setMotoringMode(mode) {
-            getAudioContext();
-            appState.motoringMode = mode;
-            const btnDry = document.getElementById('btnModeDry');
-            const btnWet = document.getElementById('btnModeWet');
-            const sopBadge = document.getElementById('sopModeIndicator');
-
-            if (mode === 'DRY') {
-                btnDry.className = "flex-1 py-2 rounded-lg text-xs font-black transition-all bg-sky-600 text-white shadow flex flex-col items-center";
-                btnWet.className = "flex-1 py-2 rounded-lg text-xs font-black transition-all text-slate-400 hover:text-white flex flex-col items-center";
-                if (sopBadge) {
-                    sopBadge.innerText = 'DRY MOTORING';
-                    sopBadge.className = "text-[10px] px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800";
-                }
+        function setMotoringMode(m) {
+            appState.mode = m;
+            const bDry = document.getElementById('btnModeDry');
+            const bWet = document.getElementById('btnModeWet');
+            const sBadge = document.getElementById('sopBadge');
+            if (m === 'DRY') {
+                bDry.className = "px-2 py-0.5 rounded-md text-[10px] font-black bg-sky-600 text-white shadow";
+                bWet.className = "px-2 py-0.5 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+                if (sBadge) sBadge.innerText = 'DRY';
             } else {
-                btnDry.className = "flex-1 py-2 rounded-lg text-xs font-black transition-all text-slate-400 hover:text-white flex flex-col items-center";
-                btnWet.className = "flex-1 py-2 rounded-lg text-xs font-black transition-all bg-amber-600 text-white shadow flex flex-col items-center";
-                if (sopBadge) {
-                    sopBadge.innerText = 'WET MOTORING';
-                    sopBadge.className = "text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800";
-                }
+                bDry.className = "px-2 py-0.5 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+                bWet.className = "px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-600 text-white shadow";
+                if (sBadge) sBadge.innerText = 'WET';
             }
             saveState();
         }
 
-        // 10. 목표 가동 시간 설정
         function setTargetDuration(sec) {
-            getAudioContext();
-            // 45초 초과 절대 불가 인터록
-            const clamped = Math.min(RFM_LIMITS.MAX_RUN_TIME, Math.max(10, sec));
-            appState.targetDuration = clamped;
+            const clamped = Math.min(RFM.MAX_RUN, Math.max(10, sec));
+            appState.targetSec = clamped;
 
-            document.getElementById('targetDurationLabel').innerText = `${clamped} 초`;
-
-            // 프리셋 버튼 스타일 갱신
-            document.querySelectorAll('.target-btn').forEach(btn => {
-                const bSec = parseFloat(btn.getAttribute('data-sec'));
-                if (bSec === clamped) {
-                    btn.className = "target-btn px-2.5 py-1 rounded-lg text-xs font-black bg-amber-500 text-slate-950 shadow border border-amber-400";
+            document.querySelectorAll('.target-btn').forEach(b => {
+                const s = parseFloat(b.getAttribute('data-sec'));
+                if (s === clamped) {
+                    b.className = "target-btn px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500 text-slate-950 shadow border border-amber-400";
                 } else {
-                    btn.className = "target-btn px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:border-amber-400 hover:text-amber-300";
+                    b.className = "target-btn px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300";
                 }
             });
 
             saveState();
-            updateUI();
+            renderAll();
         }
 
-        function adjustTargetDuration(delta) {
-            setTargetDuration(appState.targetDuration + delta);
-        }
-
-        // 11. 사이클 수동 리셋 (안전 2단계 확인)
-        function confirmResetCycle() {
-            const curEngId = appState.activeEngine;
-            const curEng = appState.engines[curEngId];
-
-            if (curEng.state === 'COOLING') {
-                const ok = confirm(`⚠️ 경고: ENG ${curEngId}는 현재 냉각 대기 중입니다!\n\n규정 냉각 시간을 무시하고 리셋할 경우 스타터 모터 과열/소손 위험이 있습니다.\n정말 강제로 사이클을 리셋하시겠습니까?`);
-                if (!ok) return;
-            } else {
-                const ok = confirm(`ENG ${curEngId}의 사이클을 Cycle 1(초기 상태)로 리셋하시겠습니까?`);
-                if (!ok) return;
-            }
-
-            curEng.cycle = 1;
-            curEng.state = 'READY';
-            curEng.runElapsed = 0.0;
-            curEng.cooldownStart = null;
-            curEng.cooldownEnd = null;
-
-            saveState();
-            updateUI();
-            speak(appState.voiceLang === 'KO' ? `엔진 ${curEngId} 사이클 초기화` : `Engine ${curEngId} Cycle Reset`);
-        }
-
-        // 12. 음성 언어 토글 & 사운드 테스트
         function toggleVoiceLang() {
-            getAudioContext();
             appState.voiceLang = (appState.voiceLang === 'EN') ? 'KO' : 'EN';
             document.getElementById('txtVoiceLang').innerText = appState.voiceLang;
             saveState();
-            speak(appState.voiceLang === 'KO' ? '한국어 음성 설정' : 'English Voice Selected');
+            speak(appState.voiceLang === 'KO' ? '한국어 음성' : 'English Voice');
         }
 
         function testAudio() {
-            getAudioContext();
-            playBeep(880, 0.1);
-            setTimeout(() => playChime(), 200);
-            setTimeout(() => {
-                speak(appState.voiceLang === 'KO' ? '테스트: 파이브, 포, 쓰리, 투, 원, 컷!' : 'Test: Five, Four, Three, Two, One, CUT!', true);
-            }, 600);
+            getAudio();
+            beep(880, 0.1);
+            setTimeout(() => playChime(), 180);
+            setTimeout(() => speak(appState.voiceLang === 'KO' ? '오, 사, 삼, 이, 일, 컷!' : 'Five, Four, Three, Two, One, CUT!', true), 500);
         }
 
-        // 13. SOP 패널 토글
-        function toggleSopPanel() {
-            const panel = document.getElementById('sopContentPanel');
-            const icon = document.getElementById('sopToggleIcon');
-            if (panel.classList.contains('hidden')) {
-                panel.classList.remove('hidden');
-                icon.innerText = '▲ 닫기';
+        function toggleSop() {
+            const p = document.getElementById('sopPanel');
+            const a = document.getElementById('sopArrow');
+            if (p.classList.contains('hidden')) {
+                p.classList.remove('hidden');
+                a.innerText = '▲ 닫기';
             } else {
-                panel.classList.add('hidden');
-                icon.innerText = '▼ 열기';
+                p.classList.add('hidden');
+                a.innerText = '▼ 열기';
             }
         }
 
-        // 14. 작업 이력 로깅 & CSV 다운로드
-        function addLogRecord(record) {
-            logs.unshift(record); // 최신순
-            if (logs.length > 500) logs.pop(); // 최대 500건 유지
+        // 10. 이력 로깅 & CSV
+        function addLog(rec) {
+            logs.unshift(rec);
+            if (logs.length > 300) logs.pop();
             saveLogs();
             renderLogs();
         }
 
         function renderLogs() {
-            const tbody = document.getElementById('logTableBody');
-            const countBadge = document.getElementById('logCountBadge');
-            if (countBadge) countBadge.innerText = `${logs.length} 건`;
-
-            if (!tbody) return;
+            const b = document.getElementById('logBody');
+            const c = document.getElementById('logCount');
+            if (c) c.innerText = `${logs.length} 건`;
+            if (!b) return;
 
             if (logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500 font-sans">기록된 모터링 이력이 없습니다.</td></tr>`;
+                b.innerHTML = `<tr><td colspan="7" class="p-3 text-center text-slate-400 font-sans">이력이 없습니다.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = logs.map((item, idx) => `
-                <tr class="hover:bg-slate-900/40 transition-colors">
-                    <td class="p-2.5 font-sans text-slate-300 text-[11px]">${item.timestamp}</td>
-                    <td class="p-2.5 font-bold text-blue-400">${item.aircraft}</td>
-                    <td class="p-2.5 font-bold text-emerald-400">${item.engine}</td>
-                    <td class="p-2.5">${item.mode}</td>
-                    <td class="p-2.5 font-bold text-amber-300">${item.duration}</td>
-                    <td class="p-2.5">${item.cycle}</td>
-                    <td class="p-2.5">
-                        <span class="px-1.5 py-0.5 rounded text-[10px] ${item.coolingStatus.includes('완료') ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-cyan-950 text-cyan-300 border border-cyan-800'}">
-                            ${item.coolingStatus}
-                        </span>
-                    </td>
-                    <td class="p-2.5 font-sans text-slate-400 text-[11px]">${item.reason}</td>
+            b.innerHTML = logs.map(i => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <td class="p-1.5 font-sans">${i.timestamp}</td>
+                    <td class="p-1.5 font-bold text-blue-500">${i.aircraft}</td>
+                    <td class="p-1.5 font-bold ${i.engine==='ENG 1'?'text-emerald-500':'text-blue-500'}">${i.engine}</td>
+                    <td class="p-1.5">${i.mode}</td>
+                    <td class="p-1.5 font-bold text-amber-500">${i.duration}</td>
+                    <td class="p-1.5">${i.cycle}</td>
+                    <td class="p-1.5"><span class="px-1 py-0.2 rounded text-[9px] ${i.status.includes('완료')?'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30':'bg-cyan-500/10 text-cyan-500 border border-cyan-500/30'}">${i.status}</span></td>
                 </tr>
             `).join('');
         }
 
-        function exportToCsv() {
-            if (logs.length === 0) {
-                alert('내보낼 작업 이력이 없습니다.');
-                return;
-            }
-
-            let csv = '\uFEFF'; // Excel UTF-8 BOM
-            csv += '일시,기체,대상엔진,작업모드,가동시간,사이클차수,냉각상태,비고사유\n';
-
-            logs.forEach(row => {
-                csv += `"${row.timestamp}","${row.aircraft}","${row.engine}","${row.mode}","${row.duration}","${row.cycle}","${row.coolingStatus}","${row.reason}"\n`;
+        function exportCsv() {
+            if (logs.length === 0) { alert('내보낼 이력이 없습니다.'); return; }
+            let csv = '\uFEFF일시,기체,대상엔진,작업모드,가동시간,사이클,상태\n';
+            logs.forEach(r => {
+                csv += `"${r.timestamp}","${r.aircraft}","${r.engine}","${r.mode}","${r.duration}","${r.cycle}","${r.status}"\n`;
             });
-
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            const now = new Date();
-            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
             a.href = url;
-            a.download = `AW139_Motoring_Log_${appState.activeAircraft}_${dateStr}.csv`;
-            document.body.appendChild(a);
+            a.download = `AW139_Motoring_${appState.aircraft}_${new Date().toISOString().slice(0,10)}.csv`;
             a.click();
-            document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
         function clearLogs() {
             if (logs.length === 0) return;
-            if (confirm('저장된 모든 모터링 이력을 삭제하시겠습니까? (삭제 후 복구할 수 없습니다)')) {
+            if (confirm('모든 이력을 삭제하시겠습니까?')) {
                 logs = [];
                 saveLogs();
                 renderLogs();
             }
         }
 
-        // 15. 브라우저 이탈 방지 핸들러
+        // 11. 브라우저 이탈 방지
         window.addEventListener('beforeunload', (e) => {
-            const curEng = appState.engines[appState.activeEngine];
-            if (curEng.state === 'RUNNING' || curEng.state === 'COOLING') {
+            const anyActive = [1, 2].some(id => {
+                const s = appState.engines[id].state;
+                return s === 'RUNNING' || s === 'COOLING';
+            });
+            if (anyActive) {
                 e.preventDefault();
-                e.returnValue = '현재 모터링 또는 냉각 대기가 진행 중입니다. 페이지를 벗어나시겠습니까?';
+                e.returnValue = '모터링 또는 냉각 대기가 진행 중입니다.';
             }
         });
 
-        // 16. 애플리케이션 초기화
+        // 12. 초기화
         window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
             loadState();
             loadLogs();
+            syncTimestamps();
 
-            // 저장된 타임스탬프와 시간 차이 분석 및 복원
-            checkAndSyncTimestamps();
-
-            // UI 초기 바인딩
-            setAircraft(appState.activeAircraft);
-            setMotoringMode(appState.motoringMode);
-            setTargetDuration(appState.targetDuration);
+            setAircraft(appState.aircraft);
+            setMotoringMode(appState.mode);
+            setTargetDuration(appState.targetSec);
             document.getElementById('txtVoiceLang').innerText = appState.voiceLang;
 
             renderLogs();
-            updateUI();
-
-            // 타이머 루프 시작
-            startTimerLoop();
-
-            // 화면 잠금 방지 시도
-            requestWakeLock();
+            renderAll();
+            startLoop();
+            reqWakeLock();
         });
     </script>
 </body>
