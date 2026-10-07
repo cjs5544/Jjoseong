@@ -342,20 +342,132 @@
     <!-- ================= 하단 부가 섹션 (SOP 패널 & 이력 로그) ================= -->
     <div class="w-full max-w-6xl mx-auto flex flex-col gap-2 mt-2">
         
-        <!-- 1. SOP 절차 접이식 패널 (자료 수신 대기 슬롯) -->
+        <!-- 1. SOP 절차 접이식 패널 (공식 매뉴얼 연동) -->
         <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
             <button onclick="toggleSop()" class="w-full p-2.5 flex items-center justify-between text-left text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                 <span class="flex items-center gap-1.5">
-                    <span>📋</span><span>AW139 모터링 표준 작업 절차 (SOP) 매뉴얼 열람</span>
+                    <span>📋</span><span>AW139 모터링 공식 표준 작업 절차 (RFM Rev.33 & AMP / EMM)</span>
                     <span id="sopBadge" class="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/30">DRY</span>
                 </span>
                 <span id="sopArrow" class="text-slate-400 text-xs">▼ 열기</span>
             </button>
-            <div id="sopPanel" class="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 text-center text-xs text-slate-500 hidden">
-                <div class="font-bold text-amber-600 dark:text-amber-400 mb-0.5">📑 공식 기술문서(RFM / AMP ATA 71) 자료 수신 대기 슬롯</div>
-                <p class="text-[11px] text-slate-400">
-                    항공 안전 원칙 준수를 위해 임의로 작성하지 않으며, 공식 매뉴얼 전달 시 Dry/Wet 점검 절차가 일점일획 오차 없이 표출됩니다.
-                </p>
+            <div id="sopPanel" class="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 hidden text-xs text-slate-700 dark:text-slate-200 space-y-4">
+                
+                <!-- 상단 탭 전환: DRY / WET / 비교표 -->
+                <div class="flex bg-slate-200 dark:bg-slate-800 rounded-lg p-0.5 max-w-sm border border-slate-300 dark:border-slate-700 font-bold text-[11px]">
+                    <button id="btnSopTabDry" onclick="switchSopTab('DRY')" class="flex-1 py-1 rounded-md bg-blue-600 text-white shadow">
+                        Dry Motoring
+                    </button>
+                    <button id="btnSopTabWet" onclick="switchSopTab('WET')" class="flex-1 py-1 rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                        Wet Motoring
+                    </button>
+                    <button id="btnSopTabComp" onclick="switchSopTab('COMP')" class="flex-1 py-1 rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                        개요 & 규격
+                    </button>
+                </div>
+
+                <!-- 1. Dry Motoring 패널 -->
+                <div id="sopViewDry" class="space-y-3">
+                    <div class="p-2.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-[11px] leading-relaxed">
+                        <span class="font-black text-sky-600 dark:text-sky-400">NOTE (RFM Rev.33 Section 2 Normal Procedures, p.2-19):</span><br>
+                        Following an aborted start shutdown, perform the following procedure allowing a <strong>30 seconds fuel drain period</strong> before restarting. The procedure is used to clear internally trapped fuel and vapor.<br>
+                        <span class="text-slate-500 dark:text-slate-400">*(시동 중단 셧다운 후, 재시동 전 반드시 <strong>30초간 연료 자연 드레인 대기 시간</strong>을 가진 후 본 절차를 수행할 것)*</span>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="font-black text-slate-800 dark:text-slate-100 text-[11px] flex items-center justify-between">
+                            <span>조작 수순 (Verbatim Checklist):</span>
+                            <span class="text-[10px] text-rose-500 font-bold">★ 45초 초과 가동 금지</span>
+                        </div>
+                        <ol class="space-y-1 text-[11px] bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">1.</span><span><strong>ENG GOV switch — AUTO</strong> <span class="text-slate-400">(수동 시: MANUAL 전환 후 ECL Starter 버튼 사용 가능)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">2.</span><span><strong>ENG MODE switch — OFF</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">3.</span><span><strong>ECL — OFF</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">4.</span><span><strong>FUEL PUMP switch — OFF</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">5.</span><span><strong>ENG FUEL switch — OFF</strong> <span class="text-slate-400">(오버헤드 연료 차단 밸브 수평 바 확인)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">6.</span><span><strong>ENGINE IGN circuit breaker — OUT (PULL)</strong> <span class="text-amber-500 font-bold">(백색 링 확인 — 점화 물리적 차단)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">7.</span><span><strong>BUS TIE switch — ON</strong> <span class="text-slate-400">(2번 엔진 모터링 시에만 해당)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">8.</span><span><strong>ENG MODE switch — Select IDLE as necessary</strong> <span class="text-rose-500 font-bold">(최대 45초 이내 제한 준수)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">9.</span><span><strong>Gas generator (NG) — Note increasing</strong> <span class="text-slate-400">(Ng 회전수 상승 및 배기구 유증기/열기 배출 확인)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">10.</span><span><strong>ENG MODE switch — OFF as necessary</strong> <span class="text-slate-400">(ITT 충분히 하강 또는 환기 완료 시 즉시 OFF)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-sky-500">11.</span><span><strong>ENGINE IGN circuit breaker — IN (PUSH)</strong> <span class="text-slate-400">(모터링 완료 후 점화 CB 원위치 복구)</span></span></li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- 2. Wet Motoring 패널 -->
+                <div id="sopViewWet" class="space-y-3 hidden">
+                    <div class="space-y-2">
+                        <div class="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/40 text-[11px] leading-relaxed">
+                            <span class="font-black text-rose-600 dark:text-rose-400">WARNING 1 (점화 차단 엄수):</span><br>
+                            Ensure <strong>ENGINE IGN circuit breaker is OUT (PULL) and tagged</strong> before wet motoring. If ignition is active, fuel will ignite inside the engine causing severe explosion or personnel injury.<br>
+                            <span class="text-slate-500 dark:text-slate-400">*(점화 계통이 살아있으면 연료가 폭발하여 대형 참사가 발생하므로 반드시 CB PULL 백색 링 확인)*</span>
+                        </div>
+                        <div class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/40 text-[11px] leading-relaxed">
+                            <span class="font-black text-amber-600 dark:text-amber-400">WARNING 2 (개활지 및 화재 대비):</span><br>
+                            Perform wet motoring in an <strong>open, well-ventilated area (Flight Line)</strong>. Do NOT perform inside the hangar. Ensure aircraft static grounding is connected and fire extinguishing equipment is positioned.<br>
+                            <span class="text-slate-500 dark:text-slate-400">*(반드시 비행선 야외에서 수행. 격납고 내부 절대 금지, 정전기 접지 체결 및 대형 소화기 전진 배치)*</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="font-black text-slate-800 dark:text-slate-100 text-[11px] flex items-center justify-between">
+                            <span>조작 수순 (AMP 39-A-71-00-00-01A-100A-A / P&WC EMM 72-00-00):</span>
+                            <span class="text-[10px] text-rose-500 font-bold">★ 통상 30s ~ 최대 45s</span>
+                        </div>
+                        <ol class="space-y-1 text-[11px] bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">1.</span><span><strong>Aircraft location — Position in open flight line and connect grounding</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">2.</span><span><strong>Fire fighting equipment — Positioned on standby</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">3.</span><span><strong>ENGINE IGN circuit breaker — OUT (PULL)</strong> <span class="text-rose-500 font-bold">(백색 링 확인)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">4.</span><span><strong>FUEL PUMP switch — ON</strong> <span class="text-slate-400">(주 연료 부스트 펌프 가압)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">5.</span><span><strong>ENG FUEL switch — ON</strong> <span class="text-slate-400">(오버헤드 연료 차단 밸브 수직 바 확인)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">6.</span><span><strong>ECL — OFF</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">7.</span><span><strong>ENG GOV switch — AUTO</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">8.</span><span><strong>BUS TIE switch — ON</strong> <span class="text-slate-400">(2번 엔진 모터링 시)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">9.</span><span><strong>ENG MODE switch — Select IDLE</strong> <span class="text-slate-400">(스타터 가동 및 노즐 연료 분사 개시)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">10.</span><span><strong>Starter cranking & Fuel spray — Monitor</strong> <span class="text-rose-500 font-bold">(통상 30초 ~ 최대 45초 이내 엄수)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">11.</span><span><strong>ENG MODE switch — OFF</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">12.</span><span><strong>FUEL PUMP switch — OFF</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">13.</span><span><strong>ENG FUEL switch — OFF</strong></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">14.</span><span><strong>Fuel leaks and drainage — Inspect and clean up</strong> <span class="text-slate-400">(누설 점검 및 배출 잔여 연료 수거)</span></span></li>
+                            <li class="flex items-start gap-2"><span class="font-bold text-amber-500">15.</span><span><strong>ENGINE IGN circuit breaker — IN (PUSH)</strong> <span class="text-slate-400">(작업 완료 후 점화 CB 복구)</span></span></li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- 3. 개요 및 비교 규격 패널 -->
+                <div id="sopViewComp" class="space-y-3 hidden">
+                    <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                        <table class="w-full text-left text-[11px]">
+                            <thead class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 font-bold">
+                                <tr>
+                                    <th class="p-2">구분</th>
+                                    <th class="p-2">드라이 모터링 (Dry)</th>
+                                    <th class="p-2">웻 모터링 (Wet)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                <tr><td class="p-2 font-bold">적용 목적</td><td class="p-2">시동실패 후 잔류연료 배출, 셧다운 후 ITT 상승 억제, 압축기 세척 건조</td><td class="p-2">장기보관 방청유 주입, 보관해제 플러싱, 펌프/노즐 누설점검</td></tr>
+                                <tr><td class="p-2 font-bold">연료 공급</td><td class="p-2 text-rose-500 font-bold">차단 (Fuel OFF / SOV Closed)</td><td class="p-2 text-emerald-500 font-bold">공급 및 분사 (Fuel ON / SOV Open)</td></tr>
+                                <tr><td class="p-2 font-bold">점화 회로</td><td class="p-2 text-rose-500 font-bold">차단 (ENGINE IGN CB PULL)</td><td class="p-2 text-rose-500 font-bold">차단 (ENGINE IGN CB PULL)</td></tr>
+                                <tr><td class="p-2 font-bold">가동 시간</td><td class="p-2">ITT 150°C 이하까지 (최대 45초 이내)</td><td class="p-2">통상 30초 ~ 최대 45초 이내</td></tr>
+                                <tr><td class="p-2 font-bold">공식 출처</td><td class="p-2">RFM Rev.33 Section 2 (Normal, p.2-19)</td><td class="p-2">AMP 39-A-71-00-00-01A-100A-A / P&WC EMM</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 스타터 듀티 사이클 -->
+                    <div class="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px]">
+                        <span class="font-black text-slate-800 dark:text-slate-200">스타터 모터 작동 주기 한계 (RFM Sec.1 P.1-33):</span>
+                        <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-600 dark:text-slate-300">
+                            <li><strong>1회차:</strong> 45초 가동 ➔ 1분(60초) 냉각</li>
+                            <li><strong>2회차:</strong> 45초 가동 ➔ 1분(60초) 냉각</li>
+                            <li><strong>3회차:</strong> 45초 가동 ➔ <strong>30분 냉각 (강제 락아웃)</strong></li>
+                            <li><strong>완전 냉각 리셋:</strong> 1·2회차 후 추가 가동 없이 <strong>30분이 경과하면 스타터 모터가 완전히 냉각</strong>되어 Cycle 1로 자동 초기화됨.</li>
+                        </ul>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -1002,6 +1114,7 @@
                 bDry.className = "px-2 py-0.5 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
                 bWet.className = "px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-600 text-white shadow";
                 if (sBadge) sBadge.innerText = 'WET';
+                switchSopTab('WET');
             }
             saveState();
         }
@@ -1046,6 +1159,31 @@
             } else {
                 p.classList.add('hidden');
                 a.innerText = '▼ 열기';
+            }
+        }
+
+        function switchSopTab(tab) {
+            const vDry = document.getElementById('sopViewDry');
+            const vWet = document.getElementById('sopViewWet');
+            const vComp = document.getElementById('sopViewComp');
+            const bDry = document.getElementById('btnSopTabDry');
+            const bWet = document.getElementById('btnSopTabWet');
+            const bComp = document.getElementById('btnSopTabComp');
+
+            if (!vDry || !vWet || !vComp) return;
+
+            [vDry, vWet, vComp].forEach(el => el.classList.add('hidden'));
+            [bDry, bWet, bComp].forEach(el => el.className = "flex-1 py-1 rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white");
+
+            if (tab === 'DRY') {
+                vDry.classList.remove('hidden');
+                bDry.className = "flex-1 py-1 rounded-md bg-blue-600 text-white shadow";
+            } else if (tab === 'WET') {
+                vWet.classList.remove('hidden');
+                bWet.className = "flex-1 py-1 rounded-md bg-amber-600 text-white shadow";
+            } else {
+                vComp.classList.remove('hidden');
+                bComp.className = "flex-1 py-1 rounded-md bg-slate-700 text-white shadow";
             }
         }
 
