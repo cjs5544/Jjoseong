@@ -164,6 +164,19 @@
             </div>
         </div>
 
+        <!-- 게이지 스타일 선택 (원형 vs 바 타입) -->
+        <div class="flex items-center gap-1.5 whitespace-nowrap">
+            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">스타일:</span>
+            <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+                <button id="btnGaugeCircle" onclick="setGaugeStyle('circle')" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-600 text-white shadow">
+                    ◯ 원형
+                </button>
+                <button id="btnGaugeBar" onclick="setGaugeStyle('bar')" class="px-2 py-0.5 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                    ▬ 바
+                </button>
+            </div>
+        </div>
+
         <!-- 전체 리셋 (Master Reset) 버튼 -->
         <button onclick="masterReset()" title="테스트 및 긴급 사용 시 모든 엔진의 사이클과 쿨다운을 Cycle 1로 강제 초기화" class="px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-black flex items-center gap-1 transition-all active:scale-95 whitespace-nowrap ml-auto sm:ml-0">
             <span>🔄</span><span>전체 리셋</span>
@@ -191,8 +204,9 @@
                 </div>
             </div>
 
-            <!-- 중앙: 듀얼 게이지 & 대형 타이머 (모바일 반응형 스케일) -->
-            <div class="flex items-center justify-center my-1 sm:my-2 relative">
+            <!-- 중앙 게이지 영역 (원형 vs 바 타입 선택 지원) -->
+            <!-- 1) 원형 게이지 뷰 (Circle View) -->
+            <div id="circleView1" class="flex items-center justify-center my-1 sm:my-2 relative">
                 <div class="relative w-32 h-32 sm:w-52 sm:h-52 md:w-56 md:h-56 flex items-center justify-center">
                     <svg class="w-full h-full gauge-svg" viewBox="0 0 200 200">
                         <!-- 외측: RFM 45s 한계선 트랙 (반지름 85) -->
@@ -220,6 +234,47 @@
                     <div id="cutOverlay1" class="absolute inset-0 flex items-center justify-center bg-rose-600/90 rounded-full text-white font-black text-2xl sm:text-3xl tracking-widest hidden alert-flash-red pointer-events-none">
                         CUT!
                     </div>
+                </div>
+            </div>
+
+            <!-- 2) 바 게이지 뷰 (Bar View - 모바일 최적화) -->
+            <div id="barView1" class="w-full flex-col justify-center my-1 sm:my-2 relative hidden">
+                <!-- 대형 디지털 시간 표시 -->
+                <div class="flex flex-col items-center justify-center text-center py-1 sm:py-2">
+                    <span id="stateTextBar1" class="text-[8px] sm:text-[10px] font-black tracking-wider text-slate-400 uppercase">STANDBY</span>
+                    <div id="digitsBar1" class="text-2xl sm:text-4xl md:text-5xl font-black font-mono text-slate-800 dark:text-white tracking-tight my-0.5">
+                        00.0<span class="text-xs sm:text-lg font-bold text-slate-400">s</span>
+                    </div>
+                    <div id="rfmRemainBar1" class="text-[8px] sm:text-[9px] font-bold text-slate-400 leading-tight">
+                        마진 45.0s
+                    </div>
+                </div>
+
+                <!-- 목표 가동시간 선형 바 -->
+                <div class="w-full bg-slate-50 dark:bg-slate-950 p-1 sm:p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-1">
+                    <div class="flex justify-between text-[8px] sm:text-[9px] font-bold mb-0.5">
+                        <span class="text-amber-500">🎯 목표 (<span id="targetEchoBar1">20.0</span>s)</span>
+                        <span id="linearTargetLabel1" class="text-slate-500 dark:text-slate-400 font-mono">0.0s</span>
+                    </div>
+                    <div class="w-full h-2 sm:h-2.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div id="linearTargetBar1" class="h-full bg-emerald-500 rounded-full transition-all duration-100" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- RFM 45s 최대 한계 선형 바 -->
+                <div class="w-full bg-slate-50 dark:bg-slate-950 p-1 sm:p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-1">
+                    <div class="flex justify-between text-[8px] sm:text-[9px] font-bold mb-0.5">
+                        <span class="text-blue-500">🛡️ RFM (45.0s)</span>
+                        <span id="linearRfmLabel1" class="text-slate-500 dark:text-slate-400 font-mono">0.0s</span>
+                    </div>
+                    <div class="w-full h-1.5 sm:h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div id="linearRfmBar1" class="h-full bg-blue-500 rounded-full transition-all duration-100" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- CUT 오버레이 (바 뷰) -->
+                <div id="cutOverlayBar1" class="absolute inset-0 flex items-center justify-center bg-rose-600/90 rounded-xl text-white font-black text-2xl sm:text-3xl tracking-widest hidden alert-flash-red pointer-events-none">
+                    CUT!
                 </div>
             </div>
 
@@ -271,8 +326,9 @@
                 </div>
             </div>
 
-            <!-- 중앙: 듀얼 게이지 & 대형 타이머 (모바일 반응형 스케일) -->
-            <div class="flex items-center justify-center my-1 sm:my-2 relative">
+            <!-- 중앙 게이지 영역 (원형 vs 바 타입 선택 지원) -->
+            <!-- 1) 원형 게이지 뷰 (Circle View) -->
+            <div id="circleView2" class="flex items-center justify-center my-1 sm:my-2 relative">
                 <div class="relative w-32 h-32 sm:w-52 sm:h-52 md:w-56 md:h-56 flex items-center justify-center">
                     <svg class="w-full h-full gauge-svg" viewBox="0 0 200 200">
                         <!-- 외측: RFM 45s 한계선 트랙 (반지름 85) -->
@@ -300,6 +356,47 @@
                     <div id="cutOverlay2" class="absolute inset-0 flex items-center justify-center bg-rose-600/90 rounded-full text-white font-black text-2xl sm:text-3xl tracking-widest hidden alert-flash-red pointer-events-none">
                         CUT!
                     </div>
+                </div>
+            </div>
+
+            <!-- 2) 바 게이지 뷰 (Bar View - 모바일 최적화) -->
+            <div id="barView2" class="w-full flex-col justify-center my-1 sm:my-2 relative hidden">
+                <!-- 대형 디지털 시간 표시 -->
+                <div class="flex flex-col items-center justify-center text-center py-1 sm:py-2">
+                    <span id="stateTextBar2" class="text-[8px] sm:text-[10px] font-black tracking-wider text-slate-400 uppercase">STANDBY</span>
+                    <div id="digitsBar2" class="text-2xl sm:text-4xl md:text-5xl font-black font-mono text-slate-800 dark:text-white tracking-tight my-0.5">
+                        00.0<span class="text-xs sm:text-lg font-bold text-slate-400">s</span>
+                    </div>
+                    <div id="rfmRemainBar2" class="text-[8px] sm:text-[9px] font-bold text-slate-400 leading-tight">
+                        마진 45.0s
+                    </div>
+                </div>
+
+                <!-- 목표 가동시간 선형 바 -->
+                <div class="w-full bg-slate-50 dark:bg-slate-950 p-1 sm:p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-1">
+                    <div class="flex justify-between text-[8px] sm:text-[9px] font-bold mb-0.5">
+                        <span class="text-amber-500">🎯 목표 (<span id="targetEchoBar2">20.0</span>s)</span>
+                        <span id="linearTargetLabel2" class="text-slate-500 dark:text-slate-400 font-mono">0.0s</span>
+                    </div>
+                    <div class="w-full h-2 sm:h-2.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div id="linearTargetBar2" class="h-full bg-emerald-500 rounded-full transition-all duration-100" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- RFM 45s 최대 한계 선형 바 -->
+                <div class="w-full bg-slate-50 dark:bg-slate-950 p-1 sm:p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-1">
+                    <div class="flex justify-between text-[8px] sm:text-[9px] font-bold mb-0.5">
+                        <span class="text-blue-500">🛡️ RFM (45.0s)</span>
+                        <span id="linearRfmLabel2" class="text-slate-500 dark:text-slate-400 font-mono">0.0s</span>
+                    </div>
+                    <div class="w-full h-1.5 sm:h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div id="linearRfmBar2" class="h-full bg-blue-500 rounded-full transition-all duration-100" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- CUT 오버레이 (바 뷰) -->
+                <div id="cutOverlayBar2" class="absolute inset-0 flex items-center justify-center bg-rose-600/90 rounded-xl text-white font-black text-2xl sm:text-3xl tracking-widest hidden alert-flash-red pointer-events-none">
+                    CUT!
                 </div>
             </div>
 
@@ -526,6 +623,7 @@
         const KEY_STATE = 'AW139_DUAL_MOTOR_V2';
         const KEY_LOGS = 'AW139_DUAL_LOGS_V2';
         const KEY_THEME = 'AW139_APP_THEME';
+        const KEY_GAUGE_STYLE = 'AW139_GAUGE_STYLE';
 
         let appState = {
             aircraft: 'HL9695',
@@ -533,6 +631,7 @@
             targetSec: 20.0,
             voiceLang: 'EN',
             theme: 'dark', // 'light' | 'dark'
+            gaugeStyle: 'circle', // 'circle' | 'bar'
             engines: {
                 1: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null, lastStopTime: null },
                 2: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null, lastStopTime: null }
@@ -934,13 +1033,63 @@
 
         function triggerCutVisual(id) {
             const ov = document.getElementById(`cutOverlay${id}`);
-            if (ov) {
-                ov.classList.remove('hidden');
-                setTimeout(() => ov.classList.add('hidden'), 2200);
-            }
+            const ovBar = document.getElementById(`cutOverlayBar${id}`);
+            [ov, ovBar].forEach(el => {
+                if (el) {
+                    el.classList.remove('hidden');
+                    setTimeout(() => el.classList.add('hidden'), 2200);
+                }
+            });
         }
 
-        // 8. 렌더링 함수
+        // 8. 게이지 스타일 (원형 vs 바 타입) 제어
+        function initGaugeStyle() {
+            const savedStyle = localStorage.getItem(KEY_GAUGE_STYLE) || appState.gaugeStyle || 'circle';
+            appState.gaugeStyle = savedStyle;
+            applyGaugeStyle(savedStyle);
+        }
+
+        function setGaugeStyle(style) {
+            appState.gaugeStyle = style;
+            localStorage.setItem(KEY_GAUGE_STYLE, style);
+            applyGaugeStyle(style);
+            renderAll();
+        }
+
+        function applyGaugeStyle(style) {
+            const isCircle = (style !== 'bar');
+            const btnCircle = document.getElementById('btnGaugeCircle');
+            const btnBar = document.getElementById('btnGaugeBar');
+            if (btnCircle && btnBar) {
+                if (isCircle) {
+                    btnCircle.className = "px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-600 text-white shadow";
+                    btnBar.className = "px-2 py-0.5 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+                } else {
+                    btnBar.className = "px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-600 text-white shadow";
+                    btnCircle.className = "px-2 py-0.5 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+                }
+            }
+
+            [1, 2].forEach(id => {
+                const circleBox = document.getElementById(`circleView${id}`);
+                const barBox = document.getElementById(`barView${id}`);
+                if (circleBox && barBox) {
+                    if (isCircle) {
+                        circleBox.classList.remove('hidden');
+                        circleBox.classList.add('flex');
+                        barBox.classList.add('hidden');
+                        barBox.classList.remove('flex');
+                    } else {
+                        circleBox.classList.add('hidden');
+                        circleBox.classList.remove('flex');
+                        barBox.classList.remove('hidden');
+                        barBox.classList.add('flex');
+                    }
+                }
+            });
+        }
+
+        // 9. 렌더링 함수
         function renderAll() {
             const target = appState.targetSec;
             const now = Date.now();
@@ -965,7 +1114,18 @@
                 const innerCirc = 440; // 2 * PI * 70
                 const outerCirc = 534; // 2 * PI * 85
 
+                // 바 뷰 전용 요소들
+                const digitsBar = document.getElementById(`digitsBar${id}`);
+                const stateTxtBar = document.getElementById(`stateTextBar${id}`);
+                const targetEchoBar = document.getElementById(`targetEchoBar${id}`);
+                const rfmRemainBar = document.getElementById(`rfmRemainBar${id}`);
+                const linTargetBar = document.getElementById(`linearTargetBar${id}`);
+                const linTargetLbl = document.getElementById(`linearTargetLabel${id}`);
+                const linRfmBar = document.getElementById(`linearRfmBar${id}`);
+                const linRfmLbl = document.getElementById(`linearRfmLabel${id}`);
+
                 if (targetEcho) targetEcho.innerText = target.toFixed(1);
+                if (targetEchoBar) targetEchoBar.innerText = target.toFixed(1);
 
                 // 사이클 배지
                 if (cycleB) {
@@ -979,21 +1139,29 @@
                 if (eng.state === 'RUNNING') {
                     const el = eng.elapsed;
                     const rfmLeft = Math.max(0, RFM.MAX_RUN - el);
+                    const inProg = Math.min(1.0, el / target);
+                    const outProg = Math.min(1.0, el / RFM.MAX_RUN);
 
                     if (statusT) {
                         statusT.innerText = `RUNNING (${el.toFixed(1)}s)`;
                         statusT.className = "text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/40";
                     }
                     if (stateTxt) stateTxt.innerText = "CRANKING";
-                    if (digits) {
-                        digits.innerHTML = `${el.toFixed(1)}<span class="text-lg font-bold text-slate-400">s</span>`;
-                        digits.className = "text-4xl sm:text-5xl font-black font-mono text-amber-500 tracking-tight my-0.5";
-                    }
-                    if (rfmRemain) rfmRemain.innerText = `RFM 한계 (마진 ${rfmLeft.toFixed(1)}s)`;
+                    if (stateTxtBar) stateTxtBar.innerText = "CRANKING";
 
-                    // 게이지 바 계산
-                    const inProg = Math.min(1.0, el / target);
-                    const outProg = Math.min(1.0, el / RFM.MAX_RUN);
+                    if (digits) {
+                        digits.innerHTML = `${el.toFixed(1)}<span class="text-xs sm:text-lg font-bold text-slate-400">s</span>`;
+                        digits.className = "text-2xl sm:text-4xl md:text-5xl font-black font-mono text-amber-500 tracking-tight my-0.5";
+                    }
+                    if (digitsBar) {
+                        digitsBar.innerHTML = `${el.toFixed(1)}<span class="text-xs sm:text-lg font-bold text-slate-400">s</span>`;
+                        digitsBar.className = "text-2xl sm:text-4xl md:text-5xl font-black font-mono text-amber-500 tracking-tight my-0.5";
+                    }
+
+                    if (rfmRemain) rfmRemain.innerText = `RFM 한계 (마진 ${rfmLeft.toFixed(1)}s)`;
+                    if (rfmRemainBar) rfmRemainBar.innerText = `마진 ${rfmLeft.toFixed(1)}s`;
+
+                    // 원형 게이지 바
                     innerBar.style.strokeDashoffset = innerCirc * (1 - inProg);
                     outerBar.style.strokeDashoffset = outerCirc * (1 - outProg);
 
@@ -1004,6 +1172,17 @@
                         innerBar.setAttribute('stroke', '#10b981');
                         card.classList.remove('alert-flash-amber');
                     }
+
+                    // 선형 게이지 바
+                    if (linTargetBar) {
+                        linTargetBar.style.width = `${inProg * 100}%`;
+                        linTargetBar.className = (el >= target - RFM.COUNTDOWN_LEAD)
+                            ? "h-full bg-amber-500 rounded-full transition-all duration-100"
+                            : "h-full bg-emerald-500 rounded-full transition-all duration-100";
+                    }
+                    if (linTargetLbl) linTargetLbl.innerText = `${el.toFixed(1)}s / ${target.toFixed(1)}s`;
+                    if (linRfmBar) linRfmBar.style.width = `${outProg * 100}%`;
+                    if (linRfmLbl) linRfmLbl.innerText = `${el.toFixed(1)}s / 45.0s`;
 
                     coolBox.classList.add('hidden');
                     btnStart.disabled = true;
@@ -1027,16 +1206,34 @@
                         statusT.className = "text-[10px] font-black px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/40";
                     }
                     if (stateTxt) stateTxt.innerText = "COOLING LOCKED";
+                    if (stateTxtBar) stateTxtBar.innerText = "COOLING LOCKED";
+
                     if (digits) {
                         digits.innerHTML = timeStr;
-                        digits.className = "text-4xl sm:text-5xl font-black font-mono text-cyan-500 tracking-tight my-0.5";
+                        digits.className = "text-2xl sm:text-4xl md:text-5xl font-black font-mono text-cyan-500 tracking-tight my-0.5";
                     }
-                    if (rfmRemain) rfmRemain.innerText = `재가동 잠금 상태`;
+                    if (digitsBar) {
+                        digitsBar.innerHTML = timeStr;
+                        digitsBar.className = "text-2xl sm:text-4xl md:text-5xl font-black font-mono text-cyan-500 tracking-tight my-0.5";
+                    }
 
+                    if (rfmRemain) rfmRemain.innerText = `재가동 잠금 상태`;
+                    if (rfmRemainBar) rfmRemainBar.innerText = `재가동 잠금 상태`;
+
+                    // 원형 게이지 바
                     innerBar.setAttribute('stroke', '#06b6d4');
                     outerBar.setAttribute('stroke', '#0891b2');
                     innerBar.style.strokeDashoffset = innerCirc * (1 - prog);
                     outerBar.style.strokeDashoffset = outerCirc * (1 - prog);
+
+                    // 선형 게이지 바
+                    if (linTargetBar) {
+                        linTargetBar.style.width = '0%';
+                        linTargetBar.className = "h-full bg-emerald-500 rounded-full transition-all duration-100";
+                    }
+                    if (linTargetLbl) linTargetLbl.innerText = '대기';
+                    if (linRfmBar) linRfmBar.style.width = '0%';
+                    if (linRfmLbl) linRfmLbl.innerText = '0.0s';
 
                     card.classList.remove('alert-flash-amber');
                     coolBox.classList.remove('hidden');
@@ -1054,10 +1251,17 @@
                         statusT.className = "text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30";
                     }
                     if (stateTxt) stateTxt.innerText = "STANDBY";
+                    if (stateTxtBar) stateTxtBar.innerText = "STANDBY";
+
                     if (digits) {
-                        digits.innerHTML = `00.0<span class="text-lg font-bold text-slate-400">s</span>`;
-                        digits.className = "text-4xl sm:text-5xl font-black font-mono text-slate-800 dark:text-white tracking-tight my-0.5";
+                        digits.innerHTML = `00.0<span class="text-xs sm:text-lg font-bold text-slate-400">s</span>`;
+                        digits.className = "text-2xl sm:text-4xl md:text-5xl font-black font-mono text-slate-800 dark:text-white tracking-tight my-0.5";
                     }
+                    if (digitsBar) {
+                        digitsBar.innerHTML = `00.0<span class="text-xs sm:text-lg font-bold text-slate-400">s</span>`;
+                        digitsBar.className = "text-2xl sm:text-4xl md:text-5xl font-black font-mono text-slate-800 dark:text-white tracking-tight my-0.5";
+                    }
+
                     if (rfmRemain) {
                         if (eng.cycle > 1 && eng.lastStopTime) {
                             const leftInactSec = Math.max(0, RFM.INACTIVITY_RESET - (now - eng.lastStopTime) / 1000);
@@ -1068,11 +1272,31 @@
                             rfmRemain.innerText = `RFM 한계 45s (마진 45.0s)`;
                         }
                     }
+                    if (rfmRemainBar) {
+                        if (eng.cycle > 1 && eng.lastStopTime) {
+                            const leftInactSec = Math.max(0, RFM.INACTIVITY_RESET - (now - eng.lastStopTime) / 1000);
+                            const leftM = Math.floor(leftInactSec / 60);
+                            const leftS = Math.floor(leftInactSec % 60);
+                            rfmRemainBar.innerHTML = `<span class="text-emerald-500 font-bold">리셋: ${leftM}m ${leftS}s 후</span>`;
+                        } else {
+                            rfmRemainBar.innerText = `마진 45.0s`;
+                        }
+                    }
 
+                    // 원형 게이지 바
                     innerBar.setAttribute('stroke', '#10b981');
                     outerBar.setAttribute('stroke', '#3b82f6');
                     innerBar.style.strokeDashoffset = innerCirc;
                     outerBar.style.strokeDashoffset = outerCirc;
+
+                    // 선형 게이지 바
+                    if (linTargetBar) {
+                        linTargetBar.style.width = '0%';
+                        linTargetBar.className = "h-full bg-emerald-500 rounded-full transition-all duration-100";
+                    }
+                    if (linTargetLbl) linTargetLbl.innerText = '0.0s';
+                    if (linRfmBar) linRfmBar.style.width = '0%';
+                    if (linRfmLbl) linRfmLbl.innerText = '0.0s';
 
                     card.classList.remove('alert-flash-amber');
                     coolBox.classList.add('hidden');
@@ -1257,6 +1481,7 @@
             initTheme();
             loadState();
             loadLogs();
+            initGaugeStyle();
             syncTimestamps();
 
             setAircraft(appState.aircraft);
