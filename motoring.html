@@ -60,12 +60,41 @@
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #64748b; border-radius: 4px; }
+
+        /* 전체화면 집중 모드 (Cockpit / Fullscreen View) */
+        body.fullscreen-mode {
+            padding: 0.25rem 0.5rem !important;
+            overflow: hidden !important;
+            justify-content: flex-start !important;
+        }
+        body.fullscreen-mode #appHeader,
+        body.fullscreen-mode #appToolbar,
+        body.fullscreen-mode #appBottomSections,
+        body.fullscreen-mode footer {
+            display: none !important;
+        }
+        body.fullscreen-mode #fullscreenBar {
+            display: flex !important;
+        }
+        body.fullscreen-mode #mainDashboard {
+            flex: 1 1 0% !important;
+            height: calc(100vh - 42px) !important;
+            max-height: calc(100dvh - 42px) !important;
+            margin-bottom: 0 !important;
+        }
+        body.fullscreen-mode #cardEng1,
+        body.fullscreen-mode #cardEng2 {
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+        }
     </style>
 </head>
 <body id="appBody" class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between p-2 sm:p-3 transition-colors duration-200">
 
     <!-- ================= 상단 통합 네비게이션 헤더 ================= -->
-    <header class="w-full max-w-6xl mx-auto bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3 mb-2 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+    <header id="appHeader" class="w-full max-w-6xl mx-auto bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3 mb-2 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
         <div class="flex items-center justify-between gap-2 flex-wrap">
             
             <!-- 좌측: 유닛명 + 기체 선택 (모바일 줄바꿈 방지 whitespace-nowrap) -->
@@ -130,13 +159,18 @@
                 <span id="wakeLockBadge" title="화면 꺼짐 방지 상태" class="px-1.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">
                     ⚡ON
                 </span>
+
+                <!-- 전체 화면 토글 버튼 -->
+                <button id="btnHeaderFullscreen" onclick="toggleFullscreen()" title="그래프 및 직접 조작 집중 전체 화면 모드" class="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] sm:text-[11px] font-black flex items-center gap-1 shadow-sm transition-all active:scale-95">
+                    <span>⛶</span><span class="hidden sm:inline">전체화면</span>
+                </button>
             </div>
 
         </div>
     </header>
 
     <!-- ================= 상단 옵션 툴바 (목표시간 프리셋 + 모터링 모드) ================= -->
-    <section class="w-full max-w-6xl mx-auto bg-white dark:bg-slate-900 rounded-xl p-2 sm:p-2.5 mb-2 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-2 flex-wrap text-xs">
+    <section id="appToolbar" class="w-full max-w-6xl mx-auto bg-white dark:bg-slate-900 rounded-xl p-2 sm:p-2.5 mb-2 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-2 flex-wrap text-xs">
         
         <!-- 모터링 모드 토글 (Dry vs Wet) -->
         <div class="flex items-center gap-1.5 whitespace-nowrap">
@@ -185,15 +219,40 @@
             </div>
         </div>
 
-        <!-- 전체 리셋 (Master Reset) 버튼 -->
-        <button onclick="masterReset()" title="테스트 및 긴급 사용 시 모든 엔진의 사이클과 쿨다운을 Cycle 1로 강제 초기화" class="px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-black flex items-center gap-1 transition-all active:scale-95 whitespace-nowrap ml-auto sm:ml-0">
-            <span>🔄</span><span>전체 리셋</span>
-        </button>
+        <div class="flex items-center gap-1.5 ml-auto sm:ml-0">
+            <!-- 전체 화면 버튼 -->
+            <button onclick="toggleFullscreen()" title="그래프 및 직접 조작 집중 전체 화면 모드" class="px-2 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black flex items-center gap-1 shadow-sm transition-all active:scale-95 whitespace-nowrap">
+                <span>⛶</span><span>전체화면</span>
+            </button>
+            <!-- 전체 리셋 (Master Reset) 버튼 -->
+            <button onclick="masterReset()" title="테스트 및 긴급 사용 시 모든 엔진의 사이클과 쿨다운을 Cycle 1로 강제 초기화" class="px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-black flex items-center gap-1 transition-all active:scale-95 whitespace-nowrap">
+                <span>🔄</span><span>전체 리셋</span>
+            </button>
+        </div>
 
     </section>
 
+    <!-- ================= 전체화면 집중 모드 전용 상단 미니바 (Fullscreen Mini Bar) ================= -->
+    <div id="fullscreenBar" class="hidden w-full max-w-6xl mx-auto items-center justify-between py-1 px-2.5 mb-1.5 bg-slate-900/90 backdrop-blur rounded-lg border border-slate-700/80 text-[10px] sm:text-[11px] font-bold text-slate-300 shadow-md">
+        <div class="flex items-center gap-1.5 sm:gap-2">
+            <span class="text-emerald-400 font-black flex items-center gap-1"><span>⛶</span><span>집중 전체화면</span></span>
+            <span class="text-slate-600">|</span>
+            <span id="fsModeLabel" class="text-sky-400 font-bold">Dry 모터링</span>
+            <span class="text-slate-600">|</span>
+            <span class="text-amber-400 font-bold">목표 <span id="fsTargetLabel">20</span>s</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <button onclick="masterReset()" title="전체 사이클 및 쿨타임 강제 초기화" class="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/40 text-[9px] sm:text-[10px] font-black transition-all active:scale-95">
+                🔄 리셋
+            </button>
+            <button onclick="toggleFullscreen()" title="전체 화면 종료 (ESC)" class="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400 text-[9px] sm:text-[10px] font-black flex items-center gap-1 shadow-sm transition-all active:scale-95">
+                <span>✕</span><span>화면 복귀</span>
+            </button>
+        </div>
+    </div>
+
     <!-- ================= 메인: 좌우 독립 듀얼 엔진 대시보드 (모바일에서도 항상 좌우 2열 나란히 표시) ================= -->
-    <main class="w-full max-w-6xl mx-auto flex-1 grid grid-cols-2 gap-1.5 sm:gap-3">
+    <main id="mainDashboard" class="w-full max-w-6xl mx-auto flex-1 grid grid-cols-2 gap-1.5 sm:gap-3">
 
         <!-- =================== ENG 1 독립 제어 패널 =================== -->
         <div id="cardEng1" class="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2 sm:p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between relative overflow-hidden transition-all duration-200">
@@ -448,7 +507,7 @@
     </main>
 
     <!-- ================= 하단 부가 섹션 (SOP 패널 & 이력 로그) ================= -->
-    <div class="w-full max-w-6xl mx-auto flex flex-col gap-2 mt-2">
+    <div id="appBottomSections" class="w-full max-w-6xl mx-auto flex flex-col gap-2 mt-2">
         
         <!-- 1. SOP 절차 접이식 패널 (공식 매뉴얼 연동) -->
         <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
@@ -1429,6 +1488,7 @@
                     btnStop.disabled = true;
                 }
             });
+            updateFullscreenLabels();
         }
 
         // 9. 설정 토글 핸들러
@@ -1606,7 +1666,71 @@
             }
         }
 
-        // 11. 브라우저 이탈 방지
+        // 11. 전체 화면 집중 모드 (그래프 및 직접 조작 집중 뷰)
+        function toggleFullscreen() {
+            const isFs = document.body.classList.contains('fullscreen-mode');
+            if (!isFs) {
+                enterFullscreen();
+            } else {
+                exitFullscreen();
+            }
+        }
+
+        function enterFullscreen() {
+            document.body.classList.add('fullscreen-mode');
+            updateFullscreenLabels();
+            const elem = document.documentElement;
+            try {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen().catch(() => {});
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen().catch(() => {});
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen().catch(() => {});
+                }
+            } catch(e) {}
+            playChime();
+        }
+
+        function exitFullscreen() {
+            document.body.classList.remove('fullscreen-mode');
+            try {
+                if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen().catch(() => {});
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen().catch(() => {});
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen().catch(() => {});
+                    }
+                }
+            } catch(e) {}
+        }
+
+        function updateFullscreenLabels() {
+            const modeLbl = document.getElementById('fsModeLabel');
+            const targetLbl = document.getElementById('fsTargetLabel');
+            if (modeLbl) modeLbl.innerText = (appState.mode === 'DRY') ? 'Dry 모터링' : 'Wet 모터링';
+            if (targetLbl) targetLbl.innerText = `${appState.targetSec.toFixed(0)}`;
+        }
+
+        // 브라우저 네이티브 전체화면 상태 동기화 및 ESC 키 감지
+        ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(ev => {
+            document.addEventListener(ev, () => {
+                const isNativeFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+                if (!isNativeFs && document.body.classList.contains('fullscreen-mode')) {
+                    document.body.classList.remove('fullscreen-mode');
+                }
+            });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.body.classList.contains('fullscreen-mode')) {
+                exitFullscreen();
+            }
+        });
+
+        // 12. 브라우저 이탈 방지
         window.addEventListener('beforeunload', (e) => {
             const anyActive = [1, 2].some(id => {
                 const s = appState.engines[id].state;
