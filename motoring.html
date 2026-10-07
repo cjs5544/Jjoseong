@@ -167,6 +167,11 @@
             </span>
         </div>
 
+        <!-- 전체 리셋 (Master Reset) 버튼 -->
+        <button onclick="masterReset()" title="테스트 및 긴급 사용 시 모든 엔진의 사이클과 쿨다운을 Cycle 1로 강제 초기화" class="px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-black flex items-center gap-1 transition-all active:scale-95 whitespace-nowrap ml-auto sm:ml-0">
+            <span>🔄</span><span>전체 리셋</span>
+        </button>
+
     </section>
 
     <!-- ================= 메인: 좌우 독립 듀얼 엔진 대시보드 ================= -->
@@ -405,7 +410,8 @@
             COOL_1: 60,
             COOL_2: 60,
             COOL_3: 1800,
-            COUNTDOWN_LEAD: 5.0
+            COUNTDOWN_LEAD: 5.0,
+            INACTIVITY_RESET: 1800 // 30분(1,800초) 미가동 시 사이클 1로 자동 초기화
         };
 
         const KEY_STATE = 'AW139_DUAL_MOTOR_V2';
@@ -419,8 +425,8 @@
             voiceLang: 'EN',
             theme: 'dark', // 'light' | 'dark'
             engines: {
-                1: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null },
-                2: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null }
+                1: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null, lastStopTime: null },
+                2: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null, lastStopTime: null }
             }
         };
 
@@ -572,20 +578,31 @@
             } catch (e) {}
         }
 
-        // 5. 비정상 종료 복원
+        // 5. 비정상 종료 복원 및 자동 상태 동기화
         function syncTimestamps() {
             const now = Date.now();
             [1, 2].forEach(id => {
                 const eng = appState.engines[id];
+                
+                // 쿨다운 진행 중 종료 후 복원
                 if (eng.state === 'COOLING') {
                     if (eng.coolEnd && now >= eng.coolEnd) {
                         finishCooldown(id, true);
                     }
-                } else if (eng.state === 'RUNNING') {
-                    // 꺼진 동안 크랭킹 중단 처리 후 쿨다운 전환
+                } 
+                // 크랭킹 가동 중 종료 후 복원
+                else if (eng.state === 'RUNNING') {
                     const el = Math.min(RFM.MAX_RUN, (now - (eng.runStart || now)) / 1000);
                     eng.elapsed = el;
                     stopEngineInternal(id, true, '비정상 종료 안전 쿨다운 전환');
+                }
+
+                // 30분 미가동 시 완전 냉각 자동 리셋 검사 (앱 꺼져있던 시간 포함)
+                if (eng.cycle > 1 && eng.state === 'READY' && eng.lastStopTime) {
+                    if (now - eng.lastStopTime >= RFM.INACTIVITY_RESET * 1000) {
+                        eng.cycle = 1;
+                        eng.lastStopTime = null;
+                    }
                 }
             });
             saveState();
@@ -628,6 +645,7 @@
             const now = Date.now();
             const el = Math.min(RFM.MAX_RUN, (now - (eng.runStart || now)) / 1000);
             eng.elapsed = el;
+            eng.lastStopTime = now; // 마지막 모터링 정지 시점 기록
 
             let coolSec = (eng.cycle === 3) ? RFM.COOL_3 : RFM.COOL_1;
             eng.state = 'COOLING';
@@ -671,6 +689,7 @@
             } else {
                 eng.cycle = 1;
                 eng.state = 'READY';
+                eng.lastStopTime = null;
                 if (!isSilent) {
                     playChime();
                     vibrate([500, 200, 500, 200, 800]);
@@ -704,9 +723,33 @@
             eng.elapsed = 0.0;
             eng.coolStart = null;
             eng.coolEnd = null;
+            eng.lastStopTime = null;
             saveState();
             renderAll();
             speak(appState.voiceLang === 'KO' ? `엔진 ${id} 리셋 완료` : `Engine ${id} Reset`);
+        }
+
+        // 전체 마스터 리셋 (테스트 및 긴급 현장 가동용)
+        function masterReset() {
+            const ok = confirm(`⚠️ [전체 리셋 (Master Reset)]\n\nENG 1과 ENG 2의 모든 사이클, 쿨다운 타이머, 진행 상태를 '초기 상태(Cycle 1 READY)'로 즉시 리셋하시겠습니까?\n\n* 테스트 작동 후 해제하거나 현장에서 즉시 가동이 필요할 때 사용하십시오.`);
+            if (!ok) return;
+
+            [1, 2].forEach(id => {
+                const eng = appState.engines[id];
+                eng.cycle = 1;
+                eng.state = 'READY';
+                eng.elapsed = 0.0;
+                eng.runStart = null;
+                eng.coolStart = null;
+                eng.coolEnd = null;
+                eng.lastStopTime = null;
+                eng.lastCountdown = null;
+            });
+
+            saveState();
+            renderAll();
+            playChime();
+            speak(appState.voiceLang === 'KO' ? '전체 엔진 마스터 초기화 완료' : 'All engines master reset complete');
         }
 
         // 7. 실시간 타이머 인터벌 루프
@@ -758,6 +801,20 @@
                     } else if (eng.state === 'COOLING') {
                         if (eng.coolEnd && now >= eng.coolEnd) {
                             finishCooldown(id, false);
+                        }
+                    }
+
+                    // 30분 미가동 시 완전 냉각 자동 리셋 검사 (Cycle 1로 복귀)
+                    if (eng.cycle > 1 && eng.state === 'READY' && eng.lastStopTime) {
+                        const inactSec = (now - eng.lastStopTime) / 1000;
+                        if (inactSec >= RFM.INACTIVITY_RESET) {
+                            eng.cycle = 1;
+                            eng.lastStopTime = null;
+                            const msg = (appState.voiceLang === 'KO') 
+                                ? `엔진 ${id} 30분 경과로 사이클 1 자동 초기화되었습니다.` 
+                                : `Engine ${id} 30 minutes full cool down. Cycle 1 auto reset.`;
+                            speak(msg);
+                            saveState();
                         }
                     }
                 });
@@ -892,7 +949,16 @@
                         digits.innerHTML = `00.0<span class="text-lg font-bold text-slate-400">s</span>`;
                         digits.className = "text-4xl sm:text-5xl font-black font-mono text-slate-800 dark:text-white tracking-tight my-0.5";
                     }
-                    if (rfmRemain) rfmRemain.innerText = `RFM 한계 45s (마진 45.0s)`;
+                    if (rfmRemain) {
+                        if (eng.cycle > 1 && eng.lastStopTime) {
+                            const leftInactSec = Math.max(0, RFM.INACTIVITY_RESET - (now - eng.lastStopTime) / 1000);
+                            const leftM = Math.floor(leftInactSec / 60);
+                            const leftS = Math.floor(leftInactSec % 60);
+                            rfmRemain.innerHTML = `<span class="text-emerald-500 font-bold">30분 자동리셋: ${leftM}분 ${leftS}초 후</span>`;
+                        } else {
+                            rfmRemain.innerText = `RFM 한계 45s (마진 45.0s)`;
+                        }
+                    }
 
                     innerBar.setAttribute('stroke', '#10b981');
                     outerBar.setAttribute('stroke', '#3b82f6');
