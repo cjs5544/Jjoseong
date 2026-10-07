@@ -203,8 +203,8 @@
                 <div class="flex items-center gap-1 sm:gap-1.5">
                     <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500"></span>
                     <h2 class="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">ENG 1</h2>
-                    <span id="cycleBadge1" class="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap">
-                        C1 / 3
+                    <span id="cycleBadge1" class="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap tracking-wider">
+                        ● ○ ○
                     </span>
                 </div>
                 <div id="statusTag1" class="text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
@@ -325,8 +325,8 @@
                 <div class="flex items-center gap-1 sm:gap-1.5">
                     <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-500"></span>
                     <h2 class="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 whitespace-nowrap">ENG 2</h2>
-                    <span id="cycleBadge2" class="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap">
-                        C1 / 3
+                    <span id="cycleBadge2" class="px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap tracking-wider">
+                        ● ○ ○
                     </span>
                 </div>
                 <div id="statusTag2" class="text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
@@ -1155,12 +1155,17 @@
                 if (targetEcho) targetEcho.innerText = target.toFixed(1);
                 if (targetEchoBar) targetEchoBar.innerText = target.toFixed(1);
 
-                // 사이클 배지
+                // 사이클 도트 배지 (●○○ / ●●○ / ●●●)
                 if (cycleB) {
-                    cycleB.innerText = `CYCLE ${eng.cycle} / 3`;
-                    cycleB.className = (eng.cycle === 3)
-                        ? "px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30"
-                        : "px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30";
+                    const dots = (eng.cycle === 1) ? '● ○ ○' : (eng.cycle === 2) ? '● ● ○' : '● ● ●';
+                    cycleB.innerText = dots;
+                    if (eng.cycle === 3) {
+                        cycleB.className = "px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 whitespace-nowrap tracking-wider";
+                    } else if (eng.cycle === 2) {
+                        cycleB.className = "px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 whitespace-nowrap tracking-wider";
+                    } else {
+                        cycleB.className = "px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 whitespace-nowrap tracking-wider";
+                    }
                 }
 
                 // 가동(RUNNING) 상태
@@ -1225,13 +1230,16 @@
 
                     const m = Math.floor(remSec / 60);
                     const s = Math.floor(remSec % 60);
-                    const timeStr = (total > 60)
+                    const isLongCool = total > 60;
+                    const endTimeStr = eng.coolEnd ? new Date(eng.coolEnd).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+
+                    const timeStr = isLongCool
                         ? `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
                         : `${remSec.toFixed(1)}s`;
 
                     if (statusT) {
-                        statusT.innerText = (total > 60) ? "30M 락아웃 냉각" : "60S 냉각 중";
-                        statusT.className = "text-[10px] font-black px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/40";
+                        statusT.innerText = isLongCool ? `30M 냉각 (${endTimeStr} 종료)` : "60S 냉각 중";
+                        statusT.className = "text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/40 whitespace-nowrap";
                     }
                     if (stateTxt) stateTxt.innerText = "COOLING LOCKED";
                     if (stateTxtBar) stateTxtBar.innerText = "COOLING LOCKED";
@@ -1245,8 +1253,16 @@
                         digitsBar.className = "text-2xl sm:text-4xl md:text-5xl font-black font-mono text-cyan-500 tracking-tight my-0.5";
                     }
 
-                    if (rfmRemain) rfmRemain.innerText = `재가동 잠금 상태`;
-                    if (rfmRemainBar) rfmRemainBar.innerText = `재가동 잠금 상태`;
+                    if (rfmRemain) {
+                        rfmRemain.innerHTML = isLongCool
+                            ? `<span class="text-cyan-400 font-bold">${m}분 ${s}초 (${endTimeStr} 종료)</span>`
+                            : `재가동 잠금 상태`;
+                    }
+                    if (rfmRemainBar) {
+                        rfmRemainBar.innerHTML = isLongCool
+                            ? `<span class="text-cyan-400 font-bold">${m}분 ${s}초 (${endTimeStr} 종료)</span>`
+                            : `재가동 잠금 상태`;
+                    }
 
                     // 원형 게이지 바
                     innerBar.setAttribute('stroke', '#06b6d4');
@@ -1265,7 +1281,11 @@
 
                     card.classList.remove('alert-flash-amber');
                     coolBox.classList.remove('hidden');
-                    if (coolLabel) coolLabel.innerText = `${Math.ceil(remSec)}s / ${total}s`;
+                    if (coolLabel) {
+                        coolLabel.innerText = isLongCool
+                            ? `${m}분 ${s}초 (${endTimeStr} 종료)`
+                            : `${Math.ceil(remSec)}s / 60s`;
+                    }
                     if (coolBar) coolBar.style.width = `${prog * 100}%`;
 
                     btnStart.disabled = true;
@@ -1295,7 +1315,8 @@
                             const leftInactSec = Math.max(0, RFM.INACTIVITY_RESET - (now - eng.lastStopTime) / 1000);
                             const leftM = Math.floor(leftInactSec / 60);
                             const leftS = Math.floor(leftInactSec % 60);
-                            rfmRemain.innerHTML = `<span class="text-emerald-500 font-bold">30분 자동리셋: ${leftM}분 ${leftS}초 후</span>`;
+                            const resetTimeStr = new Date(eng.lastStopTime + RFM.INACTIVITY_RESET * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+                            rfmRemain.innerHTML = `<span class="text-emerald-500 font-bold">30분 자동리셋: ${leftM}분 ${leftS}초 (${resetTimeStr} 종료)</span>`;
                         } else {
                             rfmRemain.innerText = `RFM 한계 45s (마진 45.0s)`;
                         }
@@ -1305,7 +1326,8 @@
                             const leftInactSec = Math.max(0, RFM.INACTIVITY_RESET - (now - eng.lastStopTime) / 1000);
                             const leftM = Math.floor(leftInactSec / 60);
                             const leftS = Math.floor(leftInactSec % 60);
-                            rfmRemainBar.innerHTML = `<span class="text-emerald-500 font-bold">리셋: ${leftM}m ${leftS}s 후</span>`;
+                            const resetTimeStr = new Date(eng.lastStopTime + RFM.INACTIVITY_RESET * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+                            rfmRemainBar.innerHTML = `<span class="text-emerald-500 font-bold">리셋: ${leftM}분 ${leftS}초 (${resetTimeStr} 종료)</span>`;
                         } else {
                             rfmRemainBar.innerText = `마진 45.0s`;
                         }
