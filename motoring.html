@@ -176,10 +176,10 @@
         <div class="flex items-center gap-1.5 whitespace-nowrap">
             <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">스타일:</span>
             <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
-                <button id="btnGaugeCircle" onclick="setGaugeStyle('circle')" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-600 text-white shadow">
+                <button id="btnGaugeCircle" onclick="setGaugeStyle('circle')" class="px-2 py-0.5 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
                     ◯ 원형
                 </button>
-                <button id="btnGaugeBar" onclick="setGaugeStyle('bar')" class="px-2 py-0.5 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                <button id="btnGaugeBar" onclick="setGaugeStyle('bar')" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-600 text-white shadow">
                     ▬ 바
                 </button>
             </div>
@@ -214,7 +214,7 @@
 
             <!-- 중앙 게이지 영역 (원형 vs 바 타입 선택 지원) -->
             <!-- 1) 원형 게이지 뷰 (Circle View) -->
-            <div id="circleView1" class="flex items-center justify-center my-1 sm:my-2 relative">
+            <div id="circleView1" class="items-center justify-center my-1 sm:my-2 relative hidden">
                 <div class="relative w-32 h-32 sm:w-52 sm:h-52 md:w-56 md:h-56 flex items-center justify-center">
                     <svg class="w-full h-full gauge-svg" viewBox="0 0 200 200">
                         <!-- 외측: RFM 45s 한계선 트랙 (반지름 90) -->
@@ -245,8 +245,8 @@
                 </div>
             </div>
 
-            <!-- 2) 바 게이지 뷰 (Bar View - 모바일 최적화) -->
-            <div id="barView1" class="w-full flex-col justify-center my-1 sm:my-2 relative hidden">
+            <!-- 2) 바 게이지 뷰 (Bar View - 모바일 최적화 & 디폴트) -->
+            <div id="barView1" class="w-full flex flex-col justify-center my-1 sm:my-2 relative">
                 <!-- 대형 디지털 시간 표시 -->
                 <div class="flex flex-col items-center justify-center text-center py-1 sm:py-2">
                     <span id="stateTextBar1" class="text-[8px] sm:text-[10px] font-black tracking-wider text-slate-400 uppercase">STANDBY</span>
@@ -260,9 +260,10 @@
 
                 <!-- 목표 가동시간 선형 바 -->
                 <div class="w-full bg-slate-50 dark:bg-slate-950 p-1 sm:p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-1">
-                    <div class="flex justify-between text-[8px] sm:text-[9px] font-bold mb-0.5">
-                        <span class="text-amber-500">🎯 목표 (<span id="targetEchoBar1">20.0</span>s)</span>
-                        <span id="linearTargetLabel1" class="text-slate-500 dark:text-slate-400 font-mono">0.0s</span>
+                    <div class="flex justify-between items-center text-[8px] sm:text-[9px] font-bold mb-0.5">
+                        <span class="text-amber-500 whitespace-nowrap">🎯 목표</span>
+                        <span id="targetEchoBar1" class="hidden">20.0</span>
+                        <span id="linearTargetLabel1" class="text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">0.0s / 20.0s (20.0s)</span>
                     </div>
                     <div class="w-full h-2 sm:h-2.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div id="linearTargetBar1" class="h-full bg-emerald-500 rounded-full transition-all duration-100" style="width: 0%;"></div>
@@ -271,9 +272,9 @@
 
                 <!-- RFM 45s 최대 한계 선형 바 -->
                 <div class="w-full bg-slate-50 dark:bg-slate-950 p-1 sm:p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-1">
-                    <div class="flex justify-between text-[8px] sm:text-[9px] font-bold mb-0.5">
-                        <span class="text-blue-500">🛡️ RFM (45.0s)</span>
-                        <span id="linearRfmLabel1" class="text-slate-500 dark:text-slate-400 font-mono">0.0s</span>
+                    <div class="flex justify-between items-center text-[8px] sm:text-[9px] font-bold mb-0.5">
+                        <span class="text-blue-500 whitespace-nowrap">🛡️ RFM</span>
+                        <span id="linearRfmLabel1" class="text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">0.0s / 45.0s (45.0s)</span>
                     </div>
                     <div class="w-full h-1.5 sm:h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div id="linearRfmBar1" class="h-full bg-blue-500 rounded-full transition-all duration-100" style="width: 0%;"></div>
@@ -336,7 +337,7 @@
 
             <!-- 중앙 게이지 영역 (원형 vs 바 타입 선택 지원) -->
             <!-- 1) 원형 게이지 뷰 (Circle View) -->
-            <div id="circleView2" class="flex items-center justify-center my-1 sm:my-2 relative">
+            <div id="circleView2" class="items-center justify-center my-1 sm:my-2 relative hidden">
                 <div class="relative w-32 h-32 sm:w-52 sm:h-52 md:w-56 md:h-56 flex items-center justify-center">
                     <svg class="w-full h-full gauge-svg" viewBox="0 0 200 200">
                         <!-- 외측: RFM 45s 한계선 트랙 (반지름 90) -->
@@ -367,8 +368,8 @@
                 </div>
             </div>
 
-            <!-- 2) 바 게이지 뷰 (Bar View - 모바일 최적화) -->
-            <div id="barView2" class="w-full flex-col justify-center my-1 sm:my-2 relative hidden">
+            <!-- 2) 바 게이지 뷰 (Bar View - 모바일 최적화 & 디폴트) -->
+            <div id="barView2" class="w-full flex flex-col justify-center my-1 sm:my-2 relative">
                 <!-- 대형 디지털 시간 표시 -->
                 <div class="flex flex-col items-center justify-center text-center py-1 sm:py-2">
                     <span id="stateTextBar2" class="text-[8px] sm:text-[10px] font-black tracking-wider text-slate-400 uppercase">STANDBY</span>
@@ -382,9 +383,10 @@
 
                 <!-- 목표 가동시간 선형 바 -->
                 <div class="w-full bg-slate-50 dark:bg-slate-950 p-1 sm:p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-1">
-                    <div class="flex justify-between text-[8px] sm:text-[9px] font-bold mb-0.5">
-                        <span class="text-amber-500">🎯 목표 (<span id="targetEchoBar2">20.0</span>s)</span>
-                        <span id="linearTargetLabel2" class="text-slate-500 dark:text-slate-400 font-mono">0.0s</span>
+                    <div class="flex justify-between items-center text-[8px] sm:text-[9px] font-bold mb-0.5">
+                        <span class="text-amber-500 whitespace-nowrap">🎯 목표</span>
+                        <span id="targetEchoBar2" class="hidden">20.0</span>
+                        <span id="linearTargetLabel2" class="text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">0.0s / 20.0s (20.0s)</span>
                     </div>
                     <div class="w-full h-2 sm:h-2.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div id="linearTargetBar2" class="h-full bg-emerald-500 rounded-full transition-all duration-100" style="width: 0%;"></div>
@@ -393,9 +395,9 @@
 
                 <!-- RFM 45s 최대 한계 선형 바 -->
                 <div class="w-full bg-slate-50 dark:bg-slate-950 p-1 sm:p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 mb-1">
-                    <div class="flex justify-between text-[8px] sm:text-[9px] font-bold mb-0.5">
-                        <span class="text-blue-500">🛡️ RFM (45.0s)</span>
-                        <span id="linearRfmLabel2" class="text-slate-500 dark:text-slate-400 font-mono">0.0s</span>
+                    <div class="flex justify-between items-center text-[8px] sm:text-[9px] font-bold mb-0.5">
+                        <span class="text-blue-500 whitespace-nowrap">🛡️ RFM</span>
+                        <span id="linearRfmLabel2" class="text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">0.0s / 45.0s (45.0s)</span>
                     </div>
                     <div class="w-full h-1.5 sm:h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div id="linearRfmBar2" class="h-full bg-blue-500 rounded-full transition-all duration-100" style="width: 0%;"></div>
@@ -642,7 +644,7 @@
             targetSec: 20.0,
             voiceLang: 'EN',
             theme: 'dark', // 'light' | 'dark'
-            gaugeStyle: 'circle', // 'circle' | 'bar'
+            gaugeStyle: 'bar', // 'bar' | 'circle'
             engines: {
                 1: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null, lastStopTime: null },
                 2: { cycle: 1, state: 'READY', runStart: null, elapsed: 0.0, coolStart: null, coolEnd: null, coolTotal: 60, lastCountdown: null, lastStopTime: null }
@@ -1072,7 +1074,7 @@
 
         // 8. 게이지 스타일 (원형 vs 바 타입) 제어
         function initGaugeStyle() {
-            const savedStyle = localStorage.getItem(KEY_GAUGE_STYLE) || appState.gaugeStyle || 'circle';
+            const savedStyle = localStorage.getItem(KEY_GAUGE_STYLE) || appState.gaugeStyle || 'bar';
             appState.gaugeStyle = savedStyle;
             applyGaugeStyle(savedStyle);
         }
@@ -1213,9 +1215,10 @@
                             ? "h-full bg-amber-500 rounded-full transition-all duration-100"
                             : "h-full bg-emerald-500 rounded-full transition-all duration-100";
                     }
-                    if (linTargetLbl) linTargetLbl.innerText = `${el.toFixed(1)}s / ${target.toFixed(1)}s`;
+                    const targetLeft = Math.max(0, target - el);
+                    if (linTargetLbl) linTargetLbl.innerText = `${el.toFixed(1)}s / ${target.toFixed(1)}s (${targetLeft.toFixed(1)}s)`;
                     if (linRfmBar) linRfmBar.style.width = `${outProg * 100}%`;
-                    if (linRfmLbl) linRfmLbl.innerText = `${el.toFixed(1)}s / 45.0s`;
+                    if (linRfmLbl) linRfmLbl.innerText = `${el.toFixed(1)}s / 45.0s (${rfmLeft.toFixed(1)}s)`;
 
                     coolBox.classList.add('hidden');
                     btnStart.disabled = true;
@@ -1275,9 +1278,9 @@
                         linTargetBar.style.width = '0%';
                         linTargetBar.className = "h-full bg-emerald-500 rounded-full transition-all duration-100";
                     }
-                    if (linTargetLbl) linTargetLbl.innerText = '대기';
+                    if (linTargetLbl) linTargetLbl.innerText = `0.0s / ${target.toFixed(1)}s (${target.toFixed(1)}s)`;
                     if (linRfmBar) linRfmBar.style.width = '0%';
-                    if (linRfmLbl) linRfmLbl.innerText = '0.0s';
+                    if (linRfmLbl) linRfmLbl.innerText = '0.0s / 45.0s (45.0s)';
 
                     card.classList.remove('alert-flash-amber');
                     coolBox.classList.remove('hidden');
@@ -1344,9 +1347,9 @@
                         linTargetBar.style.width = '0%';
                         linTargetBar.className = "h-full bg-emerald-500 rounded-full transition-all duration-100";
                     }
-                    if (linTargetLbl) linTargetLbl.innerText = '0.0s';
+                    if (linTargetLbl) linTargetLbl.innerText = `0.0s / ${target.toFixed(1)}s (${target.toFixed(1)}s)`;
                     if (linRfmBar) linRfmBar.style.width = '0%';
-                    if (linRfmLbl) linRfmLbl.innerText = '0.0s';
+                    if (linRfmLbl) linRfmLbl.innerText = `0.0s / 45.0s (45.0s)`;
 
                     card.classList.remove('alert-flash-amber');
                     coolBox.classList.add('hidden');
