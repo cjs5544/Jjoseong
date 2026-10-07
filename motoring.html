@@ -61,7 +61,7 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #64748b; border-radius: 4px; }
 
-        /* 전체화면 집중 모드 (Cockpit / Fullscreen View) */
+        /* 전체화면 가로형 집중 모드 (Cockpit Landscape Fullscreen View) */
         body.fullscreen-mode {
             padding: 0.25rem 0.5rem !important;
             overflow: hidden !important;
@@ -78,9 +78,10 @@
         }
         body.fullscreen-mode #mainDashboard {
             flex: 1 1 0% !important;
-            height: calc(100vh - 42px) !important;
-            max-height: calc(100dvh - 42px) !important;
+            height: calc(100vh - 36px) !important;
+            max-height: calc(100dvh - 36px) !important;
             margin-bottom: 0 !important;
+            gap: 0.5rem !important;
         }
         body.fullscreen-mode #cardEng1,
         body.fullscreen-mode #cardEng2 {
@@ -88,6 +89,28 @@
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
+            padding: 0.5rem !important;
+        }
+
+        /* 세로 모드 기기에서 전체화면 실행 시 가로형 90도 자동 회전 (iOS 등 orientation.lock 미지원 기기 대응) */
+        @media screen and (orientation: portrait) {
+            body.fullscreen-mode {
+                width: 100vh !important;
+                height: 100vw !important;
+                max-width: 100vh !important;
+                max-height: 100vw !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 100vw !important;
+                transform: rotate(90deg) !important;
+                transform-origin: top left !important;
+                overflow: hidden !important;
+                z-index: 9999 !important;
+            }
+            body.fullscreen-mode #mainDashboard {
+                height: calc(100vw - 36px) !important;
+                max-height: calc(100vw - 36px) !important;
+            }
         }
     </style>
 </head>
@@ -160,9 +183,9 @@
                     ⚡ON
                 </span>
 
-                <!-- 전체 화면 토글 버튼 -->
-                <button id="btnHeaderFullscreen" onclick="toggleFullscreen()" title="그래프 및 직접 조작 집중 전체 화면 모드" class="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] sm:text-[11px] font-black flex items-center gap-1 shadow-sm transition-all active:scale-95">
-                    <span>⛶</span><span class="hidden sm:inline">전체화면</span>
+                <!-- 가로 전체 화면 토글 버튼 -->
+                <button id="btnHeaderFullscreen" onclick="toggleFullscreen()" title="가로형 전체 화면 집중 모드 (Cockpit Landscape)" class="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] sm:text-[11px] font-black flex items-center gap-1 shadow-sm transition-all active:scale-95">
+                    <span>⛶</span><span class="hidden sm:inline">가로 전체화면</span>
                 </button>
             </div>
 
@@ -220,9 +243,9 @@
         </div>
 
         <div class="flex items-center gap-1.5 ml-auto sm:ml-0">
-            <!-- 전체 화면 버튼 -->
-            <button onclick="toggleFullscreen()" title="그래프 및 직접 조작 집중 전체 화면 모드" class="px-2 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black flex items-center gap-1 shadow-sm transition-all active:scale-95 whitespace-nowrap">
-                <span>⛶</span><span>전체화면</span>
+            <!-- 가로 전체 화면 버튼 -->
+            <button onclick="toggleFullscreen()" title="가로형 전체 화면 집중 모드 (Cockpit Landscape)" class="px-2 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black flex items-center gap-1 shadow-sm transition-all active:scale-95 whitespace-nowrap">
+                <span>⛶</span><span>가로 전체화면</span>
             </button>
             <!-- 전체 리셋 (Master Reset) 버튼 -->
             <button onclick="masterReset()" title="테스트 및 긴급 사용 시 모든 엔진의 사이클과 쿨다운을 Cycle 1로 강제 초기화" class="px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 text-[10px] font-black flex items-center gap-1 transition-all active:scale-95 whitespace-nowrap">
@@ -235,7 +258,7 @@
     <!-- ================= 전체화면 집중 모드 전용 상단 미니바 (Fullscreen Mini Bar) ================= -->
     <div id="fullscreenBar" class="hidden w-full max-w-6xl mx-auto items-center justify-between py-1 px-2.5 mb-1.5 bg-slate-900/90 backdrop-blur rounded-lg border border-slate-700/80 text-[10px] sm:text-[11px] font-bold text-slate-300 shadow-md">
         <div class="flex items-center gap-1.5 sm:gap-2">
-            <span class="text-emerald-400 font-black flex items-center gap-1"><span>⛶</span><span>집중 전체화면</span></span>
+            <span class="text-emerald-400 font-black flex items-center gap-1"><span>⛶</span><span>가로 전체화면</span></span>
             <span class="text-slate-600">|</span>
             <span id="fsModeLabel" class="text-sky-400 font-bold">Dry 모터링</span>
             <span class="text-slate-600">|</span>
@@ -1676,17 +1699,23 @@
             }
         }
 
-        function enterFullscreen() {
+        async function enterFullscreen() {
             document.body.classList.add('fullscreen-mode');
             updateFullscreenLabels();
             const elem = document.documentElement;
             try {
                 if (elem.requestFullscreen) {
-                    elem.requestFullscreen().catch(() => {});
+                    await elem.requestFullscreen();
                 } else if (elem.webkitRequestFullscreen) {
-                    elem.webkitRequestFullscreen().catch(() => {});
+                    await elem.webkitRequestFullscreen();
                 } else if (elem.msRequestFullscreen) {
-                    elem.msRequestFullscreen().catch(() => {});
+                    await elem.msRequestFullscreen();
+                }
+            } catch(e) {}
+            // 모바일 크롬 / 안드로이드 등 Screen Orientation API 지원 환경에서 가로 방향 고정
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape').catch(() => {});
                 }
             } catch(e) {}
             playChime();
@@ -1694,6 +1723,12 @@
 
         function exitFullscreen() {
             document.body.classList.remove('fullscreen-mode');
+            // 가로 방향 잠금 해제
+            try {
+                if (screen.orientation && screen.orientation.unlock) {
+                    screen.orientation.unlock();
+                }
+            } catch(e) {}
             try {
                 if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
                     if (document.exitFullscreen) {
@@ -1720,6 +1755,11 @@
                 const isNativeFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
                 if (!isNativeFs && document.body.classList.contains('fullscreen-mode')) {
                     document.body.classList.remove('fullscreen-mode');
+                    try {
+                        if (screen.orientation && screen.orientation.unlock) {
+                            screen.orientation.unlock();
+                        }
+                    } catch(e) {}
                 }
             });
         });
