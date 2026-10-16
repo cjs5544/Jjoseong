@@ -1335,11 +1335,22 @@ function App() {
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-                        <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+                        <div class="hidden sm:flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
                             <a href="index.html" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">🚁 W&B</a>
                             <a href="index.html#pa" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">📊 Engine PA</a>
                             <span class="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow flex items-center gap-1">🧮 E6B</span>
                             <a href="motoring.html" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">⏱️ Motoring</a>
+                            <a href="https://cjs5544.github.io/FMS_SIM/" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">🎛️ MCDU Sim</a>
+                        </div>
+                        <div class="sm:hidden relative">
+                            <select onChange=${(e)=>{ const v = e.target.value; if(v.startsWith('http')) window.open(v,'_blank'); else window.location.href=v; }}
+                                class="bg-slate-800 text-white border border-slate-700 text-[11px] font-black px-2.5 py-1.5 rounded-lg outline-none shadow">
+                                <option value="index.html">🚁 W&B</option>
+                                <option value="index.html#pa">📊 Engine PA</option>
+                                <option value="e6b.html" selected>🧮 E6B</option>
+                                <option value="motoring.html">⏱️ Motoring</option>
+                                <option value="https://cjs5544.github.io/FMS_SIM/">🎛️ MCDU Sim</option>
+                            </select>
                         </div>
                     </div>
                 </div>

@@ -59,6 +59,140 @@
             return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
         };
 
+        const AppNav = ({ currentMode, onSwitchMode }) => {
+            const [dropdownOpen, setDropdownOpen] = useState(false);
+            const dropdownRef = useRef(null);
+
+            useEffect(() => {
+                if (!dropdownOpen) return;
+                const handlePointerDown = (e) => {
+                    if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                        setDropdownOpen(false);
+                    }
+                };
+                document.addEventListener('pointerdown', handlePointerDown);
+                return () => document.removeEventListener('pointerdown', handlePointerDown);
+            }, [dropdownOpen]);
+
+            useEffect(() => {
+                if (dropdownOpen && window.lucide) {
+                    setTimeout(() => {
+                        try { lucide.createIcons(); } catch (err) {}
+                    }, 10);
+                }
+            }, [dropdownOpen]);
+
+            const navItems = [
+                { id: 'wb', label: 'W&B', icon: 'helicopter', type: 'mode' },
+                { id: 'pa', label: 'Engine PA', icon: 'gauge', type: 'mode' },
+                { id: 'e6b', label: 'E6B', icon: 'calculator', type: 'link', href: 'e6b.html' },
+                { id: 'motoring', label: 'Motoring', icon: 'timer', type: 'link', href: 'motoring.html' },
+                { id: 'mcdu', label: 'MCDU Sim', icon: 'terminal', type: 'link', href: 'https://cjs5544.github.io/FMS_SIM/', external: true },
+            ];
+
+            const currentItem = navItems.find(i => i.id === currentMode) || navItems[0];
+
+            const handleItemClick = (item) => {
+                setDropdownOpen(false);
+                if (item.type === 'mode') {
+                    if (item.id !== currentMode && onSwitchMode) {
+                        onSwitchMode();
+                    }
+                } else if (item.external) {
+                    window.open(item.href, '_blank', 'noopener,noreferrer');
+                } else {
+                    window.location.href = item.href;
+                }
+            };
+
+            return (
+                <div className="relative">
+                    {/* 데스크탑 5단 세그먼트 버튼 (sm 이상) */}
+                    <div className="hidden sm:flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+                        <button
+                            type="button"
+                            onClick={currentMode === 'wb' ? undefined : onSwitchMode}
+                            className={`px-3 py-1.5 rounded-md text-[10px] font-black flex items-center gap-1 transition-all ${
+                                currentMode === 'wb' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                            }`}
+                        >
+                            <Icon name="helicopter" size={12} /> W&B
+                        </button>
+                        <button
+                            type="button"
+                            onClick={currentMode === 'pa' ? undefined : onSwitchMode}
+                            className={`px-3 py-1.5 rounded-md text-[10px] font-black flex items-center gap-1 transition-all ${
+                                currentMode === 'pa' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                            }`}
+                        >
+                            <Icon name="gauge" size={12} /> Engine PA
+                        </button>
+                        <a
+                            href="e6b.html"
+                            className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"
+                        >
+                            <Icon name="calculator" size={12} /> E6B
+                        </a>
+                        <a
+                            href="motoring.html"
+                            className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"
+                        >
+                            <Icon name="timer" size={12} /> Motoring
+                        </a>
+                        <a
+                            href="https://cjs5544.github.io/FMS_SIM/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"
+                            title="AW139 MCDU Trainer (FMS Sim)"
+                        >
+                            <Icon name="terminal" size={12} /> MCDU Sim
+                        </a>
+                    </div>
+
+                    {/* 모바일 드롭다운 메뉴 (sm 미만) */}
+                    <div className="sm:hidden" ref={dropdownRef}>
+                        <button
+                            type="button"
+                            onClick={() => setDropdownOpen(!dropdownOpen)}
+                            className="flex items-center gap-1.5 bg-slate-800 text-white border border-slate-700 px-2.5 py-1.5 rounded-lg text-[11px] font-black shadow transition-all active:scale-95"
+                        >
+                            <Icon name={currentItem.icon} size={12} className="text-blue-400" />
+                            <span>{currentItem.label}</span>
+                            <Icon name="chevron-down" size={12} className={`text-slate-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {dropdownOpen && (
+                            <div className="absolute left-0 top-full mt-1.5 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in">
+                                {navItems.map(item => {
+                                    const isActive = item.id === currentMode;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            onClick={() => handleItemClick(item)}
+                                            className={`w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold transition-colors ${
+                                                isActive
+                                                    ? 'bg-blue-600/20 text-blue-400'
+                                                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                                            }`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <Icon name={item.icon} size={13} className={isActive ? 'text-blue-400' : 'text-slate-400'} />
+                                                <span>{item.label}</span>
+                                            </span>
+                                            {item.external && <Icon name="external-link" size={11} className="text-slate-500" />}
+                                            {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
         // ======================= CG (W&B) 데이터 =======================
         const AIRCRAFT_DEFAULTS = {
             HL9277: {
@@ -526,12 +660,7 @@
                                 </div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto no-print">
-                                <div className="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
-                                    <button className="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow flex items-center gap-1"><Icon name="helicopter" size={12} /> W&B</button>
-                                    <button onClick={onSwitchMode} className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"><Icon name="gauge" size={12} /> Engine PA</button>
-                                    <a href="e6b.html" className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"><Icon name="calculator" size={12} /> E6B</a>
-                                    <a href="motoring.html" className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"><Icon name="timer" size={12} /> Motoring</a>
-                                </div>
+                                <AppNav currentMode="wb" onSwitchMode={onSwitchMode} />
                                 <div className="flex gap-2">
                                     <button onClick={saveItemsToLocal} title="현재 입력된 모든 웨이트/암 값을 이 브라우저에 저장합니다. 다음 접속 시 자동으로 불러옵니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={resetWbToDefaults} title="저장된 값을 삭제하고 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
@@ -1766,12 +1895,7 @@
                                 </div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto no-print">
-                                <div className="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
-                                    <button onClick={onSwitchMode} className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"><Icon name="helicopter" size={12} /> W&B</button>
-                                    <button className="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow flex items-center gap-1"><Icon name="gauge" size={12} /> Engine PA</button>
-                                    <a href="e6b.html" className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"><Icon name="calculator" size={12} /> E6B</a>
-                                    <a href="motoring.html" className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"><Icon name="timer" size={12} /> Motoring</a>
-                                </div>
+                                <AppNav currentMode="pa" onSwitchMode={onSwitchMode} />
                                 <div className="flex gap-2">
                                     <button onClick={saveAsDefault} title="기본값 저장 — 패널 보정 및 PA 보정으로 조정한 값을 새 기본값으로 저장합니다. (보정 작업을 마친 후 사용하세요)" className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={() => setCalib(userDefault)} title="기본값으로 초기화" className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
