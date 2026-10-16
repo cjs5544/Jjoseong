@@ -87,7 +87,7 @@
                 { id: 'pa', label: 'Engine PA', icon: 'gauge', type: 'mode' },
                 { id: 'e6b', label: 'E6B', icon: 'calculator', type: 'link', href: 'e6b.html' },
                 { id: 'motoring', label: 'Motoring', icon: 'timer', type: 'link', href: 'motoring.html' },
-                { id: 'mcdu', label: 'MCDU Sim', icon: 'terminal', type: 'link', href: 'https://cjs5544.github.io/FMS_SIM/', external: true },
+                { id: 'mcdu', label: 'MCDU Sim', icon: 'terminal', type: 'link', href: 'https://mcdu-sim.vercel.app', external: true },
             ];
 
             const currentItem = navItems.find(i => i.id === currentMode) || navItems[0];
@@ -140,7 +140,7 @@
                             <Icon name="timer" size={12} /> Motoring
                         </a>
                         <a
-                            href="https://cjs5544.github.io/FMS_SIM/"
+                            href="https://mcdu-sim.vercel.app"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"
