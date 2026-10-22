@@ -364,7 +364,13 @@
 
         // ======================= CG (W&B) APP =======================
         const CGApp = ({ onSwitchMode }) => {
-            const [selectedAc, setSelectedAc] = useState('HL9695');
+            const [selectedAc, setSelectedAc] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('aw139_selected_ac');
+                    if (Object.hasOwn(AIRCRAFT_DEFAULTS, saved)) return saved;
+                } catch {}
+                return 'HL9695';
+            });
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [showCoords, setShowCoords] = useState(true);
             const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
@@ -436,41 +442,59 @@
                 return defaults;
             });
 
-            const [items, setItems] = useState(() => {
-                try {
-                    const saved = localStorage.getItem('aw139_wb_items');
-                    if (saved) {
-                        const parsed = JSON.parse(saved);
-                        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-                    }
-                } catch {}
-                return DEFAULT_WB_ITEMS.map(it => ({ ...it }));
-            });
-
-            const saveItemsToLocal = () => {
-                localStorage.setItem('aw139_wb_items', JSON.stringify(items));
-                alert('현재 W&B 값이 이 브라우저에 저장되었습니다.\n다음 접속 시 자동으로 불러옵니다.');
-            };
-
-            const resetWbToDefaults = () => {
-                if (!confirm('저장된 값을 삭제하고 기본값으로 되돌립니다.\n계속하시겠습니까?')) return;
-                localStorage.removeItem('aw139_wb_items');
-                const def = AIRCRAFT_DEFAULTS[selectedAc];
-                setItems(DEFAULT_WB_ITEMS.map(item => {
+            const defaultItemsForAircraft = (ac) => {
+                const def = AIRCRAFT_DEFAULTS[ac];
+                return DEFAULT_WB_ITEMS.map(item => {
                     if (item.id === 'bew') return { ...item, weight: def.bew, arm: def.bewArm };
                     if (item.id === 'ems') return { ...item, weight: def.emsWeight, arm: def.emsArm };
                     return { ...item };
-                }));
+                });
             };
+            const [itemsByAircraft, setItemsByAircraft] = useState(() => {
+                const defaults = Object.fromEntries(Object.keys(AIRCRAFT_DEFAULTS).map(ac => [ac, defaultItemsForAircraft(ac)]));
+                try {
+                    const saved = JSON.parse(localStorage.getItem('aw139_wb_items_by_aircraft'));
+                    if (saved && typeof saved === 'object') {
+                        for (const ac of Object.keys(defaults)) {
+                            if (Array.isArray(saved[ac]) && saved[ac].length > 0) defaults[ac] = saved[ac];
+                        }
+                        return defaults;
+                    }
+                    // The old shared save had no aircraft ID; migrate it to the selected aircraft only.
+                    const legacy = JSON.parse(localStorage.getItem('aw139_wb_items'));
+                    if (Array.isArray(legacy) && legacy.length > 0) defaults[selectedAc] = legacy;
+                } catch {}
+                return defaults;
+            });
+            const items = itemsByAircraft[selectedAc];
+            const setItems = (update) => setItemsByAircraft(prev => ({
+                ...prev,
+                [selectedAc]: typeof update === 'function' ? update(prev[selectedAc]) : update,
+            }));
 
             useEffect(() => {
-                const def = AIRCRAFT_DEFAULTS[selectedAc];
-                setItems(prev => prev.map(item => {
-                    if (item.id === 'bew') return { ...item, weight: def.bew, arm: def.bewArm };
-                    if (item.id === 'ems') return { ...item, weight: def.emsWeight, arm: def.emsArm };
-                    return item;
-                }));
-            }, [selectedAc]);
+                try {
+                    localStorage.setItem('aw139_wb_items_by_aircraft', JSON.stringify(itemsByAircraft));
+                    localStorage.setItem('aw139_selected_ac', selectedAc);
+                } catch (error) {
+                    console.error('W&B 자동 저장 실패', error);
+                }
+            }, [itemsByAircraft, selectedAc]);
+
+            const saveItemsToLocal = () => {
+                try {
+                    localStorage.setItem('aw139_wb_items_by_aircraft', JSON.stringify(itemsByAircraft));
+                    localStorage.setItem('aw139_selected_ac', selectedAc);
+                    alert('현재 W&B 값이 이 브라우저에 저장되었습니다.\n입력값은 변경할 때마다 자동 저장됩니다.');
+                } catch {
+                    alert('브라우저에 값을 저장할 수 없습니다. 브라우저의 저장 공간 설정을 확인해주세요.');
+                }
+            };
+
+            const resetWbToDefaults = () => {
+                if (!confirm('현재 기체의 저장된 값을 기본값으로 되돌립니다.\n계속하시겠습니까?')) return;
+                setItems(defaultItemsForAircraft(selectedAc));
+            };
 
             const stats = useMemo(() => {
                 const activeItems = items.filter(i => i.isActive).map(item => {
@@ -662,8 +686,8 @@
                             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto no-print">
                                 <AppNav currentMode="wb" onSwitchMode={onSwitchMode} />
                                 <div className="flex gap-2">
-                                    <button onClick={saveItemsToLocal} title="현재 입력된 모든 웨이트/암 값을 이 브라우저에 저장합니다. 다음 접속 시 자동으로 불러옵니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
-                                    <button onClick={resetWbToDefaults} title="저장된 값을 삭제하고 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
+                                    <button onClick={saveItemsToLocal} title="입력값은 기체별로 자동 저장됩니다. 클릭하면 현재 값을 다시 저장합니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
+                                    <button onClick={resetWbToDefaults} title="현재 기체의 입력값을 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
                                     <button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
                                 </div>
                             </div>
