@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VFR 항로 지도</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --dim: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --purple: #8957e5;
+      --cyan: #39d353;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 8px; }
+    .logo h1 { font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: -0.3px; }
+    .logo small { color: var(--dim); font-size: 11px; margin-top: 1px; display: block; }
+    .spacer { flex: 1; }
+    .hdr-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: border-color 0.15s;
+    }
+    .hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Layout ── */
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Panel ── */
+    .panel {
+      width: 300px;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .panel-section {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      flex-shrink: 0;
+    }
+    .panel-section h3 {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--dim);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ── Input ── */
+    .input-row { display: flex; gap: 5px; margin-bottom: 6px; }
+    .input-row input, input.full {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-row input:focus, input.full:focus { border-color: var(--accent); }
+    .input-row input::placeholder { color: var(--dim); }
+    input.full { width: 100%; }
+
+    /* ── Buttons ── */
+    .btn {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      padding: 6px 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.82; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-sm { padding: 3px 8px; font-size: 11px; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
+    .btn-danger { background: var(--red); }
+    .btn-row { display: flex; gap: 5px; }
+    .btn-row .btn { flex: 1; justify-content: center; display: flex; align-items: center; gap: 4px; }
+
+    /* ── Waypoint list ── */
+    #waypointList { max-height: 180px; overflow-y: auto; }
+    .wp-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 4px;
+      border-radius: 4px;
+      transition: background 0.1s;
+    }
+    .wp-item:hover { background: rgba(88,166,255,0.07); }
+    .wp-badge {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .wp-info { flex: 1; min-width: 0; }
+    .wp-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .wp-coord { font-size: 10px; color: var(--dim); }
+    .icon-btn {
+      background: none; border: none;
+      color: var(--dim); cursor: pointer;
+      font-size: 15px; line-height: 1;
+      padding: 2px 4px; border-radius: 3px;
+      transition: color 0.1s;
+    }
+    .icon-btn:hover { color: var(--red); }
+
+    /* ── Route stats ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .stat-box { background: var(--bg); border-radius: 6px; padding: 6px 8px; text-align: center; }
+    .stat-val { font-size: 17px; font-weight: 700; color: var(--accent); line-height: 1; }
+    .stat-lbl { font-size: 9px; color: var(--dim); text-transform: uppercase; margin-top: 2px; }
+    .speed-wrap { display: flex; align-items: center; gap: 3px; justify-content: center; }
+    .speed-wrap input {
+      width: 48px; background: transparent; border: none; border-bottom: 1px solid var(--border);
+      color: var(--accent); font-size: 17px; font-weight: 700; text-align: center;
+      outline: none; padding: 0;
+    }
+    .speed-wrap span { font-size: 10px; color: var(--dim); }
+
+    /* ── Saved routes ── */
+    #savedRouteList { max-height: 90px; overflow-y: auto; }
+    .sr-item {
+      display: flex; align-items: center;
+      padding: 4px 4px; border-radius: 4px; cursor: pointer;
+      transition: background 0.1s;
+    }
+    .sr-item:hover { background: rgba(88,166,255,0.07); }
+    .sr-name { flex: 1; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sr-meta { font-size: 10px; color: var(--dim); white-space: nowrap; margin: 0 6px; }
+
+    /* ── Layers ── */
+    .layer-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 0;
+    }
+    .layer-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .layer-label { flex: 1; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+    .layer-note { font-size: 10px; color: var(--dim); }
+    /* Toggle */
+    .tog { position: relative; width: 30px; height: 16px; flex-shrink: 0; }
+    .tog input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .tog-sl {
+      position: absolute; inset: 0;
+      background: var(--border); border-radius: 16px; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .tog-sl::before {
+      content: ''; position: absolute;
+      width: 10px; height: 10px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    input:checked ~ .tog-sl { background: var(--accent); }
+    input:checked ~ .tog-sl::before { transform: translateX(14px); }
+    input:disabled ~ .tog-sl { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Info panel ── */
+    .info-scroll { flex: 1; overflow-y: auto; padding: 10px 12px; }
+    .empty-hint { color: var(--dim); font-size: 12px; text-align: center; padding: 20px 10px; line-height: 1.6; }
+
+    /* METAR card */
+    .wx-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 10px;
+      margin-bottom: 7px;
+    }
+    .wx-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .wx-icao { font-size: 14px; font-weight: 700; }
+    .flt-badge {
+      font-size: 10px; font-weight: 700;
+      padding: 1px 6px; border-radius: 3px;
+    }
+    .flt-VFR  { background: rgba(63,185,80,.15); color: var(--green); }
+    .flt-MVFR { background: rgba(88,166,255,.15); color: var(--accent); }
+    .flt-IFR  { background: rgba(248,81,73,.15); color: var(--red); }
+    .flt-LIFR { background: rgba(137,87,229,.15); color: var(--purple); }
+    .wx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px; font-size: 11px; }
+    .wx-grid span { color: var(--dim); }
+    .wx-raw { font-family: monospace; font-size: 10px; color: var(--dim); margin-top: 6px; word-break: break-all; line-height: 1.4; }
+
+    /* NOTAM card */
+    .ntm-card {
+      background: var(--bg);
+      border: 1px solid rgba(210,153,34,.3);
+      border-radius: 7px;
+      padding: 9px 10px;
+      margin-bottom: 7px;
+    }
+    .ntm-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .ntm-id { font-size: 11px; font-weight: 700; color: var(--yellow); }
+    .ntm-loc { font-size: 10px; color: var(--dim); }
+    .ntm-dates { font-size: 10px; color: var(--dim); margin-bottom: 5px; }
+    .ntm-text { font-family: monospace; font-size: 10px; color: var(--text); white-space: pre-wrap; max-height: 90px; overflow-y: auto; line-height: 1.4; }
+
+    /* Section title in info */
+    .info-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--dim); margin-bottom: 8px; }
+
+    /* ── Map ── */
+    #map { flex: 1; }
+    .map-wrap { position: relative; flex: 1; display: flex; }
+
+    /* Mode indicator */
+    #modeIndicator {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #fff;
+      padding: 7px 18px; border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+      z-index: 1000; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    #modeIndicator.show { opacity: 1; }
+    #map.add-mode { cursor: crosshair; }
+
+    /* ── Modals ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+    }
+    .modal {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 24px;
+      width: 380px; max-width: 92vw;
+    }
+    .modal h2 { font-size: 15px; margin-bottom: 16px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 11px; color: var(--dim); margin-bottom: 4px; }
+    .form-hint { font-size: 10px; color: var(--dim); margin-top: 3px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+    /* ── Spinner ── */
+    .spin {
+      display: inline-block; width: 11px; height: 11px;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spinning 0.5s linear infinite;
+    }
+    @keyframes spinning { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 18px; right: 18px;
+      background: var(--panel); border: 1px solid var(--border);
+      color: var(--text); padding: 9px 14px; border-radius: 8px;
+      font-size: 12px; z-index: 20000;
+      opacity: 0; transition: opacity 0.25s;
+      pointer-events: none; max-width: 260px;
+    }
+    #toast.show { opacity: 1; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* Leaflet popup overrides */
+    .leaflet-popup-content-wrapper { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+    .leaflet-popup-tip { background: var(--panel); }
+    .leaflet-popup-content { margin: 10px 14px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+      <line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+    <div>
+      <h1>VFR 항로 지도</h1>
+      <small>기상 · NOTAM · CCTV 통합 표시</small>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <button class="hdr-btn" onclick="openSettings()">⚙ API 키 설정</button>
+</header>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- ── Left Panel ── -->
+  <div class="panel">
+
+    <!-- 항로 입력 -->
+    <div class="panel-section">
+      <h3>항로 입력</h3>
+      <div class="input-row">
+        <input type="text" id="wpInput"
+          placeholder="RKSS RKTU RKPK 또는 좌표..."
+          onkeydown="if(event.key==='Enter')parseRouteInput()"/>
+        <button class="btn" onclick="parseRouteInput()">추가</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-outline btn-sm" id="mapAddBtn" onclick="toggleMapAddMode()">📍 지도 클릭</button>
+        <button class="btn btn-outline btn-sm" onclick="clearRoute()">🗑 초기화</button>
+      </div>
+    </div>
+
+    <!-- 웨이포인트 -->
+    <div class="panel-section">
+      <h3>웨이포인트 <span id="wpCount" style="color:var(--accent)">0</span></h3>
+      <div id="waypointList">
+        <div class="empty-hint">항로를 입력하세요<br><span style="font-size:10px">예: RKSS RKTU RKPK<br>또는 지도를 클릭하세요</span></div>
+      </div>
+      <div class="stats-row" id="routeStats" style="display:none">
+        <div class="stat-box">
+          <div class="stat-val" id="statDist">-</div>
+          <div class="stat-lbl">총거리 NM</div>
+        </div>
+        <div class="stat-box">
+          <div class="speed-wrap">
+            <input type="number" id="speedInput" value="100" min="1" max="999" onchange="updateStats()"/>
+            <span>kt</span>
+          </div>
+          <div class="stat-lbl">순항속도</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="statTime">-</div>
+          <div class="stat-lbl">예상시간</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 저장 항로 -->
+    <div class="panel-section">
+      <h3>저장 항로
+        <button class="btn btn-sm" onclick="saveRoute()">저장</button>
+      </h3>
+      <div id="savedRouteList">
+        <div class="empty-hint">저장된 항로 없음</div>
+      </div>
+    </div>
+
+    <!-- 레이어 -->
+    <div class="panel-section">
+      <h3>레이어</h3>
+      <div class="layer-row">
+        <div class="layer-dot" style="background:var(--accent)"></div>
+        <div class="layer-label">기상 (METAR)</div>
+        <label class="tog">
+          <input type="checkbox" id="togWeather" onchange="toggleLayer('weather')">
+          <span class="tog-sl"></span>
+        </label>
+      </div>
+      <div class="layer-row">
+        <div class="layer-dot" style="background:var(--yellow)"></div>
+        <div class="layer-label">NOTAM</div>
+        <label class="tog">
+          <input type="checkbox" id="togNotam" onchange="toggleLayer('notam')">
+          <span class="tog-sl"></span>
+        </label>
+      </div>
+      <div class="layer-row">
+        <div class="layer-dot" style="background:var(--red)"></div>
+        <div class="layer-label">
+          CCTV
+          <span class="layer-note" id="cctvNote">(API 키 필요)</span>
+        </div>
+        <label class="tog">
+          <input type="checkbox" id="togCctv" onchange="toggleLayer('cctv')" disabled>
+          <span class="tog-sl"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 정보 패널 -->
+    <div class="info-scroll" id="infoPanel">
+      <div class="empty-hint">레이어를 켜면<br>기상·NOTAM 정보가<br>여기에 표시됩니다</div>
+    </div>
+  </div>
+
+  <!-- ── Map ── -->
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div id="modeIndicator">📍 지도 클릭으로 웨이포인트 추가 &nbsp;·&nbsp; ESC 종료</div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div id="toast"></div>
+
+<!-- ── Settings Modal ── -->
+<div class="overlay" id="settingsModal" style="display:none" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <h2>⚙ API 키 설정</h2>
+    <div class="form-group">
+      <label>ITS 국가교통정보 CCTV API 키</label>
+      <input class="full" type="text" id="itsApiKey" placeholder="공공데이터포털 인증키 입력..."/>
+      <div class="form-hint">data.go.kr → "ITS 국가교통정보센터 CCTV정보" 검색 후 활용 신청</div>
+    </div>
+    <div class="form-group">
+      <label>OpenWeatherMap API 키 (선택 – 향후 확장용)</label>
+      <input class="full" type="text" id="owmApiKey" placeholder="API Key..."/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeSettings()">취소</button>
+      <button class="btn" onclick="saveSettings()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Save Route Modal ── -->
+<div class="overlay" id="saveModal" style="display:none" onclick="if(event.target===this)document.getElementById('saveModal').style.display='none'">
+  <div class="modal">
+    <h2>항로 저장</h2>
+    <div class="form-group">
+      <label>항로 이름</label>
+      <input class="full" type="text" id="routeNameInput" placeholder="예: 김포→부산 훈련항로"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('saveModal').style.display='none'">취소</button>
+      <button class="btn" onclick="confirmSave()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ════════════════════════════════════════════════
+//  Korean Airport Database
+// ════════════════════════════════════════════════
+const AIRPORTS = {
+  RKSI:{ lat:37.4602, lng:126.4407, name:'인천국제공항' },
+  RKSS:{ lat:37.5583, lng:126.7906, name:'김포국제공항' },
+  RKPK:{ lat:35.1795, lng:128.9382, name:'김해국제공항' },
+  RKPC:{ lat:33.5113, lng:126.4926, name:'제주국제공항' },
+  RKTN:{ lat:35.8941, lng:128.6588, name:'대구국제공항' },
+  RKTU:{ lat:36.7166, lng:127.4991, name:'청주국제공항' },
+  RKJJ:{ lat:35.1246, lng:126.8087, name:'광주공항' },
+  RKJK:{ lat:35.9024, lng:126.6161, name:'군산공항' },
+  RKNY:{ lat:37.9007, lng:127.6020, name:'양양국제공항' },
+  RKNW:{ lat:37.4580, lng:126.7861, name:'수원공항' },
+  RKTH:{ lat:35.9877, lng:129.4202, name:'포항경주공항' },
+  RKPS:{ lat:35.0884, lng:128.0702, name:'사천공항' },
+  RKJB:{ lat:34.9913, lng:126.3828, name:'무안국제공항' },
+  RKPU:{ lat:36.9600, lng:127.0350, name:'오산공항' },
+  RKSM:{ lat:37.4406, lng:127.1138, name:'서울공항(성남)' },
+  RKSG:{ lat:37.0682, lng:127.0297, name:'평택/험프리' },
+  RKSO:{ lat:37.0906, lng:127.0300, name:'오산기지' },
+  RKTF:{ lat:35.1327, lng:126.8186, name:'광주기지' },
+  RKJY:{ lat:34.8403, lng:128.6283, name:'통영비행장' },
+  RKRA:{ lat:37.9524, lng:128.8802, name:'강릉기지' },
+  RKRR:{ lat:37.5638, lng:127.1297, name:'서울FIR(하늘)' },
+};
+
+// ════════════════════════════════════════════════
+//  State
+// ════════════════════════════════════════════════
+const state = {
+  waypoints: [],
+  savedRoutes: JSON.parse(localStorage.getItem('vfr_routes') || '[]'),
+  layers: { weather: false, notam: false, cctv: false },
+  mapMode: 'view',
+  apiKeys: JSON.parse(localStorage.getItem('vfr_apikeys') || '{}'),
+};
+
+// ════════════════════════════════════════════════
+//  Map & Layers
+// ════════════════════════════════════════════════
+let map, routeLine;
+const lyrGrp = { waypoints: null, weather: null, notam: null, cctv: null };
+
+function initMap() {
+  map = L.map('map').setView([36.5, 127.8], 7);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 18,
+  }).addTo(map);
+
+  lyrGrp.waypoints = L.layerGroup().addTo(map);
+  lyrGrp.weather   = L.layerGroup();
+  lyrGrp.notam     = L.layerGroup();
+  lyrGrp.cctv      = L.layerGroup();
+
+  map.on('click', onMapClick);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') setMode('view'); });
+}
+
+// ════════════════════════════════════════════════
+//  Map interaction
+// ════════════════════════════════════════════════
+function onMapClick(e) {
+  if (state.mapMode !== 'add') return;
+  const { lat, lng } = e.latlng;
+  addWaypoint({ lat, lng, name: `WP${state.waypoints.length + 1}`, type: 'custom' });
+}
+
+function toggleMapAddMode() {
+  setMode(state.mapMode === 'add' ? 'view' : 'add');
+}
+
+function setMode(mode) {
+  state.mapMode = mode;
+  const btn = document.getElementById('mapAddBtn');
+  const ind = document.getElementById('modeIndicator');
+  const mapEl = document.getElementById('map');
+  if (mode === 'add') {
+    btn.textContent = '✓ 추가 중 (ESC 종료)';
+    btn.style.cssText = 'border-color:var(--accent);color:var(--accent)';
+    ind.classList.add('show');
+    mapEl.classList.add('add-mode');
+  } else {
+    btn.textContent = '📍 지도 클릭';
+    btn.style.cssText = '';
+    ind.classList.remove('show');
+    mapEl.classList.remove('add-mode');
+  }
+}
+
+// ════════════════════════════════════════════════
+//  Waypoint management
+// ════════════════════════════════════════════════
+async function parseRouteInput() {
+  const raw = document.getElementById('wpInput').value.trim();
+  if (!raw) return;
+  const tokens = raw.split(/[\s,/]+/).filter(Boolean);
+  for (const t of tokens) {
+    const wp = await resolveToken(t);
+    if (wp) addWaypoint(wp);
+    else toast(`"${t}" 를 찾을 수 없습니다`);
+  }
+  document.getElementById('wpInput').value = '';
+}
+
+async function resolveToken(token) {
+  const up = token.toUpperCase();
+  // ICAO airport
+  if (AIRPORTS[up]) return { ...AIRPORTS[up], icao: up, type: 'airport' };
+
+  // Decimal degrees "37.55,126.79"
+  const dd = token.match(/^(-?\d{1,3}\.?\d*)[,\s]+(-?\d{1,3}\.?\d*)$/);
+  if (dd) {
+    const lat = +dd[1], lng = +dd[2];
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)
+      return { lat, lng, name: `${lat.toFixed(4)},${lng.toFixed(4)}`, type: 'coord' };
+  }
+
+  // DMS ICAO style "N374730E1265230"
+  const dms = token.match(/^([NS])(\d{2})(\d{2})(\d{2})([EW])(\d{3})(\d{2})(\d{2})$/i);
+  if (dms) {
+    const lat = (+dms[2]) + (+dms[3])/60 + (+dms[4])/3600;
+    const lng = (+dms[6]) + (+dms[7])/60 + (+dms[8])/3600;
+    return {
+      lat: dms[1].toUpperCase() === 'S' ? -lat : lat,
+      lng: dms[5].toUpperCase() === 'W' ? -lng : lng,
+      name: token.toUpperCase(), type: 'coord',
+    };
+  }
+
+  // Nominatim geocoding (Korean places)
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(token)}&format=json&limit=1&countrycodes=kr`,
+      { headers: { 'Accept-Language': 'ko' } }
+    );
+    const d = await r.json();
+    if (d[0]) return { lat: +d[0].lat, lng: +d[0].lon, name: d[0].display_name.split(',')[0], type: 'geo' };
+  } catch (_) {}
+  return null;
+}
+
+function addWaypoint(wp) {
+  state.waypoints.push({ id: Date.now() + Math.random(), ...wp });
+  renderAll();
+}
+
+function removeWaypoint(id) {
+  state.waypoints = state.waypoints.filter(w => w.id !== id);
+  renderAll();
+}
+
+function clearRoute() {
+  state.waypoints = [];
+  renderAll();
+  setInfoPanel('<div class="empty-hint">레이어를 켜면<br>기상·NOTAM 정보가<br>여기에 표시됩니다</div>');
+}
+
+// ════════════════════════════════════════════════
+//  Render
+// ════════════════════════════════════════════════
+function renderAll() {
+  renderMarkers();
+  renderLine();
+  renderWpList();
+  updateStats();
+  // Refresh active layers
+  if (state.layers.weather) loadWeather();
+  if (state.layers.notam)   loadNotams();
+  if (state.layers.cctv)    loadCctv();
+}
+
+function renderMarkers() {
+  lyrGrp.waypoints.clearLayers();
+  state.waypoints.forEach((wp, i) => {
+    const color = wp.type === 'airport' ? '#58a6ff' : '#3fb950';
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:24px;height:24px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5);">${i+1}</div>`,
+      iconSize: [24, 24], iconAnchor: [12, 12],
+    });
+    L.marker([wp.lat, wp.lng], { icon })
+      .bindTooltip(`<b>${wp.icao || wp.name}</b><br>${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}`, { direction: 'top' })
+      .addTo(lyrGrp.waypoints);
+  });
+}
+
+function renderLine() {
+  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+  if (state.waypoints.length < 2) return;
+
+  const pts = state.waypoints.map(w => [w.lat, w.lng]);
+  routeLine = L.polyline(pts, { color: '#58a6ff', weight: 2.5, opacity: .8, dashArray: '7 4' }).addTo(map);
+
+  // Mid-segment labels
+  for (let i = 0; i < state.waypoints.length - 1; i++) {
+    const a = state.waypoints[i], b = state.waypoints[i + 1];
+    const ml = [(a.lat + b.lat) / 2, (a.lng + b.lng) / 2];
+    const d  = haversine(a.lat, a.lng, b.lat, b.lng);
+    const br = bearing(a.lat, a.lng, b.lat, b.lng);
+    L.marker(ml, {
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="background:rgba(13,17,23,.85);border:1px solid #30363d;border-radius:4px;padding:2px 6px;font-size:10px;color:#e6edf3;white-space:nowrap;">${Math.round(br)}° · ${d.toFixed(1)} NM</div>`,
+        iconSize: [90, 18], iconAnchor: [45, 9],
+      }),
+    }).addTo(lyrGrp.waypoints);
+  }
+  map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+}
+
+function renderWpList() {
+  const list = document.getElementById('waypointList');
+  document.getElementById('wpCount').textContent = state.waypoints.length;
+  if (!state.waypoints.length) {
+    list.innerHTML = '<div class="empty-hint">항로를 입력하세요<br><span style="font-size:10px">예: RKSS RKTU RKPK</span></div>';
+    return;
+  }
+  list.innerHTML = state.waypoints.map((wp, i) => {
+    const color = wp.type === 'airport' ? 'var(--accent)' : 'var(--green)';
+    return `<div class="wp-item">
+      <div class="wp-badge" style="background:${color}">${i+1}</div>
+      <div class="wp-info">
+        <div class="wp-name">${wp.icao ? `<b>${wp.icao}</b> ` : ''}${wp.name.split(',')[0]}</div>
+        <div class="wp-coord">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</div>
+      </div>
+      <button class="icon-btn" onclick="removeWaypoint(${wp.id})" title="삭제">×</button>
+    </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  const box = document.getElementById('routeStats');
+  if (state.waypoints.length < 2) { box.style.display = 'none'; return; }
+  box.style.display = 'grid';
+  let total = 0;
+  for (let i = 0; i < state.waypoints.length - 1; i++)
+    total += haversine(state.waypoints[i].lat, state.waypoints[i].lng, state.waypoints[i+1].lat, state.waypoints[i+1].lng);
+  const spd = parseFloat(document.getElementById('speedInput').value) || 100;
+  const hrs = total / spd;
+  const h = Math.floor(hrs), m = Math.round((hrs - h) * 60);
+  document.getElementById('statDist').textContent = total.toFixed(1);
+  document.getElementById('statTime').textContent = `${h}h${String(m).padStart(2,'0')}m`;
+}
+
+// ════════════════════════════════════════════════
+//  Layers
+// ════════════════════════════════════════════════
+async function toggleLayer(name) {
+  const cb = document.getElementById(`tog${name.charAt(0).toUpperCase()+name.slice(1)}`);
+  state.layers[name] = cb.checked;
+  if (state.layers[name]) {
+    lyrGrp[name].addTo(map);
+    if (name === 'weather') await loadWeather();
+    if (name === 'notam')   await loadNotams();
+    if (name === 'cctv')    await loadCctv();
+  } else {
+    map.removeLayer(lyrGrp[name]);
+  }
+}
+
+// ────────────────────────────────────────────────
+//  Weather – METAR (aviationweather.gov, free/no-key)
+// ────────────────────────────────────────────────
+async function loadWeather() {
+  lyrGrp.weather.clearLayers();
+  setInfoPanel('<div class="empty-hint"><span class="spin"></span>&nbsp; 기상 데이터 로딩 중...</div>');
+
+  const icaos = nearbyAirports(600);
+  if (!icaos.length) { setInfoPanel('<div class="empty-hint">항로 주변 공항 없음</div>'); return; }
+
+  try {
+    const res = await fetch(`https://aviationweather.gov/api/data/metar?ids=${icaos.join(',')}&format=geojson&taf=false`);
+    const geo = await res.json();
+    const feats = geo.features || [];
+    if (!feats.length) { setInfoPanel('<div class="empty-hint">METAR 데이터 없음</div>'); return; }
+
+    const cards = feats.map(f => {
+      const p = f.properties;
+      const [lng, lat] = f.geometry.coordinates;
+      const cat = (p.fltcat || 'VFR').toUpperCase();
+      const catColor = { VFR:'#3fb950', MVFR:'#58a6ff', IFR:'#f85149', LIFR:'#8957e5' }[cat] || '#3fb950';
+      const wxIcon = wxEmoji(p);
+
+      // Map marker
+      const icn = L.divIcon({
+        className: '',
+        html: `<div style="background:${catColor};border:2px solid rgba(255,255,255,.25);border-radius:6px;padding:2px 5px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.5);">${wxIcon} ${p.id}</div>`,
+        iconSize: [60, 22], iconAnchor: [30, 11],
+      });
+
+      const wnd  = p.wdir != null ? `${String(p.wdir).padStart(3,'0')}°/${p.wspd}kt` : '-';
+      const vis  = p.visib != null ? `${p.visib} SM` : '-';
+      const tmp  = p.temp  != null ? `${p.temp}°C` : '-';
+      const dew  = p.dewp  != null ? `${p.dewp}°C` : '-';
+
+      L.marker([lat, lng], { icon: icn })
+        .bindTooltip(`<b>${p.id}</b>&nbsp;<b>${cat}</b><br>바람: ${wnd}<br>시정: ${vis}<br>기온: ${tmp}`, { direction: 'top' })
+        .addTo(lyrGrp.weather);
+
+      return `<div class="wx-card">
+        <div class="wx-head">
+          <span class="wx-icao">${p.id}</span>
+          <span class="flt-badge flt-${cat}">${cat}</span>
+          <span style="font-size:20px;line-height:1">${wxIcon}</span>
+        </div>
+        <div class="wx-grid">
+          <div><span>바람</span> <b>${wnd}</b></div>
+          <div><span>시정</span> <b>${vis}</b></div>
+          <div><span>기온</span> <b>${tmp}</b></div>
+          <div><span>이슬점</span> <b>${dew}</b></div>
+          ${p.wxString ? `<div style="grid-column:span 2"><span>현상</span> <b>${p.wxString}</b></div>` : ''}
+        </div>
+        ${p.rawOb ? `<div class="wx-raw">${p.rawOb}</div>` : ''}
+      </div>`;
+    });
+
+    setInfoPanel(`<div class="info-title">METAR ${feats.length}개</div>${cards.join('')}`);
+  } catch (e) {
+    setInfoPanel(`<div class="empty-hint">기상 로드 실패<br><small>${e.message}</small></div>`);
+  }
+}
+
+function wxEmoji(p) {
+  const wx = (p.wxString || '').toLowerCase();
+  const cv = (p.cover   || '').toLowerCase();
+  if (wx.includes('ts'))                       return '⛈️';
+  if (wx.includes('ra') || wx.includes('dz'))  return '🌧️';
+  if (wx.includes('sn') || wx.includes('fz'))  return '❄️';
+  if (wx.includes('fg') || wx.includes('br') || wx.includes('hz')) return '🌫️';
+  if (cv === 'ovc' || cv === 'bkn')            return '☁️';
+  if (cv === 'sct')                            return '⛅';
+  return '☀️';
+}
+
+// ────────────────────────────────────────────────
+//  NOTAM (aviationweather.gov, free/no-key)
+// ────────────────────────────────────────────────
+async function loadNotams() {
+  lyrGrp.notam.clearLayers();
+  const icaos = nearbyAirports(600).slice(0, 10);
+  if (!icaos.length) return;
+
+  setInfoPanel('<div class="empty-hint"><span class="spin"></span>&nbsp; NOTAM 로딩 중...</div>');
+
+  const all = [];
+  for (const icao of icaos) {
+    try {
+      const r = await fetch(`https://aviationweather.gov/api/data/notam?location=${icao}&format=json`);
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (Array.isArray(d)) all.push(...d);
+    } catch (_) {}
+  }
+
+  if (!all.length) {
+    setInfoPanel('<div class="empty-hint">NOTAM 없음<br><small>해당 공역은 NOTAM이 없거나<br>미국 외 데이터가 제한될 수 있습니다</small></div>');
+    return;
+  }
+
+  const seen = new Set();
+  const cards = [];
+
+  all.forEach(n => {
+    const key = n.notamNumber || n.id || Math.random();
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    if (n.latitude && n.longitude) {
+      const r = (n.radius || 5) * 1852;
+      L.circle([n.latitude, n.longitude], {
+        radius: r, color: '#d29922', fillColor: '#d29922', fillOpacity: .1, weight: 2,
+      })
+        .bindTooltip(`<b>${n.notamNumber || 'NOTAM'}</b><br>${(n.text || '').substring(0,80)}…`)
+        .addTo(lyrGrp.notam);
+    }
+
+    const s = n.effectiveStart ? new Date(n.effectiveStart).toLocaleString('ko-KR',{timeZone:'UTC'}) : '-';
+    const e = n.effectiveEnd   ? new Date(n.effectiveEnd  ).toLocaleString('ko-KR',{timeZone:'UTC'}) : '-';
+
+    cards.push(`<div class="ntm-card">
+      <div class="ntm-head">
+        <span class="ntm-id">${n.notamNumber || 'NOTAM'}</span>
+        <span class="ntm-loc">${n.location || ''}</span>
+      </div>
+      <div class="ntm-dates">${s} ~ ${e} UTC</div>
+      <div class="ntm-text">${n.text || n.notamText || ''}</div>
+    </div>`);
+  });
+
+  setInfoPanel(`<div class="info-title">NOTAM ${seen.size}개</div>${cards.join('')}`);
+}
+
+// ────────────────────────────────────────────────
+//  CCTV – ITS 국가교통정보 (API 키 필요)
+// ────────────────────────────────────────────────
+async function loadCctv() {
+  if (!state.apiKeys.its) {
+    toast('ITS API 키가 필요합니다. 설정에서 입력해 주세요.');
+    document.getElementById('togCctv').checked = false;
+    state.layers.cctv = false;
+    return;
+  }
+  if (!state.waypoints.length) return;
+
+  lyrGrp.cctv.clearLayers();
+  const lats = state.waypoints.map(w => w.lat);
+  const lngs = state.waypoints.map(w => w.lng);
+  const minX = (Math.min(...lngs) - 0.5).toFixed(4);
+  const maxX = (Math.max(...lngs) + 0.5).toFixed(4);
+  const minY = (Math.min(...lats) - 0.5).toFixed(4);
+  const maxY = (Math.max(...lats) + 0.5).toFixed(4);
+
+  const url = `https://openapi.its.go.kr:9443/cctvInfo?apiKey=${state.apiKeys.its}&type=all&minX=${minX}&maxX=${maxX}&minY=${minY}&maxY=${maxY}&getType=json`;
+
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    const items = d?.response?.data || [];
+
+    const camIcon = L.divIcon({
+      className: '',
+      html: `<div style="background:var(--red);border:2px solid rgba(255,255,255,.6);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 5px rgba(0,0,0,.5);">📷</div>`,
+      iconSize: [22, 22], iconAnchor: [11, 11],
+    });
+
+    items.forEach(cam => {
+      const lat = +cam.coordY, lng = +cam.coordX;
+      if (!lat || !lng) return;
+      L.marker([lat, lng], { icon: camIcon })
+        .bindPopup(`<b>📷 CCTV</b><br>${cam.roadsectionId || '도로 구간'}<br>${
+          cam.cctvurl ? `<a href="${cam.cctvurl}" target="_blank" style="color:var(--accent)">실시간 영상 보기 →</a>` : '영상 없음'
+        }`)
+        .addTo(lyrGrp.cctv);
+    });
+
+    toast(`CCTV ${items.length}개 표시됨`);
+  } catch (e) {
+    toast(`CCTV 로드 실패: ${e.message}`);
+  }
+}
+
+// ════════════════════════════════════════════════
+//  Saved Routes
+// ════════════════════════════════════════════════
+function saveRoute() {
+  if (state.waypoints.length < 2) { toast('웨이포인트 2개 이상 필요합니다'); return; }
+  const def = state.waypoints.map(w => w.icao || w.name.split(',')[0]).join(' → ');
+  document.getElementById('routeNameInput').value = def;
+  document.getElementById('saveModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('routeNameInput').select(), 100);
+}
+
+function confirmSave() {
+  const name = document.getElementById('routeNameInput').value.trim() ||
+    state.waypoints.map(w => w.icao || w.name.split(',')[0]).join(' → ');
+  state.savedRoutes.unshift({ id: Date.now(), name, waypoints: JSON.parse(JSON.stringify(state.waypoints)), createdAt: new Date().toISOString() });
+  localStorage.setItem('vfr_routes', JSON.stringify(state.savedRoutes));
+  renderSavedRoutes();
+  document.getElementById('saveModal').style.display = 'none';
+  toast(`"${name}" 저장됨`);
+}
+
+function loadSavedRoute(id) {
+  const r = state.savedRoutes.find(x => x.id === id);
+  if (!r) return;
+  state.waypoints = JSON.parse(JSON.stringify(r.waypoints));
+  renderAll();
+  toast(`"${r.name}" 불러옴`);
+}
+
+function deleteSavedRoute(id) {
+  state.savedRoutes = state.savedRoutes.filter(x => x.id !== id);
+  localStorage.setItem('vfr_routes', JSON.stringify(state.savedRoutes));
+  renderSavedRoutes();
+}
+
+function renderSavedRoutes() {
+  const el = document.getElementById('savedRouteList');
+  if (!state.savedRoutes.length) { el.innerHTML = '<div class="empty-hint">저장된 항로 없음</div>'; return; }
+  el.innerHTML = state.savedRoutes.map(r => `
+    <div class="sr-item" onclick="loadSavedRoute(${r.id})">
+      <div class="sr-name">${r.name}</div>
+      <div class="sr-meta">${r.waypoints.length}pt · ${new Date(r.createdAt).toLocaleDateString('ko-KR')}</div>
+      <button class="icon-btn" onclick="event.stopPropagation();deleteSavedRoute(${r.id})" title="삭제">×</button>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+//  Settings
+// ════════════════════════════════════════════════
+function openSettings() {
+  document.getElementById('itsApiKey').value = state.apiKeys.its || '';
+  document.getElementById('owmApiKey').value = state.apiKeys.owm || '';
+  document.getElementById('settingsModal').style.display = 'flex';
+}
+function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+function saveSettings() {
+  state.apiKeys = { its: document.getElementById('itsApiKey').value.trim(), owm: document.getElementById('owmApiKey').value.trim() };
+  localStorage.setItem('vfr_apikeys', JSON.stringify(state.apiKeys));
+  const hasIts = !!state.apiKeys.its;
+  document.getElementById('togCctv').disabled = !hasIts;
+  document.getElementById('cctvNote').textContent = hasIts ? '' : '(API 키 필요)';
+  closeSettings();
+  toast('설정 저장됨');
+}
+
+// ════════════════════════════════════════════════
+//  Helpers
+// ════════════════════════════════════════════════
+function nearbyAirports(maxKm) {
+  if (!state.waypoints.length) return Object.keys(AIRPORTS);
+  return Object.entries(AIRPORTS)
+    .filter(([, ap]) => state.waypoints.some(wp => haversine(wp.lat, wp.lng, ap.lat, ap.lng) * 1.852 <= maxKm))
+    .map(([icao]) => icao);
+}
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 3440.065; // NM
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function bearing(lat1, lng1, lat2, lng2) {
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2*Math.PI/180);
+  const x = Math.cos(lat1*Math.PI/180)*Math.sin(lat2*Math.PI/180) - Math.sin(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.cos(dLng);
+  return ((Math.atan2(y,x)*180/Math.PI) + 360) % 360;
+}
+
+function setInfoPanel(html) { document.getElementById('infoPanel').innerHTML = html; }
+
+let toastTimer;
+function toast(msg, ms=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ════════════════════════════════════════════════
+//  Boot
+// ════════════════════════════════════════════════
+initMap();
+renderSavedRoutes();
+
+// Restore API key state
+if (state.apiKeys.its) {
+  document.getElementById('togCctv').disabled = false;
+  document.getElementById('cctvNote').textContent = '';
+}
+</script>
+</body>
+</html>
