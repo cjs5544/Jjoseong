@@ -8,7 +8,6 @@
     <script src="libs/react.min.js"></script>
     <script src="libs/react-dom.min.js"></script>
     <script src="libs/prop-types.min.js"></script>
-    <script src="libs/recharts.js"></script>
     <script src="libs/babel.min.js"></script>
     <script src="libs/lucide.js"></script>
     <style>
@@ -30,7 +29,7 @@
             .print-grid-layout { display: grid !important; grid-template-columns: 1.2fr 0.8fr !important; gap: 15px !important; }
             main { padding: 0 !important; max-width: 100% !important; overflow: visible !important; height: auto !important; flex: none !important; }
             section { page-break-inside: avoid; }
-            .chart-container { height: 380px !important; }
+            .chart-container svg { max-height: 380px; width: auto; margin: 0 auto; }
             #root > div { height: auto !important; min-height: unset !important; }
             .print-chart-area { overflow: visible !important; height: auto !important; padding: 0 !important; background: white !important; align-items: flex-start !important; justify-content: center !important; page-break-inside: avoid !important; }
             .print-chart-container { width: auto !important; max-width: 100% !important; max-height: 135mm !important; box-shadow: none !important; border: none !important; }
@@ -52,7 +51,6 @@
 
     <script type="text/babel">
         const { useState, useMemo, useEffect, useRef } = React;
-        const { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, Customized } = Recharts;
 
         const Icon = ({ name, size = 16, className = "" }) => {
             useEffect(() => { if (window.lucide) lucide.createIcons(); }, [name]);
@@ -231,7 +229,7 @@
             { id: 'pax1', label: '1 ROW PAX', weight: 0, arm: 3.415, isFuel: false, isOptional: false, isActive: true },
             { id: 'pax2', label: '2 ROW PAX', weight: 0, arm: 4.789, isFuel: false, isOptional: false, isActive: true },
             { id: 'pax3', label: '3 ROW PAX', weight: 0, arm: 5.6, isFuel: false, isOptional: false, isActive: true },
-            { id: 'bag', label: 'Bag Comp', weight: 0, arm: 7.2, isFuel: false, isOptional: false, isActive: true },
+            { id: 'bag', label: 'Bag Comp', weight: 0, arm: 7.7, isFuel: false, isOptional: false, isActive: true },
             { id: 'ems', label: 'EMS KIT', weight: 54.5, arm: 4.271, isFuel: false, isOptional: true, isActive: true },
             { id: 'fuel', label: 'FUEL', weight: 820, arm: 6.217, isFuel: true, isOptional: false, isActive: true },
             { id: 'hoist', label: 'HOIST', weight: 0, arm: 4.25, isFuel: false, isOptional: false, isActive: true },
@@ -313,45 +311,93 @@
             HL9695: ['A', 'G', 'I', 'L', 'N']
         };
 
-        // ── 기체별 좌석 버튼 위치 (top/left %) — 노즈=9시(좌), Stbd=위, Port=아래 ──
-        const SEAT_BTN_POS = {
-            HL9277: {
-                PLT:   { top: '40.0%', left: '14.5%' },
-                CPT:   { top: '65.0%', left: '14.5%' },
-                A:     { top: '35.1%', left: '21.0%' },
-                B:     { top: '46.0%', left: '21.0%' },
-                C:     { top: '57.4%', left: '21.0%' },
-                D:     { top: '70.0%', left: '21.0%' },
-                G:     { top: '51.9%', left: '29.2%' },
-                I:     { top: '34.1%', left: '35.3%' },
-                M:     { top: '69.0%', left: '35.5%' },
-                HOIST: { top: '10.0%', left: '30.0%' },
-            },
-            HL9695: {
-                PLT:   { top: '34.0%', left: '18.4%' },
-                CPT:   { top: '56.4%', left: '18.4%' },
-                A:     { top: '30.1%', left: '25.5%' },
-                B:     { top: '38.0%', left: '25.5%' },
-                C:     { top: '53.0%', left: '25.5%' },
-                D:     { top: '62.0%', left: '25.5%' },
-                G:     { top: '44.9%', left: '31.2%' },
-                I:     { top: '30.6%', left: '37.4%' },
-                L:     { top: '40.5%', left: '37.4%' },
-                N:     { top: '59.9%', left: '37.2%' },
-                M:     { top: '50.4%', left: '37.4%' },
-                HOIST: { top: '10.0%', left: '30.0%' },
-            },
+        // ======================= 좌석 배치도 (동체 평면도 SVG) =======================
+        // 단위: cm. 노즈=왼쪽, Stbd(+BL)=위, Port(−BL)=아래.
+        // 동체 외형은 교범 배치도를 따라 그린 개략도(종방향 비율은 참고용).
+        // 좌석 세로 위치 = SEAT_CONFIG의 BL(계산에 쓰는 값) 그대로.
+        const DIAGRAM_SEATS = {
+            HL9277: ['A', 'B', 'C', 'D', 'G', 'I', 'M', 'HOIST'],
+            HL9695: ['A', 'B', 'C', 'D', 'G', 'I', 'L', 'M', 'N', 'HOIST'],
         };
-        // ── 기체별 배치도 이미지 ──
-        const DIAGRAM_IMAGES = {
-            HL9277: './HL9277.jpg',
-            HL9695: './HL9695.png',
+        // CG 막대 공통 크기(화면 px): 정상범위 띠 두께, 선 두께, 눈금, 삼각형
+        const GAUGE_PX = { band: 6, line: 1.2, tick: 4, triW: 9, triH: 8, font: 9 };
+        const FUSE_VB = { x: -215, y: -185, w: 1635, h: 370 };   // 왼쪽 여백 = 기수 앞 세로 BL 막대
+        const FUSE_COL_X = [300, 390, 474];   // 1·2·3열 좌석 위치(배치도 기준)
+        const FUSE_PILOT_X = 200;
+        const FUSE_HOIST_X = 380;
+        const FUSE_STRETCHER = { w: 60, h: 186 };   // G = 들것(배치도 Stretcher 크기, cm)
+        const seatXY = (id, pilotArms) => {
+            if (id === 'PLT') return { x: FUSE_PILOT_X, y: -pilotArms.plt * 100 };
+            if (id === 'CPT') return { x: FUSE_PILOT_X, y: -pilotArms.cpt * 100 };
+            if (id === 'HOIST') return { x: FUSE_HOIST_X, y: -SEAT_CONFIG.HOIST.bl * 100 };
+            const c = SEAT_CONFIG[id];
+            return { x: FUSE_COL_X[c.col], y: -c.bl * 100 };
         };
-        // STA 비례 X 좌표: Row1=3415mm, Row2=4789mm(+1374), Row3=5600mm(+811)
-        // 170px / 2185mm = 0.0778px/mm. Row2 = 175 + 1374×0.0778 = 175+107 = 282
-        const SEAT_COL_X = [175, 282, 345];
-        // BL → SVG Y: 실제 STA 스케일(78px/m)로 통일, 동등 비율
-        const blToSvgY = (bl) => Math.round(143 - bl * 78);
+        const toPct = ({ x, y }) => ({
+            left: `${((x - FUSE_VB.x) / FUSE_VB.w * 100).toFixed(2)}%`,
+            top: `${((y - FUSE_VB.y) / FUSE_VB.h * 100).toFixed(2)}%`,
+        });
+        const FUSE_OUTLINE = [
+            'M0 0',
+            'C0 -42 48 -80 110 -98', 'C150 -110 190 -114 230 -114',
+            'L470 -114 L484 -152 Q487 -160 495 -160 L587 -160 Q595 -160 597 -152 L607 -114',
+            'L784 -39 L1330 -5 L1330 5 L784 39',
+            'L607 114 L597 152 Q595 160 587 160 L495 160 Q487 160 484 152 L470 114',
+            'L230 114', 'C190 114 150 110 110 98', 'C48 80 0 42 0 0 Z',
+        ].join(' ');
+
+        const FuselageDiagram = ({ gauge }) => (
+            <svg viewBox={`${FUSE_VB.x} ${FUSE_VB.y} ${FUSE_VB.w} ${FUSE_VB.h}`}
+                 className="absolute inset-0 w-full h-full" aria-hidden="true">
+                <g fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinejoin="round">
+                    {/* 수평 안정판 */}
+                    <rect x="1117" y="-145" width="63" height="290" rx="6" fill="#fff" />
+                    {/* 동체 */}
+                    <path d={FUSE_OUTLINE} fill="#fff" />
+                    {/* 조종실 앞유리 · 격벽 */}
+                    <path d="M62 -72 C88 -30 88 30 62 72" strokeWidth="1.5" />
+                    <line x1="230" y1="-114" x2="230" y2="114" strokeWidth="1.5" />
+                    {/* 조종석 */}
+                    <rect x="172" y="-80" width="52" height="50" rx="8" strokeWidth="1.5" />
+                    <rect x="172" y="30" width="52" height="50" rx="8" strokeWidth="1.5" />
+                    {/* 객실 내부 */}
+                    <rect x="246" y="-100" width="350" height="200" rx="6" strokeWidth="1.5" stroke="#cbd5e1" />
+                    {/* 엔진 · 테일붐 시작 */}
+                    <line x1="607" y1="-114" x2="607" y2="114" strokeWidth="1.5" stroke="#cbd5e1" />
+                </g>
+                {/* 중심선 BL 0 */}
+                <line x1="-30" y1="0" x2="1410" y2="0" stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="10 8" />
+                <g fontSize="15" fill="#94a3b8" fontWeight="600">
+                    <text x="-30" y="-8">FWD</text>
+                    <text x="700" y="-165">STBD +</text>
+                    <text x="700" y="178">PORT −</text>
+                </g>
+                {gauge && <LateralGaugeV {...gauge} />}
+            </svg>
+        );
+        // Lateral CG 세로 막대: 기수 앞에 세움. 위 = 우(Stbd +), 아래 = 좌(Port −). 범위 -0.12~+0.22 m를 확대해서 표시
+        const LateralGaugeV = ({ cg, limits, ok, hoistOps, s = 0.35 }) => {
+            const u = v => v / s, G = GAUGE_PX;
+            const X = -140, top = -140, bot = 150, v0 = -0.12, v1 = 0.22;
+            const ys = v => top + (v1 - Math.max(v0, Math.min(v1, v))) / (v1 - v0) * (bot - top);
+            const ticks = [-0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.20];
+            const out = cg < v0 || cg > v1, triR = X - u(G.band / 2 + 1);
+            return (
+                <g>
+                    <line x1={X} y1={top} x2={X} y2={bot} stroke="#cbd5e1" strokeWidth={u(G.line)} />
+                    {limits && <rect x={X - u(G.band / 2)} y={ys(limits.right)} width={u(G.band)} height={ys(limits.left) - ys(limits.right)} rx={u(2)} fill="#bbf7d0" stroke="#4ade80" strokeWidth={u(1)} />}
+                    {ticks.map(t => (
+                        <g key={t}>
+                            <line x1={X - u(G.tick)} y1={ys(t)} x2={X + u(G.tick)} y2={ys(t)} stroke={t === 0 ? '#64748b' : '#94a3b8'} strokeWidth={u(1)} />
+                            <text x={X + u(G.tick + 4)} y={ys(t)} dominantBaseline="middle" fontSize={u(G.font)} fill="#94a3b8">{t === 0 ? '0' : (t > 0 ? '+' : '') + t.toFixed(2)}</text>
+                        </g>
+                    ))}
+                    <text x={X} y={top - u(4)} textAnchor="middle" fontSize={u(G.font)} fill="#64748b" fontWeight="600">BL{hoistOps ? ' (호이스트)' : ''}</text>
+                    <path d={`M${triR} ${ys(cg)} l${-u(G.triH)} ${-u(G.triW / 2)} v${u(G.triW)} Z`} fill={ok ? '#059669' : '#dc2626'} />
+                    {out && <text x={triR - u(G.triH + 3)} y={ys(cg)} textAnchor="end" dominantBaseline="middle" fontSize={u(G.font)} fill="#dc2626">범위 밖</text>}
+                </g>
+            );
+        };
 
         // ======================= PA 데이터 (보정값 절대 변경 금지) =======================
         const PA_VALUES = [-1000, 0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000];
@@ -361,6 +407,536 @@
         const OAT_NULL = () => Object.fromEntries(OAT_TEMPS.map(t => [String(t), {pts: null}]));
 
         const MASTER_CALIB_DEFAULTS = {"tq_left":0.008275709797688798,"tq_right":0.2529056914173697,"itt_left":0.25720906051216785,"itt_right":0.6746358627075908,"ng_left":0.6779461466266663,"ng_right":0.9924231189388406,"pa_top":0.3874847526765543,"pa_bottom":0.997238187774585,"paLines":{"0":{"l":0.9692045262184721,"r":0.8750341810226961},"1000":{"l":0.9475370131645767,"r":0.8533666679688009},"2000":{"l":0.927536231884058,"r":0.8266989595947758},"3000":{"l":0.9033686211700978,"r":0.8016979829941274},"4000":{"l":0.8808677422295141,"r":0.7741969087334141},"5000":{"l":0.8575334974022423,"r":0.7466958344727007},"6000":{"l":0.833365886688282,"r":0.7166946625519226},"7000":{"l":0.8041980806541922,"r":0.6841933929710796},"8000":{"l":0.7775303722801672,"r":0.6508587575035483},"9000":{"l":0.7483625662460773,"r":0.6191908538093936},"10000":{"l":0.7175280284386109,"r":0.5841894865684858},"11000":{"l":0.6850267588577679,"r":0.5458546557808248},"12000":{"l":0.6516921233902366,"r":0.5083531908798521},"13000":{"l":0.617524122036017,"r":0.46751826243212624},"14000":{"l":0.5808560230217327,"r":0.4250166022110239},"-1000":{"l":0.986705209838926,"r":0.8980739342408881}},"ittOatLines":{"0":{"pts":[{"x":0.6301020588868599,"y":0.38962238204247945},{"x":0.5609439078822869,"y":0.5005473979470395},{"x":0.4989400483609455,"y":0.6563409596107473},{"x":0.44886000797832365,"y":0.8171199152476939},{"x":0.4044382560836668,"y":0.9871976968344156}]},"10":{"pts":[{"x":0.6420258780255793,"y":0.4133030034153631},{"x":0.6046645780575917,"y":0.4731277310942269},{"x":0.56491851426186,"y":0.5603721256259033},{"x":0.502119733464604,"y":0.7473243996223528},{"x":0.463168590944787,"y":0.8744519459399384},{"x":0.4385260313914334,"y":0.9841306133511888}]},"20":{"pts":[{"x":0.6467954056810672,"y":0.45069345821465295},{"x":0.5903559950911282,"y":0.5765746560389289},{"x":0.5370962696048479,"y":0.7348609146892561},{"x":0.4973502058091162,"y":0.8619884610068418},{"x":0.46793811860027484,"y":0.9791452193779501}]},"30":{"pts":[{"x":0.6475903269569818,"y":0.5142572313734458},{"x":0.6070493418853355,"y":0.6177041563181478},{"x":0.5665083568136893,"y":0.7361072631825658},{"x":0.5291470568457015,"y":0.8582494155269128},{"x":0.4966482800216531,"y":0.9930158786525974}]},"40":{"pts":[{"x":0.6491801695088111,"y":0.5902844894653352},{"x":0.5792270972283233,"y":0.7909465968881909},{"x":0.5295047253328896,"y":0.9830418526785715}]},"50":{"pts":[{"x":0.6452055631292378,"y":0.6862533234501793},{"x":0.6054594993335063,"y":0.805902778807907},{"x":0.5581216293136441,"y":0.9813795150162338}]},"-40":{"pts":[{"x":0.5124537100514942,"y":0.3874847526765543},{"x":0.4472701654264944,"y":0.4893302615072525},{"x":0.38288154207740915,"y":0.6301676412512445},{"x":0.3375710293502751,"y":0.772251369488546},{"x":0.27874685493259227,"y":0.9803915678712597}]},"-30":{"pts":[{"x":0.541070875984421,"y":0.3874847526765543},{"x":0.4798619377389943,"y":0.4868375645206332},{"x":0.4083190229066774,"y":0.6413847776910314},{"x":0.31646777347616256,"y":0.9813795150162338}]},"-20":{"pts":[{"x":0.571277884469177,"y":0.3874847526765543},{"x":0.5148384738792381,"y":0.4731277310942269},{"x":0.4671431973243602,"y":0.5753283075456193},{"x":0.4122936292862506,"y":0.7311218692093271},{"x":0.3461445627895375,"y":0.9805483461850649}]},"-10":{"pts":[{"x":0.6022798142298478,"y":0.3874847526765543},{"x":0.5593540653304576,"y":0.4494471097213433},{"x":0.47747717391125044,"y":0.6264285957713155},{"x":0.3752914094366021,"y":0.9871976968344156}]}},"ngOatLines":{"0":{"pts":[{"x":0.9876452372991141,"y":0.3908915609196753},{"x":0.9212807518136746,"y":0.5235393063580386},{"x":0.8636676270515898,"y":0.6984971085310522},{"x":0.8199108234348165,"y":0.8471540646257696},{"x":0.7870568611596791,"y":0.9855353591720779}]},"10":{"pts":[{"x":0.9905623575402324,"y":0.4160488919510891},{"x":0.9336785128384271,"y":0.5361179718737454},{"x":0.8848167487996969,"y":0.6847749279684628},{"x":0.8374135448815259,"y":0.8414364893913574},{"x":0.8034850838152974,"y":0.989691203327922}]},"20":{"pts":[{"x":0.9832695569374368,"y":0.45378488849820964},{"x":0.9438884336823409,"y":0.5544142126238645},{"x":0.8921095494024924,"y":0.7133628041405239},{"x":0.8541869862679556,"y":0.8437235194851223},{"x":0.8215031344698465,"y":0.9838730215097402}]},"30":{"pts":[{"x":0.9730596360935231,"y":0.5201087612173912},{"x":0.9023194702464062,"y":0.7328025599375254},{"x":0.8718476877693218,"y":0.8434054890422078},{"x":0.8368714717928442,"y":0.9855353591720779}]},"40":{"pts":[{"x":0.9650375554304479,"y":0.5898631790772202},{"x":0.9037780303669654,"y":0.7865477671410002},{"x":0.8532996944484624,"y":0.9847041903409091}]},"50":{"pts":[{"x":0.951910514345416,"y":0.6790573527340507},{"x":0.9068239037457994,"y":0.82761328125},{"x":0.8686680317714601,"y":0.9888600344967532}]},"-40":{"pts":[{"x":0.9242229309752739,"y":0.3874847526765543},{"x":0.8606292289021032,"y":0.5254743678132328},{"x":0.8336019055210058,"y":0.5740819590523096},{"x":0.7938558417252741,"y":0.6912387174234179},{"x":0.7485453289981401,"y":0.8482786275804355},{"x":0.7160445438741034,"y":0.9830418526785715}]},"-30":{"pts":[{"x":0.9395127533206635,"y":0.3874847526765543},{"x":0.9023194702464062,"y":0.4720811292483287},{"x":0.860021226750192,"y":0.5521271825300996},{"x":0.8169937031936982,"y":0.6802008677809331},{"x":0.7710490593960864,"y":0.8322883690162979},{"x":0.7340625945286525,"y":0.9863665280032468}]},"-20":{"pts":[{"x":0.9584740348879319,"y":0.3874847526765543},{"x":0.8804410684380196,"y":0.545266092248805},{"x":0.8352257047006871,"y":0.6756268075934033},{"x":0.7907396210236343,"y":0.8277143088287681},{"x":0.7531405305158221,"y":0.9813795150162338}]},"-10":{"pts":[{"x":0.9708717959126844,"y":0.3908915609196753},{"x":0.9417005935015021,"y":0.4526413734513272},{"x":0.899402350005288,"y":0.5361179718737454},{"x":0.8454356255446009,"y":0.700784138624817},{"x":0.8089716225306232,"y":0.8242837636881208},{"x":0.7679789251725095,"y":0.9905223721590909}]}}};
+
+        // ======================= 공통 인벨로프 차트 (Long · Lateral 같은 모양) =======================
+        const CHART_C = {
+            grid: '#eef2f6', axis: '#94a3b8', tick: '#64748b', env: '#475569', envFill: '#f8fafc',
+            ref: '#94a3b8', hoist: '#d97706', ok: '#059669', bad: '#dc2626', path: '#64748b',
+        };
+        const niceRange = (lo, hi, vals, step) => {
+            const vmin = Math.min(lo, ...vals), vmax = Math.max(hi, ...vals);
+            return [vmin < lo ? Math.floor(vmin / step) * step : lo, vmax > hi ? Math.ceil(vmax / step) * step : hi];
+        };
+        const ticksOf = (lo, hi, step) => {
+            const out = [];
+            for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6));
+            return out;
+        };
+        // polygons: [{ pts:[{x,y}], kind:'env'|'hoist', closed }]   lines: [{x1,y1,x2,y2,kind:'ref'|'hoist'|'zero'}]
+        // marks: [{ x, y, kind:'actual'|'zero', ok, title }]
+        const EnvelopeChart = ({ xDomain, xStep, yDomain = [4200, 7200], yStep = 500, xLabel, yLabel = 'Weight (kg)',
+                                 xFmt = v => v.toFixed(1), coordFmt = p => `(${p.x.toFixed(3)}, ${p.y.toLocaleString()})`, polygons = [], lines = [], marks = [], showCoords, alert = false, fit = false }) => {
+            // fit: 감싼 칸 크기(px)를 재서 그대로 그림 → 칸이 커져도 글자 크기 유지
+            const boxRef = useRef(null);
+            const [dim, setDim] = useState({ w: 420, h: 380 });
+            useEffect(() => {
+                const el = boxRef.current;
+                if (!fit || !el || typeof ResizeObserver === 'undefined') return;
+                const ro = new ResizeObserver(() => { if (el.clientWidth && el.clientHeight) setDim({ w: el.clientWidth, h: el.clientHeight }); });
+                ro.observe(el);
+                return () => ro.disconnect();
+            }, [fit]);
+            const envStroke = alert ? CHART_C.bad : CHART_C.env, envFill = alert ? '#fef2f2' : CHART_C.envFill;
+            const W = fit ? dim.w : 420, H = fit ? dim.h : 380, M = { t: 18, r: 20, b: 50, l: 58 };
+            const CW = W - M.l - M.r, CH = H - M.t - M.b;
+            const mx = marks.filter(m => isFinite(m.x) && isFinite(m.y));
+            const [x0, x1] = niceRange(xDomain[0], xDomain[1], mx.map(m => m.x), xStep);
+            const [y0, y1] = niceRange(yDomain[0], yDomain[1], mx.map(m => m.y), yStep);
+            const xs = v => M.l + (v - x0) / (x1 - x0) * CW;
+            const ys = v => M.t + (1 - (v - y0) / (y1 - y0)) * CH;
+            const d = (pts, closed) => pts.map((p, i) => `${i ? 'L' : 'M'}${xs(p.x).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(' ') + (closed ? 'Z' : '');
+            const lineStyle = k => k === 'hoist' ? { stroke: CHART_C.hoist, strokeDasharray: '5 4' }
+                                 : k === 'zero' ? { stroke: CHART_C.ref, strokeDasharray: '3 3' }
+                                 : { stroke: CHART_C.ref, strokeDasharray: '5 4' };
+            const labelled = [];
+            polygons.forEach(pg => pg.pts.forEach((p, i) => {
+                const dupOfFirst = i === pg.pts.length - 1 && p.x === pg.pts[0].x && p.y === pg.pts[0].y;
+                if (!dupOfFirst && !p.noLabel) labelled.push(p);
+            }));
+            const svg = (
+                <svg viewBox={`0 0 ${W} ${H}`} className={fit ? "w-full h-full block" : "w-full h-auto block"} role="img" aria-label="CG envelope">
+                    <rect x={M.l} y={M.t} width={CW} height={CH} fill={alert ? '#fffafa' : '#fff'} stroke={alert ? '#fca5a5' : CHART_C.grid} />
+                    {ticksOf(y0, y1, yStep).map(v => (
+                        <g key={`y${v}`}>
+                            <line x1={M.l} x2={M.l + CW} y1={ys(v)} y2={ys(v)} stroke={CHART_C.grid} />
+                            <text x={M.l - 6} y={ys(v)} textAnchor="end" dominantBaseline="middle" fontSize="11" fill={CHART_C.tick}>{v.toLocaleString()}</text>
+                        </g>
+                    ))}
+                    {ticksOf(x0, x1, xStep).map(v => (
+                        <g key={`x${v}`}>
+                            <line x1={xs(v)} x2={xs(v)} y1={M.t} y2={M.t + CH} stroke={CHART_C.grid} />
+                            <text x={xs(v)} y={M.t + CH + 16} textAnchor="middle" fontSize="11" fill={CHART_C.tick}>{xFmt(v)}</text>
+                        </g>
+                    ))}
+                    <line x1={M.l} y1={M.t} x2={M.l} y2={M.t + CH} stroke={CHART_C.axis} />
+                    <line x1={M.l} y1={M.t + CH} x2={M.l + CW} y2={M.t + CH} stroke={CHART_C.axis} />
+                    {lines.map((l, i) => (
+                        <line key={`l${i}`} x1={xs(l.x1)} y1={ys(l.y1)} x2={xs(l.x2)} y2={ys(l.y2)} strokeWidth="1.2" {...lineStyle(l.kind)} />
+                    ))}
+                    {polygons.map((pg, i) => pg.kind === 'env'
+                        ? <path key={`p${i}`} d={d(pg.pts, pg.closed)} fill={envFill} fillOpacity="0.6" stroke={envStroke} strokeWidth="1.6" strokeLinejoin="round" />
+                        : <path key={`p${i}`} d={d(pg.pts, pg.closed)} fill="none" strokeWidth="1.6" strokeLinejoin="round" {...lineStyle(pg.kind)} />
+                    )}
+                    {labelled.map((p, i) => <circle key={`v${i}`} cx={xs(p.x)} cy={ys(p.y)} r="2.5" fill="#fff" stroke={envStroke} strokeWidth="1.2" />)}
+                    {showCoords && labelled.map((p, i) => {
+                        const cx = xs(p.x), cy = ys(p.y);
+                        const anchor = cx < M.l + CW * 0.2 ? 'start' : cx > M.l + CW * 0.8 ? 'end' : 'middle';
+                        return <text key={`t${i}`} x={cx} y={cy + (cy < M.t + CH / 2 ? -8 : 15)} textAnchor={anchor} fontSize="9" fill={CHART_C.tick}>{coordFmt(p)}</text>;
+                    })}
+                    {mx.map((m, i) => m.kind === 'zero'
+                        ? <circle key={`m${i}`} cx={xs(m.x)} cy={ys(m.y)} r="4" fill="#fff" stroke={m.ok === false ? CHART_C.bad : CHART_C.path} strokeWidth="1.6"><title>{m.title}</title></circle>
+                        : <circle key={`m${i}`} cx={xs(m.x)} cy={ys(m.y)} r="5" fill={m.ok ? CHART_C.ok : CHART_C.bad} stroke="#fff" strokeWidth="1.5"><title>{m.title}</title></circle>
+                    )}
+                    <text x={M.l + CW / 2} y={H - 8} textAnchor="middle" fontSize="11" fill={CHART_C.tick}>{xLabel}</text>
+                    <text x="14" y={M.t + CH / 2} textAnchor="middle" fontSize="11" fill={CHART_C.tick} transform={`rotate(-90,14,${M.t + CH / 2})`}>{yLabel}</text>
+                </svg>);
+            return fit ? <div ref={boxRef} className="absolute inset-0">{svg}</div> : svg;
+        };
+        const LegendDot = ({ kind, label }) => (
+            <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500">
+                {kind === 'actual' && <span className="w-2.5 h-2.5 rounded-full" style={{ background: CHART_C.ok }} />}
+                {kind === 'zero' && <span className="w-2.5 h-2.5 rounded-full bg-white" style={{ border: `1.5px solid ${CHART_C.path}` }} />}
+                {kind === 'hoist' && <span className="w-4 h-0" style={{ borderTop: `2px dashed ${CHART_C.hoist}` }} />}
+                {label}
+            </span>
+        );
+        const CoordToggle = ({ on, onToggle }) => (
+            <button onClick={onToggle} title="좌표값 표시 ON/OFF"
+                className={`no-print px-2 py-0.5 rounded text-[9px] font-bold border transition-colors ${on ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-500'}`}>
+                좌표
+            </button>
+        );
+
+        // ======================= RFM 연료·수하물 암 =======================
+        // AW139 RFM 4D (ISSUE 2, Rev.31) Section 6 Page 6-9 "TOTAL FUEL" 표: [무게 kg, 암 mm]. 사이 값은 모멘트를 선형 보간.
+        const RFM_FUEL_ARM = [[25,6208], [50,6209], [75,6210], [100,6210], [125,6210], [150,6210], [175,6210], [200,6210], [225,6210], [250,6210], [275,6210], [300,6210], [325,6210], [350,6211], [375,6211], [400,6211], [425,6211], [450,6211], [475,6211], [500,6212], [525,6212], [550,6212], [575,6212], [600,6213], [625,6213], [650,6214], [675,6214], [700,6214], [725,6215], [750,6215], [775,6216], [800,6217], [825,6219], [850,6221], [875,6223], [900,6225], [925,6225], [950,6226], [975,6227], [1000,6228], [1025,6228], [1050,6229], [1075,6229], [1100,6230], [1125,6230], [1150,6231], [1175,6231], [1200,6232], [1225,6232], [1250,6233], [1270,6233]];
+        const RFM_FUEL_MAX = 1270;
+        const rfmFuelArm = (w) => {
+            const T = RFM_FUEL_ARM;
+            if (!(w > 0)) return T[0][1] / 1000;
+            if (w <= T[0][0]) return T[0][1] / 1000;
+            if (w >= T[T.length - 1][0]) return T[T.length - 1][1] / 1000;
+            for (let i = 0; i < T.length - 1; i++) {
+                const [w1, a1] = T[i], [w2, a2] = T[i + 1];
+                if (w >= w1 && w <= w2) {
+                    const m = w1 * a1 + (w - w1) / (w2 - w1) * (w2 * a2 - w1 * a1);   // kg·mm
+                    return m / w / 1000;
+                }
+            }
+            return T[T.length - 1][1] / 1000;
+        };
+        // 같은 RFM Page 6-8 BAGGAGE 표의 세 암(mm 7200·7700·8200). Section 1: 화물칸 최대 200 kg.
+        const RFM_BAG_ARMS = [{ arm: 7.2, label: '앞' }, { arm: 7.7, label: '가운데' }, { arm: 8.2, label: '뒤' }];
+        const RFM_BAG_MAX = 200;
+
+        // ======================= 인벨로프 판정 · 조정 제안 =======================
+        // 점이 다각형 안(경계 포함)인지. 경계 허용 오차: 0.01mm / 0.01kg
+        const pointInPolygon = (x, y, poly) => {
+            const pts = poly.map(p => [p.x * 1000, p.y]); // m → mm 로 맞춰 거리 계산
+            const X = x * 1000, Y = y;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+                const dx = x2 - x1, dy = y2 - y1, L = dx * dx + dy * dy;
+                const t = L ? Math.max(0, Math.min(1, ((X - x1) * dx + (Y - y1) * dy) / L)) : 0;
+                if (Math.hypot(X - (x1 + t * dx), Y - (y1 + t * dy)) <= 0.01) return true;
+            }
+            let inside = false;
+            for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+                const [xi, yi] = pts[i], [xj, yj] = pts[j];
+                if ((yi > Y) !== (yj > Y) && X < (xj - xi) * (Y - yi) / (yj - yi) + xi) inside = !inside;
+            }
+            return inside;
+        };
+        const inLongEnvelope = (cg, w, ac) => w > 0 && isFinite(cg) && pointInPolygon(cg, w, ENVELOPE_DATA[ac]);
+        const sumWM = (arr) => {
+            const W = arr.reduce((s, i) => s + i.weight, 0), M = arr.reduce((s, i) => s + i.weight * i.arm, 0);
+            return { W, cg: W > 0 ? M / W : 0 };
+        };
+        // 이륙 상태와 연료 소진(Zero Fuel) 상태가 모두 한계 안인지
+        const longCheck = (active, ac) => {
+            const to = sumWM(active), zf = sumWM(active.filter(i => !i.isFuel));
+            const maxTow = AIRCRAFT_DEFAULTS[ac].maxTow;
+            const weightOk = to.W <= maxTow;
+            const toOk = weightOk && inLongEnvelope(to.cg, to.W, ac);
+            const zfOk = inLongEnvelope(zf.cg, zf.W, ac);
+            const bag = active.find(i => i.id === 'bag'), fuel = active.find(i => i.isFuel);
+            const bagOk = !bag || bag.weight <= RFM_BAG_MAX;
+            const fuelOk = !fuel || fuel.weight <= RFM_FUEL_MAX;
+            return { to, zf, maxTow, weightOk, toOk, zfOk, bagOk, fuelOk, ok: toOk && zfOk && bagOk && fuelOk };
+        };
+        // 한 항목(연료 또는 카고)만 바꿔서 한계 안으로 들어오는 값 찾기 (1kg 단위)
+        const ADJUSTABLE = [{ id: 'fuel', name: '연료' }, { id: 'cargo', name: '카고' }, { id: 'bag', name: '수하물' }];
+        const suggestAdjustments = (active, ac) => {
+            const base = longCheck(active, ac);
+            const withW = (id, w) => active.map(i => i.id === id ? { ...i, weight: w, ...(i.isFuel ? { arm: rfmFuelArm(w) } : {}) } : i);
+            const out = { check: base, reduce: [], maxCargo: null };
+            if (!base.ok) {
+                ADJUSTABLE.forEach(({ id, name }) => {
+                    const it = active.find(i => i.id === id);
+                    if (!it || it.weight <= 0) return;
+                    for (let w = Math.floor(it.weight); w >= 0; w--) {
+                        if (w === it.weight) continue;
+                        if (longCheck(withW(id, w), ac).ok) { out.reduce.push({ id, name, from: it.weight, to: w }); break; }
+                    }
+                });
+            } else {
+                const cargo = active.find(i => i.id === 'cargo');
+                if (cargo && cargo.weight > 0) {
+                    let w = cargo.weight;
+                    while (w < cargo.weight + 3000 && longCheck(withW('cargo', Math.floor(w) + 1), ac).ok) w = Math.floor(w) + 1;
+                    out.maxCargo = { from: cargo.weight, max: Math.floor(w) };
+                }
+            }
+            return out;
+        };
+
+        // ======================= 버튼 근처에 뜨는 입력 창 =======================
+        // containerRef: position:relative 인 상자. anchor: 누른 요소. body zoom 보정 포함.
+        const AnchoredPopover = ({ containerRef, anchor, width = 204, estH = 140, onClose, children }) => {
+            const box = containerRef.current;
+            let left = 8, top = 40, above = false, arrowX = width / 2;
+            if (box && anchor && anchor.isConnected) {
+                const br = box.getBoundingClientRect(), ar = anchor.getBoundingClientRect();
+                const k = br.width ? box.offsetWidth / br.width : 1;
+                const cx = (ar.left + ar.width / 2 - br.left) * k;
+                // 잘리는 경계 = 화면 아래 또는 overflow로 자르는 가장 가까운 상위 칸
+                let clip = box.parentElement, limitBottom = window.innerHeight, limitTop = 0;
+                while (clip && clip !== document.body) {
+                    const ov = getComputedStyle(clip).overflowY;
+                    if (ov === 'hidden' || ov === 'auto' || ov === 'scroll' || ov === 'clip') {
+                        const cr = clip.getBoundingClientRect();
+                        limitBottom = Math.min(limitBottom, cr.bottom); limitTop = Math.max(limitTop, cr.top);
+                        break;
+                    }
+                    clip = clip.parentElement;
+                }
+                const fitsBelow = ar.bottom + (estH + 12) / k <= limitBottom;
+                const fitsAbove = ar.top - (estH + 12) / k >= limitTop;
+                above = !fitsBelow && fitsAbove;
+                top = above ? (ar.top - br.top) * k - 8 : (ar.bottom - br.top) * k + 8;
+                left = Math.max(4, Math.min(box.offsetWidth - width - 4, cx - width / 2));
+                arrowX = Math.max(12, Math.min(width - 12, cx - left));
+            }
+            useEffect(() => {
+                const onKey = e => { if (e.key === 'Escape') onClose(); };
+                window.addEventListener('keydown', onKey);
+                return () => window.removeEventListener('keydown', onKey);
+            }, [onClose]);
+            return (
+                <>
+                    <div className="fixed inset-0 z-20" onClick={onClose} />
+                    <div className="absolute z-30 bg-white rounded-lg border border-slate-200 shadow-xl p-3"
+                         style={{ left, top, width, transform: above ? 'translateY(-100%)' : 'none' }}
+                         onClick={e => e.stopPropagation()}>
+                        <span className="absolute w-2.5 h-2.5 bg-white border-slate-200 rotate-45"
+                              style={{ left: arrowX - 5, ...(above ? { bottom: -6, borderRightWidth: 1, borderBottomWidth: 1 } : { top: -6, borderLeftWidth: 1, borderTopWidth: 1 }) }} />
+                        {children}
+                    </div>
+                </>
+            );
+        };
+        // 입력 창 공통 부품 (Long·Lateral 같은 모양)
+        const PopHeader = ({ title, sub }) => (
+            <div className="flex items-baseline justify-between gap-2 pb-2 mb-2 border-b border-slate-100">
+                <span className="text-[12px] font-bold text-slate-800 truncate">{title}</span>
+                {sub && <span className="text-[10px] text-slate-400 font-mono shrink-0">{sub}</span>}
+            </div>
+        );
+        const PopLabel = ({ children }) => <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">{children}</div>;
+        const PopField = ({ label, unit, children }) => (
+            <div className="mb-2">
+                {label && <PopLabel>{label}</PopLabel>}
+                <div className="flex items-center border border-slate-300 rounded-md px-2.5 py-1.5 bg-white focus-within:border-slate-600 focus-within:ring-2 focus-within:ring-slate-100">
+                    {children}
+                    {unit && <span className="text-[10px] text-slate-400 ml-1.5 shrink-0">{unit}</span>}
+                </div>
+            </div>
+        );
+        const PopSwitch = ({ label, checked, onChange }) => (
+            <button type="button" onClick={() => onChange(!checked)} className="w-full flex items-center justify-between mb-2 py-0.5">
+                <span className="text-[11px] font-bold text-slate-600">{label}</span>
+                <span className={`relative w-8 h-[18px] rounded-full transition-colors ${checked ? 'bg-slate-800' : 'bg-slate-300'}`}>
+                    <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-all ${checked ? 'left-[16px]' : 'left-[2px]'}`} />
+                </span>
+            </button>
+        );
+        const PopSegment = ({ label, options, value, onChange }) => (
+            <div className="mb-2">
+                {label && <PopLabel>{label}</PopLabel>}
+                <div className="flex rounded-md border border-slate-300 overflow-hidden text-[10px] font-bold">
+                    {options.map(o => (
+                        <button key={o.value} type="button" onClick={() => onChange(o.value)}
+                            className={`flex-1 py-1 ${o.value === value ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:text-slate-800'}`}>{o.text}</button>
+                    ))}
+                </div>
+            </div>
+        );
+        const POP_INPUT = "flex-1 min-w-0 text-[15px] font-bold text-right outline-none bg-transparent font-mono text-slate-800";
+        const PopButtons = ({ onClear, clearLabel = '비우기', onCancel, onOk }) => (
+            <div className="flex gap-1.5 mt-3">
+                {onClear && <button onClick={onClear} className="px-2.5 py-1.5 bg-white border border-slate-300 text-slate-600 rounded-md text-[10px] font-bold hover:border-slate-500">{clearLabel}</button>}
+                <button onClick={onCancel} className="px-2.5 py-1.5 bg-white border border-slate-300 text-slate-600 rounded-md text-[10px] font-bold hover:border-slate-500">취소</button>
+                <button onClick={onOk} className="flex-1 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-md text-[10px] font-bold">확인</button>
+            </div>
+        );
+
+        // ======================= 호이스트 운용 Lateral 인벨로프 =======================
+        // 호이스트 사용 시 오른쪽 한계를 점선(hoistOps)까지 확장. 6,800kg 초과 구간(HL9695)은 기본 한계 그대로.
+        const LATERAL_HOIST_ENVELOPE = {
+            HL9277: [
+                { x: -0.070, y: 6400 }, { x: 0.145, y: 6400 }, { x: 0.185, y: 4800 }, { x: 0.120, y: 4400 },
+                { x: -0.088, y: 4400 }, { x: -0.070, y: 6400 },
+            ],
+            HL9695: [
+                { x: -0.064, y: 7000 }, { x: 0.081, y: 7000 }, { x: 0.081 + 0.039 * 200 / 2600, y: 6800 },
+                { x: 0.134, y: 6800 }, { x: 0.145, y: 6400 }, { x: 0.185, y: 4900 }, { x: 0.120, y: 4400 },
+                { x: -0.088, y: 4400 }, { x: -0.070, y: 6400 }, { x: -0.066, y: 6800 }, { x: -0.064, y: 7000 },
+            ],
+        };
+        // 주어진 무게에서 다각형의 좌·우 한계
+        const polyLimitsAt = (poly, w) => {
+            const xs = [];
+            for (let i = 0; i < poly.length - 1; i++) {
+                const a = poly[i], b = poly[i + 1];
+                if (a.y === b.y) { if (a.y === w) xs.push(a.x, b.x); continue; }
+                if (w >= Math.min(a.y, b.y) && w <= Math.max(a.y, b.y)) xs.push(a.x + (w - a.y) * (b.x - a.x) / (b.y - a.y));
+            }
+            return xs.length ? { left: Math.min(...xs), right: Math.max(...xs) } : null;
+        };
+
+        // ======================= Long 입력용 옆면도 =======================
+        // 가로 = STA(cm) 그대로. 버튼은 각 항목의 ARM 위치에 놓임. 외형은 개략도.
+        const SIDE_VB = { x: 10, w: 1480 };   // 높이는 라벨 줄 수에 맞춰 계산
+                const SIDE_SHORT = { pilot: 'PLT/CPT', pax1: '1열', pax2: '2열·들것', pax3: '3열', bag: '수하물', ems: 'EMS',
+                             fuel: '연료', hoist: '호이스트', cargo: '카고', watertank: '물탱크', pump: '펌프' };
+        const sidePct = (x, y, y0, h) => ({
+            left: `${((x - SIDE_VB.x) / SIDE_VB.w * 100).toFixed(2)}%`,
+            top: `${((y - y0) / h * 100).toFixed(2)}%`,
+        });
+        // 항목 라벨: 기체 아래 줄들에 놓고 점선으로 그림과 연결. 장착 안 한 선택 항목은 그림 밖 목록으로.
+        const SIDE_FLOOR = -12;
+        const SIDE_DRAW_DX = { pax1: 32 };   // 그림만 옮김(cm): 1열 의자가 조종석에 붙어 보여 뒤로
+        const SIDE_EMS_FLOOR = { x0: 344, x1: 598 };   // 1열 의자(그림 위치) 앞 ~ 3열(5.6) 뒤
+        const SIDE_ANCHOR = { pilot: -50, pax1: -50, pax3: -50, pax2: -42, ems: -8, bag: -60, pump: 72, fuel: -86, hoist: -186, cargo: 80, watertank: 39 };
+        const SIDE_ROW_Y = (i, ppu = 0.4) => 102 + 10 / ppu + i * (22 / ppu);   // 기체 바로 아래부터, 줄 간격 = 화면 22px
+        // 버튼 폭(px) 어림: 9px 굵은 글자 기준
+        const sideBtnPx = (it) => {
+            const w = (t, han, other) => [...String(t)].reduce((n, ch) => n + (/[\u3131-\uD79D]/.test(ch) ? han : other), 0);
+            const label = SIDE_SHORT[it.id] || it.label;
+            return 16 + w(label, 9.5, 5.8) + w(it.shownWeight.toLocaleString(), 4.8, 4.8);
+        };
+        // 버튼 배치: 사람(조종석·1~3열)은 기체 위 줄, 나머지(호이스트 포함)는 기체 아래 줄.
+        // STA 순서대로 버튼 폭만큼 붙여 늘어놓고, 그림까지는 사선 연결선. 한 줄에 안 들어가면 다음 줄(모바일).
+        const SIDE_TOP_IDS = ['pilot', 'pax1', 'pax2', 'pax3'];
+        const SIDE_ANCHOR_TOP = { pilot: -152, pax1: -152, pax3: -152, pax2: -62, hoist: -204 };
+        const SIDE_ROW_L = 60, SIDE_ROW_R = 1440;
+        const layoutSideItems = (list, ppu) => {
+            const step = 22 / ppu, half = 9 / ppu, out = {};
+            const topY = i => -236 - i * step, botY = i => SIDE_ROW_Y(i, ppu);
+            const place = (group, rowY, isTop, gapPx) => {
+                const items = [...group].sort((a, b) => a.x - b.x);
+                if (!items.length) return 0;
+                const wOf = it => (sideBtnPx(it) + gapPx) / ppu;
+                const maxW = SIDE_ROW_R - SIDE_ROW_L;
+                const rows = [[]];
+                items.forEach(it => {
+                    const cur = rows[rows.length - 1];
+                    if (cur.length && cur.reduce((n, x) => n + wOf(x), 0) + wOf(it) > maxW) rows.push([it]); else cur.push(it);
+                });
+                rows.forEach((row, r) => {
+                    const widths = row.map(wOf), span = widths.reduce((n, w) => n + w, 0);
+                    const mean = row.reduce((n, it) => n + it.x, 0) / row.length;
+                    let x = Math.max(SIDE_ROW_L, Math.min(SIDE_ROW_R - span, mean - span / 2));
+                    row.forEach((it, i) => {
+                        const y = rowY(r), bx = x + widths[i] / 2;
+                        x += widths[i];
+                        out[it.id] = { bx, y, y1: isTop ? y + half : y - half,
+                                       anchor: isTop ? SIDE_ANCHOR_TOP[it.id] : (SIDE_ANCHOR[it.id] ?? -20) };
+                    });
+                });
+                return rows.length;
+            };
+            const topRows = place(list.filter(it => SIDE_TOP_IDS.includes(it.id)), topY, true, 6);
+            const botRows = place(list.filter(it => !SIDE_TOP_IDS.includes(it.id)), botY, false, 14);
+            const y0 = Math.min(-310, (topRows ? topY(topRows - 1) : -236) - 12 / ppu);
+            const rulerY = (botRows ? botY(botRows - 1) + 10 / ppu : 96) + 8 / ppu;   // STA 눈금은 아래 버튼 줄 밑
+            const bottom = rulerY + (GAUGE_PX.band / 2 + GAUGE_PX.triH + 16) / ppu;
+            return { pos: out, y0, h: bottom - y0, rulerY };
+        };
+        const ART = { seat: '#cbd5e1', seatOn: '#2563eb', body: '#bfdbfe', line: '#94a3b8' };
+        const SideSeat = ({ x, aft, on }) => {
+            const d = aft ? -1 : 1, F = SIDE_FLOOR, c = on ? ART.seatOn : ART.seat;   // d=1: 앞(기수) 보기, 등받이는 뒤쪽
+            return (
+                <g>
+                    {on && <g stroke={ART.body} strokeLinecap="round" fill="none">
+                        <line x1={x + 9 * d} y1={-64} x2={x + 14 * d} y2={-120} strokeWidth="13" />
+                        <line x1={x + 8 * d} y1={-62} x2={x - 24 * d} y2={-62} strokeWidth="11" />
+                        <line x1={x - 24 * d} y1={-62} x2={x - 30 * d} y2={F - 2} strokeWidth="9" />
+                        <circle cx={x + 11 * d} cy={-139} r="11" fill={ART.body} stroke="none" />
+                    </g>}
+                    <g stroke={c} strokeLinecap="round" fill="none">
+                        <line x1={x - 22 * d} y1={-50} x2={x + 18 * d} y2={-50} strokeWidth="7" />
+                        <line x1={x + 18 * d} y1={-50} x2={x + 27 * d} y2={-128} strokeWidth="7" />
+                        <line x1={x - 12 * d} y1={-50} x2={x - 12 * d} y2={F} strokeWidth="3" />
+                        <line x1={x + 12 * d} y1={-50} x2={x + 12 * d} y2={F} strokeWidth="3" />
+                    </g>
+                </g>
+            );
+        };
+        const SideLoadArt = ({ list, lay, y0, h }) => {
+            const F = SIDE_FLOOR;
+            const get = id => list.find(i => i.id === id);
+            const on = it => it && it.isActive && it.shownWeight > 0;
+            const col = it => on(it) ? ART.seatOn : ART.seat;
+            const fuel = get('fuel'), cargo = get('cargo'), hoist = get('hoist'), wt = get('watertank');
+            return (
+                <svg viewBox={`${SIDE_VB.x} ${y0} ${SIDE_VB.w} ${h}`} className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+                    {/* 바닥 */}
+                    <line x1="250" y1={F} x2="830" y2={F} stroke="#e2e8f0" strokeWidth="2" />
+                    {/* 지시선 */}
+                    {list.filter(it => lay[it.id]).map(it => (
+                        <g key={`ld-${it.id}`}>
+                            {(() => { const ex = it.id === 'ems' ? (SIDE_EMS_FLOOR.x0 + SIDE_EMS_FLOOR.x1) / 2 : it.x + (SIDE_DRAW_DX[it.id] || 0); return <>
+                            <line x1={lay[it.id].bx} y1={lay[it.id].y1} x2={ex} y2={lay[it.id].anchor} stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="3 4" />
+                            <circle cx={ex} cy={lay[it.id].anchor} r="3.5" fill="#94a3b8" />
+                            </>; })()}
+                        </g>
+                    ))}
+                    {/* 연료 탱크 (3열 뒤, 바닥~천장 · 개략) — 채운 높이 = 연료량 / 최대 1,270kg */}
+                    {fuel && (() => {
+                        const x0 = 598, w = 100, y0 = -158, h = 158 + F, f = Math.max(0, Math.min(1, fuel.shownWeight / RFM_FUEL_MAX));
+                        return <g>
+                            <rect x={x0} y={y0} width={w} height={h} rx="10" fill="#fff" stroke={col(fuel)} strokeWidth="2.5" />
+                            <rect x={x0 + 3} y={y0 + h - 3 - (h - 6) * f} width={w - 6} height={(h - 6) * f} rx="7" fill="#dbeafe" />
+                        </g>;
+                    })()}
+                    {list.map(it => {
+                        const x = it.x, c = col(it);
+                        switch (it.id) {
+                            case 'pilot': return <SideSeat key={it.id} x={x} on={on(it)} />;
+                            case 'pax1': return <SideSeat key={it.id} x={x + SIDE_DRAW_DX.pax1} aft on={on(it)} />;    // 1열 = 뒤보기 좌석
+                            case 'pax3': return <SideSeat key={it.id} x={x} on={on(it)} />;
+                            case 'pax2': return (    // 2열 = 들것(옆으로 놓임 → 옆면에서는 끝면)
+                                <g key={it.id}>
+                                    {on(it) && <ellipse cx={x} cy={-55} rx="28" ry="10" fill={ART.body} />}
+                                    <rect x={x - 32} y={-46} width="64" height="8" rx="3" fill="#fff" stroke={c} strokeWidth="3" />
+                                    <line x1={x - 24} y1={-38} x2={x - 24} y2={F} stroke={c} strokeWidth="3" />
+                                    <line x1={x + 24} y1={-38} x2={x + 24} y2={F} stroke={c} strokeWidth="3" />
+                                </g>);
+                            case 'ems': return (    // EMS = 1열~3열 바닥판(Med Floor) 모양 — 그림만
+                                <rect key={it.id} x={SIDE_EMS_FLOOR.x0} y={F - 9} width={SIDE_EMS_FLOOR.x1 - SIDE_EMS_FLOOR.x0} height="9" rx="2"
+                                      fill={on(it) ? '#dbeafe' : '#fff'} stroke={c} strokeWidth="2.5" />);
+                            case 'bag': return (    // 수하물 = 배기구 아래 화물칸 도어. 점 = 선택한 짐 위치(암)
+                                <g key={it.id}>
+                                    <rect x="712" y="-148" width="130" height="98" rx="8" fill={on(it) ? '#dbeafe' : '#fff'} stroke={c} strokeWidth="2.5" />
+                                    <line x1="826" y1="-108" x2="826" y2="-88" stroke={c} strokeWidth="3" strokeLinecap="round" />
+                                    <circle cx={x} cy={-60} r="5" fill={c} />
+                                </g>);
+                            case 'pump': if (!it.isActive) return null; {    // 리필 펌프 = 벨리탱크 스노클: 탱크 뒤끝(없으면 동체 밑)에서 내려와 메인 기어 아래로 수평한 관
+                                const d = `M598 ${wt && wt.isActive ? 50 : 22} L598 72 L790 72`;
+                                return (
+                                    <g key={it.id} fill="none" strokeLinejoin="round">
+                                        <path d={d} stroke={c} strokeWidth="13" strokeLinecap="round" />
+                                        <path d={d} stroke={on(it) ? '#dbeafe' : '#fff'} strokeWidth="8" strokeLinecap="round" />
+                                    </g>);
+                            }
+                            case 'hoist': return (    // 호이스트: 객실 위 오른쪽 붐(옆면에서는 지붕 위)
+                                <g key={it.id} stroke={c} strokeWidth="3" fill="#fff" strokeLinecap="round">
+                                    <line x1={x + 20} y1={-166} x2={x + 20} y2={-194} />
+                                    <line x1={x + 20} y1={-194} x2={x - 12} y2={-194} />
+                                    <rect x={x - 28} y={-202} width="20" height="16" rx="3" />
+                                    {on(it) && <>
+                                        <line x1={x - 18} y1={-186} x2={x - 18} y2={52} strokeWidth="1.5" strokeDasharray="5 4" />
+                                        <circle cx={x - 18} cy={62} r="10" fill={ART.body} stroke="none" />
+                                    </>}
+                                </g>);
+                            case 'cargo': return (    // 카고 훅(동체 아래) + 매단 짐
+                                <g key={it.id} stroke={c} strokeWidth="2.5" fill="none" strokeLinecap="round">
+                                    <path d={`M${x} 20 v8 a6 6 0 1 1 -6 6`} />
+                                    {on(it) ? <>
+                                        <line x1={x} y1={34} x2={x - 26} y2={56} strokeWidth="1.5" />
+                                        <line x1={x} y1={34} x2={x + 26} y2={56} strokeWidth="1.5" />
+                                        <rect x={x - 32} y={56} width="64" height="26" rx="4" fill="#dbeafe" />
+                                    </> : <rect x={x - 32} y={56} width="64" height="26" rx="4" stroke="#e2e8f0" strokeDasharray="4 4" />}
+                                </g>);
+                            case 'watertank': return it.isActive ? (
+                                <rect key={it.id} x="255" y={24} width="355" height="30" rx="13" fill="#dbeafe" stroke={c} strokeWidth="2.5" />) : null;   // 그림만: 조종석 아래 ~ 뒤 바퀴 앞 (계산 암과 무관)
+                            case 'fuel': return null;
+                            default: return <path key={it.id} d={`M${x} -34 l10 10 l-10 10 l-10 -10 Z`} fill="#fff" stroke={c} strokeWidth="2" />;
+                        }
+                    })}
+                </svg>
+            );
+        };
+        const SideFuselage = ({ cg, zfCg, ok, zfOk, y0, h, rulerY, band, ppu = 0.4 }) => (
+            <svg viewBox={`${SIDE_VB.x} ${y0} ${SIDE_VB.w} ${h}`} className="absolute inset-0 w-full h-full" aria-hidden="true">
+                {/* 주 로터 · 꼬리 로터 */}
+                <line x1="59.9" y1="-241.9" x2="840" y2="-317" stroke="#e2e8f0" strokeWidth="3" strokeLinecap="round" />
+                <rect x="472.9" y="-291.4" width="77.8" height="24.1" rx="9" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1.5" />
+                <circle cx="1346.0" cy="-303.2" r="48.3" fill="none" stroke="#e2e8f0" strokeWidth="2" />
+                {/* 동체 */}
+                <path d="M62.2,-17.7 C63.8,-23.4 69.3,-32.6 76.4,-38.9 C83.5,-45.2 94.1,-50.4 104.7,-55.5 C115.3,-60.6 130.7,-65.7 140.1,-69.6 C149.5,-73.5 152.3,-72.2 161.4,-79.1 C170.5,-86.0 183.4,-100.7 194.4,-110.9 C205.4,-121.1 217.2,-132.9 227.4,-140.4 C237.6,-147.9 246.4,-151.5 255.8,-155.8 C265.2,-160.1 271.9,-162.5 284.1,-166.4 C296.3,-170.3 315.1,-175.1 328.9,-179.4 C342.7,-183.7 356.1,-188.0 366.7,-192.3 C377.3,-196.6 385.1,-200.2 392.6,-205.3 C400.1,-210.4 411.5,-223.0 411.5,-223.0 C411.5,-223.0 424.9,-246.6 435.1,-252.5 C445.3,-258.4 451.3,-257.2 472.9,-258.4 C494.5,-259.6 535.8,-260.8 564.9,-259.6 C594.0,-258.4 618.0,-256.2 647.5,-251.3 C677.0,-246.4 705.5,-240.1 741.9,-230.1 C778.3,-220.1 865.8,-191.2 865.8,-191.2 C865.8,-191.2 953.3,-187.1 1001.5,-185.3 C1049.7,-183.5 1124.6,-180.1 1154.9,-180.5 C1185.2,-180.9 1175.0,-183.7 1183.2,-187.6 C1191.5,-191.5 1195.0,-194.3 1204.4,-204.1 C1213.8,-213.9 1227.2,-233.2 1239.8,-246.6 C1252.4,-260.0 1267.3,-275.3 1279.9,-284.4 C1292.5,-293.4 1303.5,-297.8 1315.3,-300.9 C1327.1,-304.0 1338.9,-304.4 1350.7,-303.2 C1362.5,-302.0 1386.1,-293.8 1386.1,-293.8 C1386.1,-293.8 1372.3,-269.0 1362.5,-256.0 C1352.7,-243.0 1337.7,-228.9 1327.1,-215.9 C1316.5,-202.9 1304.7,-189.6 1298.8,-178.2 C1292.9,-166.8 1292.9,-156.9 1291.7,-147.5 C1290.5,-138.1 1298.4,-128.2 1291.7,-121.5 C1285.0,-114.8 1251.6,-107.4 1251.6,-107.4 C1251.6,-107.4 1200.5,-95.8 1166.7,-90.9 C1132.9,-86.0 1088.0,-82.6 1048.7,-77.9 C1009.4,-73.2 961.2,-66.6 930.7,-62.5 C900.2,-58.4 865.8,-53.1 865.8,-53.1 C865.8,-53.1 813.7,-34.0 789.1,-24.8 C764.5,-15.6 737.6,-4.9 718.3,2.4 C699.0,9.7 697.1,15.9 673.5,18.9 C649.9,21.8 636.1,19.9 576.7,20.1 C517.3,20.3 380.0,20.3 317.1,20.1 C254.2,19.9 229.4,19.9 199.1,18.9 C168.8,17.9 153.1,16.4 135.4,14.2 C117.7,12.0 104.3,9.1 92.9,5.9 C81.5,2.8 72.1,-0.8 67.0,-4.7 C61.9,-8.6 60.6,-12.0 62.2,-17.7Z" fill="#fff" stroke="#94a3b8" strokeWidth="2" strokeLinejoin="round" />
+                <g fill="none" stroke="#d5dde6" strokeWidth="1.5">
+                    <path d="M269.9,-161.7 C301.4,-161.9 391.8,-163.0 458.7,-162.8 C525.6,-162.6 603.2,-161.5 671.1,-160.5 C739.0,-159.5 833.3,-157.5 865.8,-156.9" />
+                    <line x1="317.1" y1="-168.7" x2="317.1" y2="17.7" />
+                    <line x1="668.7" y1="-161.7" x2="668.7" y2="17.7" />
+                    <line x1="865.8" y1="-187.6" x2="865.8" y2="-55.5" />
+                    <line x1="576.7" y1="-256.0" x2="576.7" y2="-164.0" />
+                    <line x1="737.2" y1="-232.4" x2="737.2" y2="-161.7" />
+                    <path d="M162.5,-77.9 C162.5,-77.9 212.3,-125.3 226.3,-136.9 C240.3,-148.5 246.3,-147.5 246.3,-147.5 C246.3,-147.5 236.5,-120.7 232.2,-105.0 C227.9,-89.3 228.7,-61.0 220.4,-53.1 C212.1,-45.2 192.2,-53.7 182.6,-57.8 C172.9,-61.9 162.5,-77.9 162.5,-77.9Z" />
+                    <path d="M130.7,10.6 C130.7,10.6 139.8,-13.0 149.6,-20.1 C159.4,-27.2 179.1,-31.9 189.7,-31.9 C200.3,-31.9 210.2,-27.6 213.3,-20.1 C216.5,-12.6 208.6,13.0 208.6,13.0 C208.6,13.0 130.7,10.6 130.7,10.6Z" />
+                    <ellipse cx="804.4" cy="-185.3" rx="38.9" ry="17.4" />
+                </g>
+                <g fill="#fff" stroke="#94a3b8" strokeWidth="1.5">
+                    <rect x="548.4" y="-3.5" width="146.3" height="22.8" rx="10" />
+                    <path d="M1150.1,-90.9 C1154.8,-96.4 1198.1,-107.2 1211.5,-109.7 C1224.9,-112.2 1227.7,-109.3 1230.4,-106.2 C1233.2,-103.1 1235.9,-95.8 1228.0,-90.9 C1220.1,-86.0 1196.2,-76.7 1183.2,-76.7 C1170.2,-76.7 1145.4,-85.4 1150.1,-90.9Z" />
+                    <line x1="199.1" y1="11.8" x2="207.4" y2="47.2" strokeWidth="3" />
+                    <circle cx="207.4" cy="47.2" r="16.1" fill="#fff" />
+                    <line x1="618.0" y1="15.3" x2="635.7" y2="41.3" strokeWidth="3" />
+                    <circle cx="635.7" cy="41.3" r="20.1" fill="#fff" />
+                </g>
+                {/* STA 눈금 — 크기는 화면 px(GAUGE_PX) 기준. 정상범위 띠 위, CG 삼각형은 선 아래(위를 가리킴) */}
+                {(() => { const u = v => v / ppu, G = GAUGE_PX, triTop = rulerY + u(G.band / 2 + 1); return <>
+                <line x1="100" y1={rulerY} x2="1400" y2={rulerY} stroke="#cbd5e1" strokeWidth={u(G.line)} />
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map(m => (
+                    <g key={m}>
+                        <line x1={m * 100} y1={rulerY - u(G.tick)} x2={m * 100} y2={rulerY + u(G.tick)} stroke="#94a3b8" strokeWidth={u(1)} />
+                        <text x={m * 100} y={rulerY + u(G.band / 2 + G.triH + 11)} textAnchor="middle" fontSize={u(G.font)} fill="#94a3b8">{m}</text>
+                    </g>
+                ))}
+                <text x="1418" y={rulerY + u(3)} fontSize={u(G.font)} fill="#94a3b8">STA m</text>
+                {band && <rect x={band.left * 100} y={rulerY - u(G.band / 2)} width={(band.right - band.left) * 100} height={u(G.band)} rx={u(2)} fill="#bbf7d0" stroke="#4ade80" strokeWidth={u(1)} />}
+                {isFinite(zfCg) && <path d={`M${zfCg * 100} ${triTop} l${-u(G.triW / 2)} ${u(G.triH)} h${u(G.triW)} Z`} fill="#fff" stroke={zfOk ? '#64748b' : '#dc2626'} strokeWidth={u(1.3)} />}
+                {isFinite(cg) && <path d={`M${cg * 100} ${triTop} l${-u(G.triW / 2)} ${u(G.triH)} h${u(G.triW)} Z`} fill={ok ? '#059669' : '#dc2626'} />}
+                </>; })()}
+                <text x="30" y="-60" fontSize="17" fill="#94a3b8" fontWeight="600">FWD</text>
+            </svg>
+        );
+
+        // Lateral 허용 범위 막대: BL(m) 눈금 위에 허용 범위 띠 + 현재 CG ▼ (그래프와 같은 범위로 확대)
+        const LateralGauge = ({ cg, limits, ok, hoistOps }) => {
+            const W = 640, H = 44, L = 20, R = 20, x0 = -0.12, x1 = 0.22;
+            const xs = v => L + (Math.max(x0, Math.min(x1, v)) - x0) / (x1 - x0) * (W - L - R);
+            const ticks = [-0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.20], Y = 22;
+            const cx = xs(cg), outLeft = cg < x0, outRight = cg > x1;
+            return (
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" aria-label="Lateral CG 허용 범위">
+                    <line x1={L} y1={Y} x2={W - R} y2={Y} stroke="#cbd5e1" strokeWidth="1.2" />
+                    {limits && <rect x={xs(limits.left)} y={Y - 5} width={xs(limits.right) - xs(limits.left)} height="10" rx="3" fill="#bbf7d0" stroke="#4ade80" strokeWidth="1" />}
+                    {ticks.map(t => (
+                        <g key={t}>
+                            <line x1={xs(t)} y1={Y - 4} x2={xs(t)} y2={Y + 4} stroke={t === 0 ? '#64748b' : '#94a3b8'} strokeWidth="1" />
+                            <text x={xs(t)} y={Y + 16} textAnchor="middle" fontSize="9" fill="#94a3b8">{t === 0 ? '0' : t.toFixed(2)}</text>
+                        </g>
+                    ))}
+                    <text x={L} y="9" fontSize="8.5" fill="#94a3b8">← 좌(Port)</text>
+                    <text x={W - R} y="9" textAnchor="end" fontSize="8.5" fill="#94a3b8">우(Stbd) →</text>
+                    <text x={W / 2} y="9" textAnchor="middle" fontSize="8.5" fill="#64748b">BL (m){hoistOps ? ' · 호이스트 운용 한계' : ''}</text>
+                    <path d={`M${cx} ${Y - 3} l-6 -10 h12 Z`} fill={ok ? '#059669' : '#dc2626'} />
+                    {(outLeft || outRight) && <text x={cx + (outLeft ? 8 : -8)} y={Y - 6} textAnchor={outLeft ? 'start' : 'end'} fontSize="8.5" fill="#dc2626">범위 밖</text>}
+                </svg>
+            );
+        };
 
         // ======================= CG (W&B) APP =======================
         const CGApp = ({ onSwitchMode }) => {
@@ -374,7 +950,7 @@
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [showCoords, setShowCoords] = useState(true);
             const [currentDate] = useState(new Date().toLocaleDateString('ko-KR'));
-            const [showLateral, setShowLateral] = useState(false);
+            const [showLateral, setShowLateral] = useState(true);
             const [showLateralCoords, setShowLateralCoords] = useState(true);
             const [showPrintDialog, setShowPrintDialog] = useState(false);
             const [printState, setPrintState] = useState(null); // null | 'lateral' | 'no-lateral'
@@ -421,26 +997,34 @@
                 return { ...prev, [ac]: cur.includes(sid) ? cur.filter(s => s !== sid) : [...cur, sid] };
             });
 
-            const [dragMode, setDragMode] = useState(false);
-            const [dragging, setDragging] = useState(null);
-            const seatDiagramRef = useRef(null);
-            const [btnPositions, setBtnPositions] = useState(() => {
-                const defaults = {
-                    HL9277: Object.fromEntries(Object.entries(SEAT_BTN_POS.HL9277).map(([k,v]) => [k, { ...v }])),
-                    HL9695: Object.fromEntries(Object.entries(SEAT_BTN_POS.HL9695).map(([k,v]) => [k, { ...v }])),
-                };
-                try {
-                    const s = localStorage.getItem('aw139_btn_pos_v2');
-                    if (s) {
-                        const saved = JSON.parse(s);
-                        return {
-                            HL9277: { ...defaults.HL9277, ...(saved.HL9277 || {}) },
-                            HL9695: { ...defaults.HL9695, ...(saved.HL9695 || {}) },
-                        };
-                    }
-                } catch {}
-                return defaults;
+            const [seatEditMode, setSeatEditMode] = useState(false);
+            const seatBoxRef = useRef(null);
+            const fuseRef = useRef(null);
+            const [fuseW, setFuseW] = useState(560);
+            useEffect(() => {
+                const el = fuseRef.current;
+                if (!el || typeof ResizeObserver === 'undefined') return;
+                const ro = new ResizeObserver(() => { if (el.offsetWidth) setFuseW(el.offsetWidth); });
+                ro.observe(el);
+                return () => ro.disconnect();
             });
+            const lateralLeftRef = useRef(null);
+            const longBoxRef = useRef(null);
+            const longLeftRef = useRef(null);
+            const [longPopup, setLongPopup] = useState(null);
+            const sideRef = useRef(null);
+            const [sideW, setSideW] = useState(560);
+            useEffect(() => {
+                const el = sideRef.current;
+                if (!el || typeof ResizeObserver === 'undefined') return;
+                const ro = new ResizeObserver(() => { if (el.offsetWidth) setSideW(el.offsetWidth); });
+                ro.observe(el);
+                return () => ro.disconnect();
+            });
+            const [inputMode, setInputMode] = useState(() => {
+                try { return localStorage.getItem('aw139_input_mode') === 'cards' ? 'cards' : 'diagram'; } catch { return 'diagram'; }
+            });
+            useEffect(() => { try { localStorage.setItem('aw139_input_mode', inputMode); } catch {} }, [inputMode]);
 
             const defaultItemsForAircraft = (ac) => {
                 const def = AIRCRAFT_DEFAULTS[ac];
@@ -502,6 +1086,7 @@
                         const opt = WATER_TANK_OPTIONS[item.selectedIndex];
                         return { ...item, weight: opt.weight, arm: opt.arm, label: `WATER TANK (${opt.label})` };
                     }
+                    if (item.isFuel) return { ...item, arm: rfmFuelArm(item.weight) };   // RFM 연료량별 암
                     return item;
                 });
                 const totalWeight = activeItems.reduce((sum, i) => sum + i.weight, 0);
@@ -511,9 +1096,15 @@
                 const zeroFuelMoment = activeItems.filter(i => !i.isFuel).reduce((sum, i) => sum + (i.weight * i.arm), 0);
                 const zeroFuelCG = zeroFuelWeight > 0 ? (zeroFuelMoment / zeroFuelWeight).toFixed(4) : "0";
                 const isWeightSafe = totalWeight <= AIRCRAFT_DEFAULTS[selectedAc].maxTow;
-                const cgSafe = parseFloat(cgString) >= 4.9 && parseFloat(cgString) <= 5.7 && isWeightSafe;
-                return { totalWeight, cg: cgString, zeroFuelWeight, zeroFuelCG, isWeightSafe, cgSafe, tableData: activeItems, totalMoment };
+                // 인벨로프 다각형 판정 (이전: CG 4.9~5.7m 범위만 확인)
+                const lc = longCheck(activeItems, selectedAc);
+                const cgSafe = lc.toOk;          // 이륙: 최대중량 이하 + 인벨로프 안
+                const zeroFuelSafe = lc.zfOk;    // 연료 소진 시: 인벨로프 안
+                return { totalWeight, cg: cgString, zeroFuelWeight, zeroFuelCG, isWeightSafe, cgSafe, zeroFuelSafe, longOk: lc.ok, tableData: activeItems, totalMoment };
             }, [items, selectedAc]);
+            const advice = useMemo(() => suggestAdjustments(stats.tableData, selectedAc), [stats, selectedAc]);
+            // 현재 이륙 중량에서 허용되는 CG 앞·뒤 한계(인벨로프 가로 자름)
+            const longBand = useMemo(() => stats.totalWeight <= AIRCRAFT_DEFAULTS[selectedAc].maxTow ? polyLimitsAt(ENVELOPE_DATA[selectedAc], stats.totalWeight) : null, [stats, selectedAc]);
 
             useEffect(() => {
                 localStorage.setItem('aw139_seat_weights', JSON.stringify(seatWeights));
@@ -522,37 +1113,6 @@
             useEffect(() => {
                 localStorage.setItem('aw139_visible_seats', JSON.stringify(visibleSeats));
             }, [visibleSeats]);
-
-            useEffect(() => {
-                localStorage.setItem('aw139_btn_pos_v2', JSON.stringify(btnPositions));
-            }, [btnPositions]);
-
-            useEffect(() => {
-                if (!dragging) return;
-                const onMove = (e) => {
-                    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-                    const cy = e.touches ? e.touches[0].clientY : e.clientY;
-                    if (!seatDiagramRef.current) return;
-                    const rect = seatDiagramRef.current.getBoundingClientRect();
-                    const newLeft = Math.max(1, Math.min(99, dragging.startLeft + (cx - dragging.startX) / rect.width * 100));
-                    const newTop  = Math.max(1, Math.min(99, dragging.startTop  + (cy - dragging.startY) / rect.height * 100));
-                    setBtnPositions(prev => ({
-                        ...prev,
-                        [dragging.ac]: { ...prev[dragging.ac], [dragging.id]: { top: newTop.toFixed(1)+'%', left: newLeft.toFixed(1)+'%' } }
-                    }));
-                };
-                const onUp = () => setDragging(null);
-                window.addEventListener('mousemove', onMove);
-                window.addEventListener('mouseup', onUp);
-                window.addEventListener('touchmove', onMove, { passive: false });
-                window.addEventListener('touchend', onUp);
-                return () => {
-                    window.removeEventListener('mousemove', onMove);
-                    window.removeEventListener('mouseup', onUp);
-                    window.removeEventListener('touchmove', onMove);
-                    window.removeEventListener('touchend', onUp);
-                };
-            }, [dragging]);
 
             const lateralStats = useMemo(() => {
                 // 장비/구조물: pilot 제외, items의 lateralArm 사용
@@ -566,10 +1126,25 @@
                 const customMoment = customLateralItems.reduce((sum, i) => sum + (i.weight || 0) * (i.arm || 0), 0);
                 const totalLateralMoment = itemMoment + pilotMoment + seatMoment + customMoment;
                 const lateralCG = stats.totalWeight > 0 ? totalLateralMoment / stats.totalWeight : 0;
-                const limits = getLateralLimits(stats.totalWeight, selectedAc);
-                const isWithinLimit = limits ? (lateralCG >= limits.left && lateralCG <= limits.right) : true;
-                return { totalLateralMoment, lateralCG, isWithinLimit, limits, seatMoment, itemMoment, customMoment };
+                // 호이스트 운용(호이스트 좌석 또는 HOIST 항목에 무게 입력) 시 점선 한계까지 허용
+                const hoistOps = (varSeats.includes('HOIST') && (seatWeights.HOIST || 0) > 0)
+                    || (stats.tableData.find(i => i.id === 'hoist')?.weight || 0) > 0;
+                const poly = hoistOps ? LATERAL_HOIST_ENVELOPE[selectedAc] : LATERAL_ENVELOPE[selectedAc].standard;
+                const limits = polyLimitsAt(poly, stats.totalWeight);
+                const isWithinLimit = pointInPolygon(lateralCG, stats.totalWeight, poly);
+                return { totalLateralMoment, lateralCG, isWithinLimit, limits, hoistOps, seatMoment, itemMoment, customMoment };
             }, [stats, selectedAc, seatWeights, customLateralItems, pilotArms, lateralPilotWeights, visibleSeats]);
+
+            // 물탱크 상태 변경: 미장착→장착이면 펌프 자동 장착, 미장착으로 바꾸면 펌프 자동 해제(장착 중 펌프만 따로 떼기는 가능)
+            const setWaterTank = (id, idx) => setItems(prev => {
+                const wasOn = prev.find(i => i.id === id)?.isActive;
+                const nowOn = idx !== 0;
+                return prev.map(i => {
+                    if (i.id === id) return { ...i, selectedIndex: idx, isActive: nowOn };
+                    if (i.id === 'pump' && nowOn !== !!wasOn) return { ...i, isActive: nowOn };
+                    return i;
+                });
+            });
 
             const updateItem = (id, field, value) => {
                 setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
@@ -650,7 +1225,7 @@
                                                 <input type="number" value={item.weight} onChange={e => updateItem(item.id, 'weight', parseFloat(e.target.value) || 0)} disabled={item.isDropdown} className="w-full bg-slate-100/50 border-none rounded-lg px-2 py-1 text-xs sm:text-sm font-mono text-center focus:ring-1 focus:ring-blue-500 outline-none" />
                                             </div>
                                             <div className="col-span-5 sm:col-span-2">
-                                                <input type="number" value={item.arm} onChange={e => updateItem(item.id, 'arm', parseFloat(e.target.value) || 0)} step="0.001" disabled={item.isDropdown} className="w-full bg-slate-100/50 border-none rounded-lg px-2 py-1 text-xs sm:text-sm font-mono text-center focus:ring-1 focus:ring-blue-500 outline-none" />
+                                                <input type="number" value={item.isFuel ? rfmFuelArm(item.weight).toFixed(3) : item.arm} title={item.isFuel ? 'RFM 연료 표에서 자동 계산' : undefined} onChange={e => updateItem(item.id, 'arm', parseFloat(e.target.value) || 0)} step="0.001" disabled={item.isDropdown || item.isFuel} className="w-full bg-slate-100/50 border-none rounded-lg px-2 py-1 text-xs sm:text-sm font-mono text-center focus:ring-1 focus:ring-blue-500 outline-none" />
                                             </div>
                                             <div className="col-span-2 flex justify-end gap-2 pr-1">
                                                 {!item.isFixed && <button onClick={() => deleteItem(item.id)} className="text-rose-400 p-1"><Icon name="trash-2" size={16} /></button>}
@@ -695,127 +1270,298 @@
                     </header>
 
                     <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4 sm:space-y-6 print:p-0 print:space-y-4">
-                        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 no-print overflow-hidden">
-                            <div className="px-5 py-3 bg-slate-50 border-b flex items-center justify-between">
+                        {/* Long CG 큰 카드 (Lateral 카드와 같은 틀) */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-0 print:shadow-none print:rounded-none">
+                            <div className="no-print w-full px-5 py-3 bg-slate-50 border-b flex items-center gap-3">
                                 <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
-                                    <Icon name="weight" size={18} className="text-blue-600" /> 1. Quick Load Entry
+                                    <Icon name="move-vertical" size={18} className="text-blue-600" /> 1. Longitudinal CG
                                 </h2>
-                                <button onClick={() => setIsModalOpen(true)} title="리스트 제원 및 순서 수정" className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[10px] font-black transition-all active:scale-95">
-                                    <Icon name="settings-2" size={13} /> 항목 수정
-                                </button>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border tracking-tighter ${stats.longOk ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-rose-500 text-rose-700 bg-rose-50'}`}>
+                                    CG {stats.cg}m &nbsp;|&nbsp; {stats.longOk ? 'WITHIN LIMIT' : 'LIMIT EXCEEDED'}
+                                </span>
                             </div>
-                            <div className="p-4 sm:p-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-                                {items.filter(i => i.id !== 'bew').map(item => (
-                                    <div key={item.id} className={`p-2 sm:p-3 rounded-xl border transition-all ${item.isActive ? 'bg-slate-50 border-blue-100' : 'bg-white border-slate-100 opacity-60'}`}>
-                                        <div className="flex justify-between items-center mb-1.5">
-                                            <label className="text-[9px] font-black text-slate-500 uppercase truncate pr-1">{item.label}</label>
-                                            {item.isOptional && <input type="checkbox" checked={item.isActive} onChange={e => updateItem(item.id, 'isActive', e.target.checked)} className="w-3.5 h-4 text-blue-600 cursor-pointer" />}
+                            <div className="p-3 sm:p-5 print:p-0">
+                        <div className="grid grid-cols-1 lg:grid-cols-[6fr_5fr] gap-4 sm:gap-6 items-stretch print-grid-layout">
+                            <div ref={longLeftRef} className="relative flex flex-col gap-4 sm:gap-6 min-w-0">
+                            <section className="no-print bg-slate-50 rounded-xl border border-slate-200 p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{inputMode === 'cards' ? '항목 입력' : '기체 옆면'}</p>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="flex rounded border border-slate-300 overflow-hidden text-[9px] font-bold">
+                                            {[['diagram', '그림'], ['cards', '카드']].map(([k, t]) => (
+                                                <button key={k} onClick={() => { setLongPopup(null); setInputMode(k); }}
+                                                    className={`px-2 py-0.5 ${inputMode === k ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:text-slate-800'}`}>{t}</button>
+                                            ))}
                                         </div>
-                                        {item.isDropdown ? (
-                                            <select value={item.selectedIndex} onChange={e => { const idx = parseInt(e.target.value); setItems(items.map(it => it.id === item.id ? { ...it, selectedIndex: idx, isActive: idx !== 0 } : it)); }} className="w-full px-1 py-1 bg-white border border-slate-200 rounded text-[10px] font-bold outline-none cursor-pointer">
-                                                {WATER_TANK_OPTIONS.map((opt, idx) => <option key={idx} value={idx}>{opt.label}</option>)}
-                                            </select>
-                                        ) : (
-                                            <div className="relative flex items-center group">
-                                                <input type="number" value={item.weight} onChange={e => updateItem(item.id, 'weight', parseFloat(e.target.value) || 0)} disabled={!item.isActive} className="w-full pl-2 pr-6 sm:pr-8 py-1 bg-white border border-slate-200 rounded text-xs font-bold focus:ring-1 focus:ring-blue-500 outline-none transition-all disabled:bg-slate-50" />
-                                                <span className="absolute right-1.5 text-[8px] font-bold text-slate-300">kg</span>
-                                            </div>
-                                        )}
+                                        <button onClick={() => setIsModalOpen(true)} title="리스트 제원 및 순서 수정"
+                                            className="px-2 py-0.5 rounded text-[9px] font-bold border bg-white text-slate-500 border-slate-300 hover:border-slate-500">항목 수정</button>
                                     </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start print-grid-layout">
-                            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border print:shadow-none h-full">
-                                <div className="px-5 py-3 bg-slate-50 border-b print:bg-white print:py-2">
-                                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
-                                        <Icon name="file-text" size={18} className="text-blue-600" /> 2. Weight & Moment Data
-                                    </h2>
                                 </div>
-                                <div className="overflow-x-auto custom-scrollbar">
-                                    <table className="w-full text-left border-collapse min-w-[300px]">
+                                {inputMode === 'cards' ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {items.filter(i => i.id !== 'bew').map(item => (
+                                        <div key={item.id} className={`p-2 rounded-lg border ${item.isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-dashed border-slate-200 opacity-70'}`}>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className="text-[9px] font-bold text-slate-500 uppercase truncate pr-1">{item.label}</label>
+                                                {item.isOptional && <input type="checkbox" checked={item.isActive} onChange={e => updateItem(item.id, 'isActive', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer" title="장착" />}
+                                            </div>
+                                            {item.isDropdown ? (
+                                                <select value={item.selectedIndex} onChange={e => setWaterTank(item.id, parseInt(e.target.value))} className="w-full px-1 py-1 bg-white border border-slate-300 rounded text-[10px] font-bold outline-none cursor-pointer">
+                                                    {WATER_TANK_OPTIONS.map((opt, idx) => <option key={idx} value={idx}>{opt.label}</option>)}
+                                                </select>
+                                            ) : (
+                                                <>
+                                                <div className="flex items-center border border-slate-300 rounded px-2 py-1 bg-white focus-within:border-slate-500">
+                                                    <input type="number" inputMode="decimal" value={item.weight} onChange={e => updateItem(item.id, 'weight', parseFloat(e.target.value) || 0)} disabled={!item.isActive} className="flex-1 min-w-0 text-xs font-bold font-mono text-right outline-none bg-transparent disabled:text-slate-300" />
+                                                    <span className="text-[9px] text-slate-400 ml-1">kg</span>
+                                                </div>
+                                                {item.id === 'bag' && (
+                                                    <select value={item.arm} onChange={e => updateItem('bag', 'arm', parseFloat(e.target.value))} title="짐 위치 (RFM 수하물 암)"
+                                                        className="mt-1 w-full px-1 py-0.5 bg-white border border-slate-300 rounded text-[9px] font-bold outline-none">
+                                                        {!RFM_BAG_ARMS.some(o => Math.abs(o.arm - item.arm) < 1e-6) && <option value={item.arm}>암 {item.arm}m</option>}
+                                                        {RFM_BAG_ARMS.map(o => <option key={o.arm} value={o.arm}>위치 {o.label} · {o.arm}m</option>)}
+                                                    </select>
+                                                )}
+                                                {item.isFuel && <div className="mt-1 text-[9px] text-slate-400">암 {rfmFuelArm(item.weight).toFixed(3)}m (RFM 표)</div>}
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                ) : (
+                                <div>
+                                    <div ref={longBoxRef} className="relative">
+                                        {(() => {
+                                            const list = items.filter(i => i.id !== 'bew').map(i => {
+                                                const arm = i.isDropdown ? (WATER_TANK_OPTIONS[i.selectedIndex].arm || 5.2) : i.isFuel ? rfmFuelArm(i.weight) : i.arm;
+                                                const weight = i.isDropdown ? WATER_TANK_OPTIONS[i.selectedIndex].weight : i.weight;
+                                                return { ...i, x: arm * 100, shownWeight: weight };
+                                            });
+                                            // 물탱크 장착 시 카고(훅)는 그림에서 숨김 — 무게가 남아 있으면 아래에 경고로 표시
+                                            const tankOn = list.some(it => it.id === 'watertank' && it.isActive);
+                                            const hiddenCargo = tankOn ? list.find(it => it.id === 'cargo' && it.weight > 0) : null;
+                                            const placed = list.filter(it => !(it.isOptional && !it.isActive) && !(tankOn && it.id === 'cargo'));
+                                            const offList = list.filter(it => it.isOptional && !it.isActive);
+                                            const { pos: lay, y0: vbY, h: vbH, rulerY } = layoutSideItems(placed, sideW / SIDE_VB.w);
+                                            const openPop = (it) => (e) => setLongPopup({ id: it.id, anchor: e.currentTarget });
+                                            return (
+                                                <div>
+                                                <div className="overflow-x-auto">
+                                                    <div ref={sideRef} className="relative w-full" style={{ aspectRatio: `${SIDE_VB.w} / ${vbH}` }}>
+                                                        <SideFuselage y0={vbY} h={vbH} rulerY={rulerY} band={longBand} ppu={sideW / SIDE_VB.w} cg={parseFloat(stats.cg)} zfCg={parseFloat(stats.zeroFuelCG)} ok={stats.cgSafe} zfOk={stats.zeroFuelSafe} />
+                                                        <SideLoadArt list={placed} lay={lay} y0={vbY} h={vbH} />
+                                                        {placed.map(it => {
+                                                            const on = it.isActive && it.shownWeight > 0;
+                                                            const off = !it.isActive;
+                                                            const cls = off ? 'bg-white/80 border-dashed border-slate-300 text-slate-400'
+                                                                      : on ? 'bg-blue-600 border-blue-600 text-white'
+                                                                      : 'bg-white border-slate-400 text-slate-600';
+                                                            return (
+                                                                <button key={it.id}
+                                                                    style={{ position: 'absolute', ...sidePct(lay[it.id].bx, lay[it.id].y, vbY, vbH), transform: 'translate(-50%,-50%)' }}
+                                                                    onClick={openPop(it)}
+                                                                    title={`${it.label} · ARM ${(it.x / 100).toFixed(3)}m`}
+                                                                    className={`flex items-baseline gap-1 rounded border px-1.5 py-px text-[9px] font-bold leading-tight whitespace-nowrap ${cls}`}>
+                                                                    <span>{SIDE_SHORT[it.id] || it.label}</span>
+                                                                    <span className="text-[8px] font-medium opacity-80">{off ? '미사용' : it.shownWeight.toLocaleString()}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                                {hiddenCargo && (
+                                                    <button onClick={openPop(hiddenCargo)}
+                                                        className="mt-1.5 px-2 py-0.5 rounded border border-red-300 bg-red-50 text-[9px] font-bold text-red-700">
+                                                        물탱크 장착 중인데 카고 {hiddenCargo.weight.toLocaleString()}kg이 입력돼 있습니다 (계산에 포함) — 눌러서 수정
+                                                    </button>
+                                                )}
+                                                {offList.length > 0 && (
+                                                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                                                        <span className="text-[9px] text-slate-400 mr-0.5">미장착:</span>
+                                                        {offList.map(it => (
+                                                            <button key={it.id} onClick={openPop(it)}
+                                                                className="px-1.5 py-px rounded border border-dashed border-slate-300 bg-white text-[9px] font-bold text-slate-400 hover:text-slate-700">
+                                                                + {SIDE_SHORT[it.id] || it.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                </div>
+                                            );
+                                        })()}
+                                        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[9px] text-slate-500">
+                                            <span className="flex items-center gap-1"><span className="inline-block w-4 h-2 rounded-sm" style={{ background: '#bbf7d0', border: '1px solid #4ade80' }} />{longBand ? `허용 CG ${longBand.left.toFixed(3)}~${longBand.right.toFixed(3)}m (이륙 중량 기준)` : '이륙 중량이 범위 밖'}</span>
+                                            <span className="flex items-center gap-1"><span className="inline-block w-0 h-0" style={{ borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: `8px solid ${stats.cgSafe ? '#059669' : '#dc2626'}` }} />이륙 CG {stats.cg}m</span>
+                                            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2 border border-slate-500" style={{ clipPath: 'polygon(50% 0,100% 100%,0 100%)' }} />연료 소진 CG {stats.zeroFuelCG}m</span>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                )}
+                            </section>
+
+                            <section className="overflow-hidden lg:flex-1 flex flex-col">
+                                <div className="overflow-x-auto custom-scrollbar flex-1 flex flex-col">
+                                    <table className="w-full flex-1 text-left border-collapse min-w-[320px]">
                                         <thead className="bg-slate-50 print:bg-white text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                            <tr className="border-b border-slate-100">
-                                                <th className="px-4 py-2">Item Description</th>
-                                                <th className="px-4 py-2 text-right">Weight</th>
-                                                <th className="px-4 py-2 text-right">ARM (m)</th>
-                                                <th className="px-4 py-2 text-right">Moment</th>
+                                            <tr className="border-b border-slate-200">
+                                                <th className="px-3 py-2">Item</th>
+                                                <th className="px-3 py-2 text-right">Weight<br/><span className="font-normal normal-case">(kg)</span></th>
+                                                <th className="px-3 py-2 text-right">ARM<br/><span className="font-normal normal-case">(m)</span></th>
+                                                <th className="px-3 py-2 text-right">Moment<br/><span className="font-normal normal-case">(kgm)</span></th>
                                             </tr>
                                         </thead>
                                         <tbody className="text-[10px] sm:text-[11px]">
                                             {stats.tableData.map(item => (
-                                                <tr key={item.id} className="border-b border-slate-50">
-                                                    <td className="px-4 py-2 font-bold text-slate-700 whitespace-nowrap print:py-1.5 tracking-tight">{item.label}</td>
-                                                    <td className="px-4 py-2 text-right font-mono text-slate-600 print:py-1.5">{item.weight.toLocaleString()}</td>
-                                                    <td className="px-4 py-2 text-right font-mono text-slate-600 print:py-1.5">{item.arm.toFixed(3)}</td>
-                                                    <td className="px-4 py-2 text-right font-mono text-blue-600 font-bold print:py-1.5">{(item.weight * item.arm).toFixed(1)}</td>
+                                                <tr key={item.id} className={`border-b border-slate-100 ${item.isFixed ? '' : 'cursor-pointer hover:bg-slate-50 transition-colors'}`}
+                                                    onClick={item.isFixed ? undefined : (e) => setLongPopup({ id: item.id, anchor: e.currentTarget })}>
+                                                    <td className="px-3 py-2 font-bold text-slate-700 whitespace-nowrap">{item.label}</td>
+                                                    <td className="px-3 py-2 text-right font-mono text-slate-600">{item.weight.toLocaleString()}</td>
+                                                    <td className="px-3 py-2 text-right font-mono text-slate-500">{item.arm.toFixed(3)}</td>
+                                                    <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{(item.weight * item.arm).toFixed(1)}</td>
                                                 </tr>
                                             ))}
-                                            <tr className={`font-black border-t-2 border-slate-200 text-[10px] sm:text-[11px] ${stats.isWeightSafe && stats.cgSafe ? 'bg-blue-50/50' : 'bg-rose-50'}`}>
-                                                <td className="px-4 py-3 text-slate-900 uppercase print:py-3 tracking-tighter">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <span>TOTAL GROSS</span>
-                                                        <span className={`px-2 py-0.5 rounded-full font-black border tracking-tighter ${stats.isWeightSafe && stats.cgSafe ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-rose-500 text-rose-700 bg-rose-50 animate-pulse'}`}>
-                                                            {stats.isWeightSafe && stats.cgSafe ? 'MISSION READY' : 'LIMIT EXCEEDED'}
-                                                        </span>
-                                                    </div>
+                                            <tr className={`font-black text-[11px] border-t-2 border-slate-300 ${stats.longOk ? 'bg-blue-50/50' : 'bg-rose-50'}`}>
+                                                <td className="px-3 py-2.5 text-slate-900">TOTAL GROSS</td>
+                                                <td className="px-3 py-2.5 text-right font-mono">{stats.totalWeight.toLocaleString()}</td>
+                                                <td className="px-3 py-2.5 text-right">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border whitespace-nowrap ${stats.longOk ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-rose-500 text-rose-700 bg-rose-50'}`}>
+                                                        CG {stats.cg}m
+                                                    </span>
                                                 </td>
-                                                <td className="px-4 py-3 text-right print:py-3">{stats.totalWeight.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-right text-slate-500 italic whitespace-nowrap uppercase print:py-3 tracking-tighter tracking-tight">CG: {stats.cg}m</td>
-                                                <td className="px-4 py-3 text-right text-blue-800 print:py-3">{(stats.totalMoment).toFixed(1)}</td>
+                                                <td className="px-3 py-2.5 text-right text-blue-700">{(stats.totalMoment).toFixed(1)}</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
                             </section>
+                                        {longPopup && (() => {
+                                            const it = items.find(i => i.id === longPopup.id);
+                                            if (!it) return null;
+                                            const close = () => setLongPopup(null);
+                                            const apply = () => {
+                                                if (!it.isDropdown) {
+                                                    const v = parseFloat(document.getElementById('longPopupInput')?.value);
+                                                    updateItem(it.id, 'weight', isNaN(v) ? 0 : v);
+                                                }
+                                                close();
+                                            };
+                                            const arm = it.isDropdown ? WATER_TANK_OPTIONS[it.selectedIndex].arm : it.isFuel ? rfmFuelArm(it.weight) : it.arm;
+                                            return (
+                                                <AnchoredPopover containerRef={longLeftRef} anchor={longPopup.anchor} onClose={close} estH={(it.isOptional ? 175 : 140) + (it.id === 'bag' ? 50 : 0)}>
+                                                    <PopHeader title={it.label} sub={arm ? `ARM ${arm.toFixed(3)} m` : null} />
+                                                    {it.id === 'bag' && (
+                                                        <PopSegment label="짐 위치 (RFM)" value={RFM_BAG_ARMS.find(o => Math.abs(it.arm - o.arm) < 1e-6)?.arm}
+                                                            options={RFM_BAG_ARMS.map(o => ({ value: o.arm, text: `${o.label} ${o.arm}` }))}
+                                                            onChange={v => updateItem('bag', 'arm', v)} />
+                                                    )}
+                                                    {it.isOptional && !it.isDropdown && (
+                                                        <PopSwitch label="장착" checked={it.isActive} onChange={v => updateItem(it.id, 'isActive', v)} />
+                                                    )}
+                                                    {it.isDropdown ? (
+                                                        <PopField label="상태">
+                                                            <select value={it.selectedIndex} autoFocus
+                                                                    onChange={e => setWaterTank(it.id, parseInt(e.target.value))}
+                                                                    className="flex-1 min-w-0 text-[11px] font-bold outline-none bg-transparent">
+                                                                {WATER_TANK_OPTIONS.map((opt, idx) => <option key={idx} value={idx}>{opt.label}{opt.weight ? ` (${opt.weight}kg)` : ''}</option>)}
+                                                            </select>
+                                                        </PopField>
+                                                    ) : (
+                                                        <PopField label="무게" unit="kg">
+                                                            <input type="number" autoFocus id="longPopupInput" inputMode="decimal" disabled={!it.isActive}
+                                                                   defaultValue={it.weight || ''} placeholder="0"
+                                                                   onKeyDown={e => { if (e.key === 'Enter') apply(); }}
+                                                                   className={`${POP_INPUT} disabled:text-slate-300`} />
+                                                        </PopField>
+                                                    )}
+                                                    <PopButtons onClear={!it.isDropdown && it.weight > 0 && it.isActive ? () => { updateItem(it.id, 'weight', 0); close(); } : null}
+                                                                onCancel={close} onOk={apply} />
+                                                </AnchoredPopover>
+                                            );
+                                        })()}
+                            </div>
 
-                            <section className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 print:border print:shadow-none h-full flex flex-col">
-                                <div className="flex justify-between items-center mb-4 border-b pb-2 print:mb-2 print:pb-1">
-                                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
-                                        <Icon name="activity" size={18} className="text-blue-600" /> 3. CG ENVELOPE
-                                    </h2>
+                            <section className="h-full flex flex-col">
+                                <div className="flex justify-between items-center mb-2">
+                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Longitudinal CG Envelope</p>
                                     <div className="flex items-center gap-3">
-                                        <button onClick={() => setShowCoords(v => !v)} title="좌표값 표시 ON/OFF" className={`no-print px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter border transition-all flex items-center gap-1 ${showCoords ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
-                                            <Icon name={showCoords ? 'eye' : 'eye-off'} size={11} />
-                                            좌표
-                                        </button>
-                                        <div className="flex gap-3">
-                                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm" /> <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Actual</span></div>
-                                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-400 shadow-sm" /> <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">Zero Fuel</span></div>
+                                        <CoordToggle on={showCoords} onToggle={() => setShowCoords(v => !v)} />
+                                        <LegendDot kind="actual" label="Actual" />
+                                        <LegendDot kind="zero" label="Zero Fuel" />
+                                    </div>
+                                </div>
+                                <div className="flex-1 relative chart-container min-h-[340px]">
+                                    <EnvelopeChart
+                                        fit
+                                        alert={!stats.longOk}
+                                        xDomain={[4.95, 5.65]} xStep={0.1} xLabel="STA (m)"
+                                        showCoords={showCoords}
+                                        polygons={[{ kind: 'env', pts: envelope, closed: false }]}
+                                        lines={[
+                                            ...(dottedLines.line59.length ? [{ kind: 'ref', x1: dottedLines.line59[0].x, y1: dottedLines.line59[0].y, x2: dottedLines.line59[1].x, y2: dottedLines.line59[1].y }] : []),
+                                            ...(dottedLines.line410.length ? [{ kind: 'ref', x1: dottedLines.line410[0].x, y1: dottedLines.line410[0].y, x2: dottedLines.line410[1].x, y2: dottedLines.line410[1].y }] : []),
+                                            { kind: 'zero', x1: parseFloat(stats.cg), y1: stats.totalWeight, x2: parseFloat(stats.zeroFuelCG), y2: stats.zeroFuelWeight },
+                                        ]}
+                                        marks={[
+                                            { kind: 'zero', x: parseFloat(stats.zeroFuelCG), y: stats.zeroFuelWeight, ok: stats.zeroFuelSafe, title: `Zero Fuel ${stats.zeroFuelCG}m / ${stats.zeroFuelWeight.toLocaleString()}kg` },
+                                            { kind: 'actual', x: parseFloat(stats.cg), y: stats.totalWeight, ok: stats.cgSafe, title: `Actual ${stats.cg}m / ${stats.totalWeight.toLocaleString()}kg` },
+                                        ]}
+                                    />
+                                </div>
+                                {(() => {
+                                    const c = advice.check;
+                                    const fmt = v => Math.round(v).toLocaleString();
+                                    const problems = [];
+                                    if (!c.weightOk) problems.push(`총중량 ${stats.totalWeight.toLocaleString()}kg — 최대 ${c.maxTow.toLocaleString()}kg보다 ${fmt(c.to.W - c.maxTow)}kg 많습니다.`);
+                                    else if (!c.toOk) problems.push(`이륙 CG ${stats.cg}m가 인벨로프 밖입니다.`);
+                                    if (!c.bagOk) problems.push(`수하물 ${fmt(stats.tableData.find(i => i.id === 'bag')?.weight || 0)}kg — 화물칸 최대 ${RFM_BAG_MAX}kg(RFM) 초과입니다.`);
+                                    if (!c.fuelOk) problems.push(`연료가 탱크 최대 ${RFM_FUEL_MAX.toLocaleString()}kg(RFM 연료 표 끝)을 넘습니다.`);
+                                    if (!c.zfOk) problems.push(`연료 소진 시 CG ${stats.zeroFuelCG}m (${stats.zeroFuelWeight.toLocaleString()}kg)가 인벨로프 밖입니다.`);
+                                    return (
+                                        <div className={`mt-4 p-3 rounded-lg border min-h-[150px] print:min-h-0 print:bg-white print:mt-1 ${stats.longOk ? 'bg-slate-50 border-slate-200' : 'bg-red-50 border-red-200'}`}>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Summary</p>
+                                                <span className={`text-[10px] font-bold ${stats.longOk ? 'text-emerald-700' : 'text-red-700'}`}>{stats.longOk ? '한계 이내' : '한계 초과'}</span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-600 leading-snug">
+                                                이륙 중량 {stats.totalWeight.toLocaleString()}kg, 이륙 CG {stats.cg}m.
+                                                연료 소진 시 {stats.zeroFuelWeight.toLocaleString()}kg, CG {stats.zeroFuelCG}m.
+                                                {c.weightOk && <> 최대이륙중량까지 {fmt(c.maxTow - c.to.W)}kg 남습니다.</>}
+                                            </p>
+                                            {problems.length > 0 && (
+                                                <ul className="mt-2 space-y-0.5 text-[11px] text-red-700">
+                                                    {problems.map((t, i) => <li key={i}>· {t}</li>)}
+                                                </ul>
+                                            )}
+                                            {!stats.longOk && (
+                                                <div className="mt-2 pt-2 border-t border-red-200">
+                                                    <p className="text-[10px] font-bold text-slate-700 mb-0.5">조정 제안</p>
+                                                    {advice.reduce.length > 0 ? (
+                                                        <>
+                                                            <ul className="space-y-0.5 text-[11px] text-slate-700">
+                                                                {advice.reduce.map(r => (
+                                                                    <li key={r.id}>· {r.name} <span className="font-mono">{fmt(r.from)} → {fmt(r.to)}kg</span> <span className="text-slate-500">(−{fmt(r.from - r.to)}kg)</span></li>
+                                                                ))}
+                                                            </ul>
+                                                            <p className="mt-1 text-[9px] text-slate-500">{advice.reduce.length > 1 ? '이 중 하나만 바꿔도 한계 안으로 들어옵니다. ' : ''}{advice.reduce.some(r => r.id === 'fuel') ? '연료를 줄일 때는 임무 필요 연료를 따로 확인하세요.' : ''}</p>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-[11px] text-slate-700">연료·카고·수하물 하나만으로는 맞출 수 없습니다. 탑승자·장비 무게를 조정하세요.</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {stats.longOk && advice.maxCargo && (
+                                                <p className="mt-1 text-[11px] text-slate-600">
+                                                    현재 연료 기준, 카고는 최대 <span className="font-mono font-bold">{fmt(advice.maxCargo.max)}kg</span>까지 실을 수 있습니다
+                                                    <span className="text-slate-500"> (지금보다 +{fmt(advice.maxCargo.max - advice.maxCargo.from)}kg)</span>.
+                                                </p>
+                                            )}
                                         </div>
-                                    </div>
-                                </div>
-                                <div className="flex-1 min-h-[350px] sm:min-h-[420px] relative chart-container">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 10 }}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.4} />
-                                            <XAxis type="number" dataKey="x" domain={[4.9, 5.7]} unit="m" fontSize={10} tick={{ fill: '#64748b', fontWeight: 'bold' }} />
-                                            <YAxis type="number" dataKey="y" domain={[4200, 7200]} fontSize={10} tick={{ fill: '#64748b', fontWeight: 'bold' }} />
-                                            <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                                            <Scatter name="Limits" data={envelope} fill="#cbd5e1" line stroke="#94a3b8" strokeWidth={2} shape="circle">
-                                                {showCoords && <LabelList dataKey="coord" position="top" style={{ fontSize: '7px', fontWeight: 'black', fill: '#475569' }} />}
-                                            </Scatter>
-                                            <Scatter name="L6800" data={dottedLines.line59} line={{ strokeDasharray: '5 5', stroke: '#94a3b8', strokeWidth: 1 }} shape="none" />
-                                            <Scatter name="L6400" data={dottedLines.line410} line={{ strokeDasharray: '5 5', stroke: '#94a3b8', strokeWidth: 1 }} shape="none" />
-                                            <Scatter name="Fuel Path" data={[{ x: parseFloat(stats.cg), y: stats.totalWeight }, { x: parseFloat(stats.zeroFuelCG), y: stats.zeroFuelWeight }]} line={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '4 4' }} shape="none" />
-                                            <Scatter name="Actual" data={[{ x: parseFloat(stats.cg), y: stats.totalWeight }]} fill={stats.cgSafe && stats.isWeightSafe ? "#10b981" : "#ef4444"} shape="circle" />
-                                            <Scatter name="Zero Fuel" data={[{ x: parseFloat(stats.zeroFuelCG), y: stats.zeroFuelWeight }]} fill="#fb923c" shape="circle" />
-                                        </ScatterChart>
-                                    </ResponsiveContainer>
-                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] font-black text-slate-500 uppercase tracking-widest">STA Location (m)</div>
-                                </div>
-                                <div className="mt-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex items-start gap-3 print:bg-white print:border-none print:px-0 print:mt-1">
-                                    <div className="p-1.5 bg-blue-100 rounded text-blue-600 print:hidden"><Icon name="info" size={16} /></div>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-black text-slate-800 uppercase mb-1 tracking-tighter">Analysis Summary</p>
-                                        <p className="text-[11px] text-slate-500 leading-tight italic font-medium">
-                                            이륙 중량 {stats.totalWeight.toLocaleString()}kg, 이륙 CG {stats.cg}m 입니다.
-                                            비행 종료 시(연료 0kg) 예상 무게 중심은 {stats.zeroFuelCG}m ({stats.zeroFuelWeight.toLocaleString()}kg) 입니다.
-                                        </p>
-                                    </div>
-                                </div>
+                                    );
+                                })()}
                             </section>
+                        </div>
+                            </div>
                         </div>
 
                         {/* 4. Lateral CG */}
@@ -824,7 +1570,7 @@
                                     className="no-print w-full px-5 py-3 bg-slate-50 border-b flex items-center justify-between hover:bg-slate-100 transition-all">
                                 <div className="flex items-center gap-3">
                                     <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter flex items-center gap-2">
-                                        <Icon name="move-horizontal" size={18} className="text-purple-600" /> 4. Lateral CG
+                                        <Icon name="move-horizontal" size={18} className="text-purple-600" /> 2. Lateral CG
                                     </h2>
                                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border tracking-tighter ${lateralStats.isWithinLimit ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-rose-500 text-rose-700 bg-rose-50 animate-pulse'}`}>
                                         {lateralStats.lateralCG >= 0 ? '우(R) ' : '좌(L) '}{Math.abs(lateralStats.lateralCG * 100).toFixed(2)}cm &nbsp;|&nbsp; {lateralStats.isWithinLimit ? 'WITHIN LIMIT' : 'LIMIT EXCEEDED'}
@@ -835,192 +1581,114 @@
 
                             {(showLateral || printState === 'lateral') && (
                                 <div className="p-3 sm:p-5 fade-in">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                                  <div className="grid grid-cols-1 lg:grid-cols-[6fr_5fr] gap-4 sm:gap-6 items-stretch">
                                     {/* ── LEFT: 배치도 + 테이블 ── */}
-                                    <div className="flex flex-col gap-3">
-                                    {/* ── 좌석 배치도 (사진 + 버튼 오버레이) ── */}
-                                    <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
-                                        {/* 헤더 */}
+                                    <div ref={lateralLeftRef} className="relative flex flex-col gap-3">
+                                    {/* ── 좌석 배치도 (SVG 동체 + 좌석 버튼) ── */}
+                                    <div ref={seatBoxRef} className="relative bg-slate-50 rounded-xl border border-slate-200 p-3">
                                         <div className="flex items-center justify-between mb-2">
                                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">좌석 배치도</p>
-                                            <div className="flex items-center gap-1.5 no-print">
-                                                {dragMode && (
-                                                    <button onClick={() => {
-                                                        const acData = btnPositions[selectedAc] || {};
-                                                        const lines = Object.entries(acData)
-                                                            .map(([k,v]) => `    ${k.padEnd(3)}: { top: '${v.top}', left: '${v.left}' },`).join('\n');
-                                                        navigator.clipboard.writeText(`// ${selectedAc}\n` + lines);
-                                                    }} className="px-1.5 py-0.5 bg-green-600 text-white rounded text-[8px] font-bold hover:bg-green-700">
-                                                        코드 복사
-                                                    </button>
-                                                )}
-                                                {dragMode && (
-                                                    <button onClick={() => {
-                                                        const reset = Object.fromEntries(Object.entries(SEAT_BTN_POS[selectedAc]).map(([k,v]) => [k, { ...v }]));
-                                                        setBtnPositions(prev => ({ ...prev, [selectedAc]: reset }));
-                                                    }} className="px-1.5 py-0.5 bg-slate-400 text-white rounded text-[8px] font-bold hover:bg-slate-500">
-                                                        초기화
-                                                    </button>
-                                                )}
-                                                <button onClick={() => setDragMode(v => !v)}
-                                                    className={`px-1.5 py-0.5 rounded text-[8px] font-bold border transition-all
-                                                        ${dragMode ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-500 border-slate-300 hover:border-orange-400 hover:text-orange-500'}`}>
-                                                    {dragMode ? '편집 완료' : '위치 편집'}
-                                                </button>
-                                            </div>
+                                            <button onClick={() => setSeatEditMode(v => !v)}
+                                                className={`no-print px-2 py-0.5 rounded text-[9px] font-bold border transition-colors
+                                                    ${seatEditMode ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-300 hover:border-slate-500'}`}>
+                                                {seatEditMode ? '완료' : '좌석 편집'}
+                                            </button>
                                         </div>
 
-                                        {/* 사진 컨테이너 */}
-                                        {(() => {
-                                            const acPos = btnPositions[selectedAc] || {};
-                                            const varSeats = visibleSeats[selectedAc] || [];
-                                            const makeDragHandlers = (id) => dragMode ? {
-                                                onMouseDown: (e) => {
-                                                    e.preventDefault();
-                                                    const pos = acPos[id] || { top:'50%', left:'50%' };
-                                                    setDragging({ id, ac: selectedAc, startX: e.clientX, startY: e.clientY,
-                                                        startLeft: parseFloat(pos.left), startTop: parseFloat(pos.top) });
-                                                },
-                                                onTouchStart: (e) => {
-                                                    const t = e.touches[0];
-                                                    const pos = acPos[id] || { top:'50%', left:'50%' };
-                                                    setDragging({ id, ac: selectedAc, startX: t.clientX, startY: t.clientY,
-                                                        startLeft: parseFloat(pos.left), startTop: parseFloat(pos.top) });
-                                                },
-                                            } : {};
-                                            const pilotW = items.find(i=>i.id==='pilot')?.weight || 0;
-                                            return (
-                                        <div ref={seatDiagramRef}
-                                             className="relative w-full rounded-lg overflow-hidden bg-slate-200"
-                                             style={{ aspectRatio:'3/1', userSelect: dragMode ? 'none' : 'auto' }}>
-                                            <img src={DIAGRAM_IMAGES[selectedAc]} alt="AW139 배치도"
-                                                 className="absolute inset-0 w-full h-full object-cover"
-                                                 onError={e => { e.target.style.visibility='hidden'; }}/>
+                                        <div className="overflow-x-auto">
+                                        <div className="relative w-full min-w-[560px]"
+                                             ref={fuseRef} style={{ aspectRatio: `${FUSE_VB.w} / ${FUSE_VB.h}` }}>
+                                            <FuselageDiagram gauge={{ cg: lateralStats.lateralCG, limits: lateralStats.limits, ok: lateralStats.isWithinLimit, hoistOps: lateralStats.hoistOps, s: fuseW / FUSE_VB.w }} />
 
-
-                                            {dragMode && (
-                                                <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-orange-500/90 text-white text-[8px] font-bold px-2 py-0.5 rounded-full pointer-events-none">
-                                                    버튼을 드래그해서 위치 조정
-                                                </div>
-                                            )}
-
-                                            {/* PLT / CPT 버튼 — lateral 전용 개별 무게 */}
                                             {[{key:'PLT',wKey:'plt'},{key:'CPT',wKey:'cpt'}].map(({key,wKey}) => {
-                                                const pos = acPos[key];
-                                                if (!pos) return null;
                                                 const w = lateralPilotWeights[wKey];
                                                 return (
                                                     <button key={key}
-                                                        style={{ position:'absolute', top: pos.top, left: pos.left, transform:'translate(-50%,-50%)', cursor: dragMode ? 'grab' : 'pointer' }}
-                                                        {...makeDragHandlers(key)}
-                                                        onClick={dragMode ? undefined : () => setSeatPopup({ id: `_${wKey}` })}
-                                                        className="flex flex-col items-center bg-indigo-100/90 border-2 border-indigo-500 rounded px-1.5 py-0.5 text-[9px] font-black text-indigo-700 shadow leading-tight">
+                                                        style={{ position:'absolute', ...toPct(seatXY(key, pilotArms)), transform:'translate(-50%,-50%)' }}
+                                                        onClick={(e) => setSeatPopup({ id: `_${wKey}`, anchor: e.currentTarget })}
+                                                        className={`flex flex-col items-center min-w-[30px] rounded border px-1 py-0.5 text-[9px] font-bold leading-tight
+                                                            ${w > 0 ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-400 text-slate-600'}`}>
                                                         <span>{key}</span>
-                                                        {!dragMode && w > 0 && <span className="text-[7px] text-indigo-500">{w}kg</span>}
+                                                        {w > 0 && <span className="text-[8px] font-medium">{w}kg</span>}
                                                     </button>
                                                 );
                                             })}
 
-                                            {/* 탑승자 좌석 버튼 */}
-                                            {Object.keys(acPos).filter(k => k !== 'PLT' && k !== 'CPT').map(sid => {
-                                                const pos = acPos[sid];
-                                                if (!pos) return null;
+                                            {DIAGRAM_SEATS[selectedAc].map(sid => {
                                                 const isVisible = (visibleSeats[selectedAc] || []).includes(sid);
-                                                if (!dragMode && !isVisible) return null;
+                                                if (!seatEditMode && !isVisible) return null;
                                                 const w = seatWeights[sid] || 0;
+                                                const isHoist = sid === 'HOIST';
+                                                const cls = seatEditMode
+                                                    ? (isVisible ? 'bg-white border-slate-500 text-slate-700' : 'bg-white/70 border-dashed border-slate-300 text-slate-300 line-through')
+                                                    : w > 0
+                                                        ? (isHoist ? 'bg-amber-500 border-amber-500 text-white' : 'bg-blue-600 border-blue-600 text-white')
+                                                        : (isHoist ? 'bg-white border-amber-500 text-amber-600' : 'bg-white border-slate-400 text-slate-600');
+                                                const isStretcher = sid === 'G';
+                                                const sizeStyle = isStretcher ? {
+                                                    width: `${FUSE_STRETCHER.w / FUSE_VB.w * 100}%`,
+                                                    height: `${FUSE_STRETCHER.h / FUSE_VB.h * 100}%`,
+                                                } : {};
                                                 return (
                                                     <button key={sid}
-                                                        style={{ position:'absolute', top: pos.top, left: pos.left, transform:'translate(-50%,-50%)', cursor: dragMode ? 'grab' : 'pointer' }}
-                                                        {...makeDragHandlers(sid)}
-                                                        onClick={dragMode ? undefined : () => setSeatPopup({ id: sid })}
-                                                        className={`flex flex-col items-center border-2 rounded px-1.5 py-0.5 text-[9px] font-black shadow leading-tight transition-all
-                                                            ${dragMode && !isVisible
-                                                                ? 'bg-slate-100/80 border-slate-300 text-slate-400'
-                                                                : sid === 'HOIST'
-                                                                    ? w > 0 ? 'bg-amber-100/90 border-amber-500 text-amber-700' : 'bg-white/80 border-amber-400 text-amber-500'
-                                                                    : w > 0 ? 'bg-purple-100/90 border-purple-500 text-purple-700' : 'bg-white/80 border-purple-300 text-purple-500'}`}>
+                                                        style={{ position:'absolute', ...toPct(seatXY(sid, pilotArms)), ...sizeStyle, transform:'translate(-50%,-50%)' }}
+                                                        onClick={(e) => seatEditMode ? toggleVisibleSeat(selectedAc, sid) : setSeatPopup({ id: sid, anchor: e.currentTarget })}
+                                                        title={seatEditMode ? (isVisible ? '눌러서 숨기기' : '눌러서 표시') : isStretcher ? 'G 들것' : undefined}
+                                                        className={`flex flex-col items-center ${isStretcher ? 'justify-center rounded-md' : 'min-w-[24px] rounded'} border px-1 py-0.5 text-[9px] font-bold leading-tight ${cls}`}>
                                                         <span>{sid}</span>
-                                                        {!dragMode && w > 0 && <span className="text-[7px]">{w}kg</span>}
+                                                        {isStretcher && <span className="text-[7px] font-medium opacity-70">들것</span>}
+                                                        {!seatEditMode && w > 0 && <span className="text-[8px] font-medium">{w}kg</span>}
                                                     </button>
                                                 );
                                             })}
                                         </div>
-                                            );
-                                        })()}
+                                        </div>
 
-                                        {/* 편집 모드: 좌석 숨김/표시 토글 */}
-                                        {dragMode && (
-                                            <div className="mt-2 flex flex-wrap gap-1 items-center">
-                                                <span className="text-[8px] font-bold text-slate-400 mr-0.5">표시:</span>
-                                                {Object.keys(SEAT_BTN_POS[selectedAc]).filter(k => k !== 'PLT' && k !== 'CPT').map(sid => {
-                                                    const isVisible = (visibleSeats[selectedAc] || []).includes(sid);
-                                                    return (
-                                                        <button key={sid} onClick={() => toggleVisibleSeat(selectedAc, sid)}
-                                                            className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all
-                                                                ${isVisible ? 'bg-purple-500 text-white border-purple-500' : 'bg-white text-slate-400 border-slate-300 line-through'}`}>
-                                                            {sid}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
+                                        {seatEditMode && (
+                                            <p className="mt-2 text-[9px] text-slate-500">좌석을 눌러 이 기체에서 쓸 좌석을 표시하거나 숨깁니다.</p>
                                         )}
 
-                                        {/* 좌석 요약 칩 */}
                                         {(visibleSeats[selectedAc]||[]).some(id=>seatWeights[id]>0) && (
                                             <div className="mt-1.5 flex flex-wrap gap-1">
                                                 {(visibleSeats[selectedAc]||[]).filter(id=>seatWeights[id]>0).map(id=>(
-                                                    <span key={id} className="px-1.5 py-0.5 bg-purple-50 border border-purple-200 rounded-full text-[7.5px] text-purple-700 font-bold">
+                                                    <span key={id} className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[8px] text-slate-600 font-bold">
                                                         {id}: {seatWeights[id]}kg
                                                     </span>
                                                 ))}
                                             </div>
                                         )}
-                                    </div>
 
-                                    {/* ── 팝업 (좌석 무게 / 조종사 개별 무게) ── */}
-                                    {seatPopup && (() => {
-                                        const isPlt = seatPopup.id === '_plt';
-                                        const isCpt = seatPopup.id === '_cpt';
-                                        const isPilotSeat = isPlt || isCpt;
-                                        const cfg = isPilotSeat ? null : SEAT_CONFIG[seatPopup.id];
-                                        const curW = isPlt ? lateralPilotWeights.plt : isCpt ? lateralPilotWeights.cpt : (seatWeights[seatPopup.id] || 0);
-                                        const title = isPlt ? 'PLT (정조종사)' : isCpt ? 'COPT (부조종사)' : seatPopup.id === 'HOIST' ? '호이스트' : `Seat ${seatPopup.id}`;
-                                        const sub = isPlt ? `${Math.round(pilotArms.plt*1000)}mm` : isCpt ? `${Math.round(pilotArms.cpt*1000)}mm` : `${cfg.bl>0?'+':''}${(cfg.bl*1000).toFixed(0)}mm`;
-                                        const accentBorder = isPilotSeat ? 'border-indigo-300' : 'border-purple-300';
-                                        const accentBtn = isPilotSeat ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700';
-                                        const accentTitle = isPilotSeat ? 'text-indigo-700' : 'text-purple-700';
-                                        const applyW = (v) => {
-                                            if (isPlt) setLateralPilotWeights(prev => ({...prev, plt: v}));
-                                            else if (isCpt) setLateralPilotWeights(prev => ({...prev, cpt: v}));
-                                            else setSeatWeights(prev => ({...prev, [seatPopup.id]: v}));
-                                            setSeatPopup(null);
-                                        };
-                                        return (
-                                            <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={()=>setSeatPopup(null)}>
-                                                <div className="absolute inset-0 bg-black/20"/>
-                                                <div className={`relative bg-white rounded-xl shadow-lg border ${accentBorder} p-2.5 w-36 z-10`} onClick={e=>e.stopPropagation()}>
-                                                    <div className="flex items-center justify-between mb-1.5">
-                                                        <span className={`text-xs font-black ${accentTitle}`}>{title}</span>
-                                                        <span className="text-[8px] font-bold text-slate-400">{sub}</span>
-                                                    </div>
-                                                    <div className={`flex items-center border-2 ${accentBorder} rounded-lg px-2 py-1.5 bg-white focus-within:ring-1 focus-within:ring-purple-300`}>
-                                                        <input type="number" autoFocus id="seatPopupInput"
-                                                               defaultValue={curW||''} placeholder="0"
-                                                               onKeyDown={e=>{if(e.key==='Enter'){ applyW(parseFloat(e.target.value)||0); }}}
-                                                               className="flex-1 min-w-0 text-sm font-black text-right outline-none bg-transparent"/>
-                                                        <span className="text-[10px] font-bold text-slate-400 ml-1 shrink-0">kg</span>
-                                                    </div>
-                                                    <div className="flex gap-1 mt-1.5">
-                                                        {curW>0 && (
-                                                            <button onClick={()=>applyW(0)} className="px-2 py-1 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg text-[9px] font-black">삭제</button>
-                                                        )}
-                                                        <button onClick={()=>{ applyW(parseFloat(document.getElementById('seatPopupInput').value)||0); }}
-                                                            className={`flex-1 py-1 ${accentBtn} text-white rounded-lg text-[10px] font-black transition-all active:scale-95`}>확인</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
+                                        {/* ── 무게 입력 (누른 버튼 근처에 표시) ── */}
+                                        {seatPopup && (() => {
+                                            const isPlt = seatPopup.id === '_plt';
+                                            const isCpt = seatPopup.id === '_cpt';
+                                            const isPilotSeat = isPlt || isCpt;
+                                            const cfg = isPilotSeat ? null : SEAT_CONFIG[seatPopup.id];
+                                            const curW = isPlt ? lateralPilotWeights.plt : isCpt ? lateralPilotWeights.cpt : (seatWeights[seatPopup.id] || 0);
+                                            const title = isPlt ? 'PLT 정조종사' : isCpt ? 'COPT 부조종사' : seatPopup.id === 'HOIST' ? '호이스트' : seatPopup.id === 'G' ? 'G 들것' : `좌석 ${seatPopup.id}`;
+                                            const blMm = Math.round((isPlt ? pilotArms.plt : isCpt ? pilotArms.cpt : cfg.bl) * 1000);
+                                            const applyW = (v) => {
+                                                if (isPlt) setLateralPilotWeights(prev => ({...prev, plt: v}));
+                                                else if (isCpt) setLateralPilotWeights(prev => ({...prev, cpt: v}));
+                                                else setSeatWeights(prev => ({...prev, [seatPopup.id]: v}));
+                                                setSeatPopup(null);
+                                            };
+                                            const close = () => setSeatPopup(null);
+                                            return (
+                                                <AnchoredPopover containerRef={seatBoxRef} anchor={seatPopup.anchor} onClose={close}>
+                                                    <PopHeader title={title} sub={`BL ${blMm > 0 ? '+' : ''}${blMm} mm`} />
+                                                    <PopField label="무게" unit="kg">
+                                                        <input type="number" autoFocus id="seatPopupInput" inputMode="decimal"
+                                                               defaultValue={curW || ''} placeholder="0"
+                                                               onKeyDown={e => { if (e.key === 'Enter') applyW(parseFloat(e.target.value) || 0); }}
+                                                               className={POP_INPUT} />
+                                                    </PopField>
+                                                    <PopButtons onClear={curW > 0 ? () => applyW(0) : null} onCancel={close}
+                                                                onOk={() => applyW(parseFloat(document.getElementById('seatPopupInput').value) || 0)} />
+                                                </AnchoredPopover>
+                                            );
+                                        })()}
+                                    </div>
 
                                     {/* ── 테이블 ── */}
                                     <div>
@@ -1051,7 +1719,7 @@
                                                         if (bew) {
                                                             const arm = bew.lateralArm || 0;
                                                             rows.push(
-                                                                <tr key="bew" className={TR} onClick={() => setLateralEditPopup({type:'bew',id:'bew',label:'B.E.W',weight:bew.weight,arm})}>
+                                                                <tr key="bew" className={TR} onClick={(e) => setLateralEditPopup({anchor: e.currentTarget, type:'bew',id:'bew',label:'B.E.W',weight:bew.weight,arm})}>
                                                                     <td className={`${TD} font-bold text-slate-700`}>B.E.W</td>
                                                                     <td className={`${TD} text-right font-mono text-slate-600`}>{bew.weight.toLocaleString()}</td>
                                                                     <td className={`${TD} text-right font-mono text-slate-500`}>{Math.round(arm*1000)}</td>
@@ -1063,7 +1731,7 @@
                                                         const pltW = lateralPilotWeights.plt;
                                                         const cptW = lateralPilotWeights.cpt;
                                                         rows.push(
-                                                            <tr key="plt" className={`${TR} bg-indigo-50/20 cursor-pointer`} onClick={() => setLateralEditPopup({type:'plt',id:'plt',label:'PLT (정조종사)',weight:pltW,arm:pilotArms.plt})}>
+                                                            <tr key="plt" className={`${TR} bg-indigo-50/20 cursor-pointer`} onClick={(e) => setLateralEditPopup({anchor: e.currentTarget, type:'plt',id:'plt',label:'PLT (정조종사)',weight:pltW,arm:pilotArms.plt})}>
                                                                 <td className={`${TD} font-bold text-indigo-700`}>PLT (정조종사)</td>
                                                                 <td className={`${TD} text-right font-mono text-indigo-500`}>{pltW > 0 ? pltW : <span className="text-slate-300">—</span>}</td>
                                                                 <td className={`${TD} text-right font-mono text-indigo-400`}>{Math.round(pilotArms.plt*1000)}</td>
@@ -1071,7 +1739,7 @@
                                                             </tr>
                                                         );
                                                         rows.push(
-                                                            <tr key="cpt" className={`${TR} bg-indigo-50/20 cursor-pointer`} onClick={() => setLateralEditPopup({type:'cpt',id:'cpt',label:'COPT (부조종사)',weight:cptW,arm:pilotArms.cpt})}>
+                                                            <tr key="cpt" className={`${TR} bg-indigo-50/20 cursor-pointer`} onClick={(e) => setLateralEditPopup({anchor: e.currentTarget, type:'cpt',id:'cpt',label:'COPT (부조종사)',weight:cptW,arm:pilotArms.cpt})}>
                                                                 <td className={`${TD} font-bold text-indigo-700`}>COPT (부조종사)</td>
                                                                 <td className={`${TD} text-right font-mono text-indigo-500`}>{cptW > 0 ? cptW : <span className="text-slate-300">—</span>}</td>
                                                                 <td className={`${TD} text-right font-mono text-indigo-400`}>{Math.round(pilotArms.cpt*1000)}</td>
@@ -1088,8 +1756,8 @@
                                                             const m = w * cfg.bl;
                                                             rows.push(
                                                                 <tr key={`seat-${id}`} className={`${TR} bg-purple-50/10`}
-                                                                    onClick={() => setLateralEditPopup({type:'seat',id,label:`Seat ${id}`,weight:w,arm:cfg.bl,armFixed:true})}>
-                                                                    <td className={`${TD} font-bold text-purple-700`}>Seat {id} <span className="text-[9px] text-purple-400 font-normal">Row {cfg.col+1}</span></td>
+                                                                    onClick={(e) => setLateralEditPopup({anchor: e.currentTarget, type:'seat',id,label:`Seat ${id}`,weight:w,arm:cfg.bl,armFixed:true})}>
+                                                                    <td className={`${TD} font-bold text-purple-700`}>{id === 'HOIST' ? 'HOIST' : <>Seat {id} <span className="text-[9px] text-purple-400 font-normal">Row {cfg.col+1}</span></>}</td>
                                                                     <td className={`${TD} text-right font-mono text-purple-600`}>{w}</td>
                                                                     <td className={`${TD} text-right font-mono text-indigo-400`}>{armMm >= 0 ? '+' : ''}{armMm}</td>
                                                                     <td className={`${TD} text-right font-mono font-bold ${m < -0.005 ? 'text-blue-500' : m > 0.005 ? 'text-rose-400' : 'text-slate-300'}`}>{m.toFixed(1)}</td>
@@ -1104,7 +1772,7 @@
                                                                 const m = item.weight * arm;
                                                                 rows.push(
                                                                     <tr key={item.id} className={TR}
-                                                                        onClick={() => setLateralEditPopup({type:'equipment',id:item.id,label:item.label,weight:item.weight,arm})}>
+                                                                        onClick={(e) => setLateralEditPopup({anchor: e.currentTarget, type:'equipment',id:item.id,label:item.label,weight:item.weight,arm})}>
                                                                         <td className={`${TD} font-bold text-slate-600 text-[10px]`}>{item.label}</td>
                                                                         <td className={`${TD} text-right font-mono text-slate-600`}>{item.weight.toLocaleString()}</td>
                                                                         <td className={`${TD} text-right font-mono text-slate-500`}>{Math.round(arm*1000)}</td>
@@ -1119,7 +1787,7 @@
                                                             const fuelM = fuelItem.weight * fuelArm;
                                                             rows.push(
                                                                 <tr key="fuel" className={TR}
-                                                                    onClick={() => setLateralEditPopup({type:'fuel',id:fuelItem.id,label:fuelItem.label,weight:fuelItem.weight,arm:fuelArm})}>
+                                                                    onClick={(e) => setLateralEditPopup({anchor: e.currentTarget, type:'fuel',id:fuelItem.id,label:fuelItem.label,weight:fuelItem.weight,arm:fuelArm})}>
                                                                     <td className={`${TD} font-bold text-slate-700`}>{fuelItem.label}</td>
                                                                     <td className={`${TD} text-right font-mono text-slate-600`}>{fuelItem.weight.toLocaleString()}</td>
                                                                     <td className={`${TD} text-right font-mono text-slate-500`}>{Math.round(fuelArm*1000)}</td>
@@ -1134,7 +1802,7 @@
                                                         const m = (ci.weight || 0) * (ci.arm || 0);
                                                         return (
                                                             <tr key={ci.id} className="border-b border-amber-100 bg-amber-50/20 cursor-pointer hover:bg-amber-50/50 transition-colors"
-                                                                onClick={() => setLateralEditPopup({type:'custom',id:ci.id,label:ci.label||'추가 항목',editLabel:ci.label,weight:ci.weight,arm:ci.arm})}>
+                                                                onClick={(e) => setLateralEditPopup({anchor: e.currentTarget, type:'custom',id:ci.id,label:ci.label||'추가 항목',editLabel:ci.label,weight:ci.weight,arm:ci.arm})}>
                                                                 <td className="px-3 py-2 font-bold text-amber-700">{ci.label || <span className="text-slate-300 font-normal">항목명 없음</span>}</td>
                                                                 <td className="px-3 py-2 text-right font-mono text-amber-600">{ci.weight || <span className="text-slate-300">—</span>}</td>
                                                                 <td className="px-3 py-2 text-right font-mono text-amber-500">{ci.arm ? Math.round(ci.arm*1000) : <span className="text-slate-300">—</span>}</td>
@@ -1157,15 +1825,14 @@
                                             </table>
                                         </div>
                                     </div>
-                                    </div>{/* end left wrapper */}
-
-                                    {/* ── Lateral Edit Popup ── */}
+                                    {/* ── 표 편집 (누른 줄 근처에 표시) ── */}
                                     {lateralEditPopup && (() => {
                                         const lep = lateralEditPopup;
                                         const isPlt = lep.type === 'plt';
                                         const isCpt = lep.type === 'cpt';
                                         const isCustom = lep.type === 'custom';
                                         const isSeat = lep.type === 'seat';
+                                        const close = () => setLateralEditPopup(null);
                                         const confirmEdit = () => {
                                             if (isPlt) {
                                                 setLateralPilotWeights(prev => ({...prev, plt: lep.weight || 0}));
@@ -1183,160 +1850,75 @@
                                                 updateItem(lep.id,'weight', lep.weight || 0);
                                                 updateItem(lep.id,'lateralArm', lep.arm || 0);
                                             }
-                                            setLateralEditPopup(null);
+                                            close();
                                         };
+                                        const onEnter = e => { if (e.key === 'Enter') confirmEdit(); };
+                                        const showArm = isPlt || isCpt || !isSeat;
                                         return (
-                                            <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setLateralEditPopup(null)}>
-                                                <div className="absolute inset-0 bg-black/20"/>
-                                                <div className="relative bg-white rounded-2xl shadow-xl border border-purple-200 p-4 w-56 z-10" onClick={e => e.stopPropagation()}>
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <span className="text-sm font-black text-purple-700">{lep.label}</span>
-                                                        <button onClick={() => setLateralEditPopup(null)} className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs font-black">✕</button>
-                                                    </div>
-                                                    {/* 무게 */}
-                                                    <div className="mb-2.5">
-                                                        <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">
-                                                            Weight (kg)
-                                                        </label>
-                                                        <input autoFocus type="number" value={lep.weight || ''} placeholder="0"
-                                                               onChange={e => lepUpdate('weight', parseFloat(e.target.value) || 0)}
-                                                               onKeyDown={e => e.key === 'Enter' && confirmEdit()}
-                                                               className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono text-right focus:ring-2 focus:ring-purple-400 outline-none" />
-                                                    </div>
-                                                    {/* 암 */}
-                                                    {(isPlt || isCpt || !isSeat) && (
-                                                        <div className="mb-2.5">
-                                                            <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">CG Arm (mm)</label>
-                                                            <input type="number" value={Math.round((lep.arm||0)*1000)}
-                                                                   onChange={e => lepUpdate('arm',(parseFloat(e.target.value)||0)/1000)}
-                                                                   onKeyDown={e => e.key === 'Enter' && confirmEdit()}
-                                                                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono text-right focus:ring-2 focus:ring-purple-400 outline-none" />
-                                                        </div>
-                                                    )}
-                                                    {/* 추가항목: 이름 편집 */}
-                                                    {isCustom && (
-                                                        <div className="mb-2.5">
-                                                            <label className="block text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1">항목명</label>
-                                                            <input type="text" value={lep.editLabel || ''} placeholder="항목명"
-                                                                   onChange={e => lepUpdate('editLabel', e.target.value)}
-                                                                   onKeyDown={e => e.key === 'Enter' && confirmEdit()}
-                                                                   className="w-full px-3 py-2 border border-amber-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-amber-400 outline-none" />
-                                                        </div>
-                                                    )}
-                                                    <div className="flex gap-2 mt-3">
-                                                        {isCustom && (
-                                                            <button onClick={() => { deleteCustomLateralItem(lep.id); setLateralEditPopup(null); }}
-                                                                    className="px-2.5 py-2 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-[10px] font-black hover:bg-rose-100 transition-all">삭제</button>
-                                                        )}
-                                                        <button onClick={confirmEdit}
-                                                                className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-all active:scale-95">확인</button>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <AnchoredPopover containerRef={lateralLeftRef} anchor={lep.anchor} onClose={close}
+                                                             estH={(showArm ? 200 : 140) + (isCustom ? 55 : 0)}>
+                                                <PopHeader title={lep.label} sub={isSeat ? `BL ${Math.round(lep.arm * 1000)} mm` : null} />
+                                                {isCustom && (
+                                                    <PopField label="항목명">
+                                                        <input type="text" value={lep.editLabel || ''} placeholder="항목명"
+                                                               onChange={e => lepUpdate('editLabel', e.target.value)} onKeyDown={onEnter}
+                                                               className="flex-1 min-w-0 text-sm font-bold outline-none bg-transparent" />
+                                                    </PopField>
+                                                )}
+                                                <PopField label="무게" unit="kg">
+                                                    <input autoFocus type="number" inputMode="decimal" value={lep.weight || ''} placeholder="0"
+                                                           onChange={e => lepUpdate('weight', parseFloat(e.target.value) || 0)} onKeyDown={onEnter}
+                                                           className={POP_INPUT} />
+                                                </PopField>
+                                                {showArm && (
+                                                    <PopField label="Lateral Arm (BL)" unit="mm">
+                                                        <input type="number" inputMode="decimal" value={Math.round((lep.arm || 0) * 1000)}
+                                                               onChange={e => lepUpdate('arm', (parseFloat(e.target.value) || 0) / 1000)} onKeyDown={onEnter}
+                                                               className={POP_INPUT} />
+                                                    </PopField>
+                                                )}
+                                                <PopButtons onClear={isCustom ? () => { deleteCustomLateralItem(lep.id); close(); } : null} clearLabel="삭제"
+                                                            onCancel={close} onOk={confirmEdit} />
+                                            </AnchoredPopover>
                                         );
                                     })()}
+                                    </div>{/* end left wrapper */}
 
                                     {/* ── RIGHT: 인벨로프 차트 ── */}
-                                    <div className="bg-slate-50 rounded-xl p-3 flex flex-col h-full">
+                                    <div className="flex flex-col h-full">
                                             <div className="flex justify-between items-center mb-2">
                                                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Lateral CG Envelope</p>
-                                                <div className="flex items-center gap-2">
-                                                    <button onClick={() => setShowLateralCoords(v => !v)} title="좌표값 표시 ON/OFF"
-                                                            className={`no-print px-2 py-1 rounded text-[9px] font-black uppercase tracking-tighter border transition-all flex items-center gap-1 ${showLateralCoords ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
-                                                        <Icon name={showLateralCoords ? 'eye' : 'eye-off'} size={11} />
-                                                        좌표
-                                                    </button>
-                                                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-emerald-500"/><span className="text-[9px] font-black text-slate-500">Actual</span></div>
-                                                    <div className="flex items-center gap-1"><div className="w-4 h-0" style={{borderTop:'2px solid #64748b'}}/><span className="text-[9px] font-black text-slate-500">Env</span></div>
-                                                    {selectedAc === 'HL9695' && <div className="flex items-center gap-1"><div className="w-4 h-0" style={{borderTop:'2px dashed #f87171'}}/><span className="text-[9px] font-black text-slate-500">Hoist</span></div>}
+                                                <div className="flex items-center gap-3">
+                                                    <CoordToggle on={showLateralCoords} onToggle={() => setShowLateralCoords(v => !v)} />
+                                                    <LegendDot kind="actual" label="Actual" />
+                                                    <LegendDot kind="hoist" label={lateralStats.hoistOps ? 'Hoist (적용 중)' : 'Hoist'} />
                                                 </div>
                                             </div>
-                                            {/* 순수 SVG 인벨로프 차트 */}
-                                            <div className="flex-1 min-h-0">
-                                            {(() => {
-                                                const SW = 400, SH = 390;
-                                                const M = { t: 20, r: 25, b: 45, l: 52 };
-                                                const CW = SW - M.l - M.r, CH = SH - M.t - M.b;
-                                                const xMin = -0.12, xMax = 0.22;
-                                                const yMin = 4200, yMax = 7200;
-                                                const xs = v => M.l + (v - xMin) / (xMax - xMin) * CW;
-                                                const ys = v => M.t + (1 - (v - yMin) / (yMax - yMin)) * CH;
-                                                const env = LATERAL_ENVELOPE[selectedAc].standard;
-                                                const envD = env.map((p, i) => `${i===0?'M':'L'}${xs(p.x).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(' ') + 'Z';
-                                                const hoist = LATERAL_ENVELOPE[selectedAc]?.hoistOps || null;
-                                                const hoistD = hoist ? hoist.map((p, i) => `${i===0?'M':'L'}${xs(p.x).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(' ') : null;
-                                                const cgX = xs(lateralStats.lateralCG);
-                                                const cgY = ys(stats.totalWeight);
-                                                const xTicks = [-0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.20];
-                                                const yStep = 500;
-                                                const yTicks = [];
-                                                for (let y = Math.ceil(yMin/yStep)*yStep; y <= yMax; y += yStep) yTicks.push(y);
-                                                return (
-                                                    <svg viewBox={`0 0 ${SW} ${SH}`} preserveAspectRatio="none" className="w-full h-full" style={{display:'block'}}>
-                                                        <rect x={M.l} y={M.t} width={CW} height={CH} fill="white" stroke="#e2e8f0" strokeWidth="1" rx="2" />
-                                                        {yTicks.map(y => (
-                                                            <g key={y}>
-                                                                <line x1={M.l} y1={ys(y)} x2={M.l+CW} y2={ys(y)} stroke="#f1f5f9" strokeWidth="1" />
-                                                                <text x={M.l-5} y={ys(y)} textAnchor="end" dominantBaseline="middle" fontSize="8" fill="#64748b">{y.toLocaleString()}</text>
-                                                            </g>
-                                                        ))}
-                                                        {xTicks.map(x => (
-                                                            <g key={x}>
-                                                                <line x1={xs(x)} y1={M.t} x2={xs(x)} y2={M.t+CH} stroke="#f1f5f9" strokeWidth="1" />
-                                                                <text x={xs(x)} y={M.t+CH+13} textAnchor="middle" fontSize="8" fill="#64748b">{x === 0 ? '0' : x.toFixed(2)}</text>
-                                                            </g>
-                                                        ))}
-                                                        <line x1={M.l} y1={M.t} x2={M.l} y2={M.t+CH} stroke="#94a3b8" strokeWidth="1" />
-                                                        <line x1={M.l} y1={M.t+CH} x2={M.l+CW} y2={M.t+CH} stroke="#94a3b8" strokeWidth="1" />
-                                                        {/* BL=0 수직 녹색 점선 */}
-                                                        <line x1={xs(0)} y1={M.t} x2={xs(0)} y2={M.t+CH} stroke="#22c55e" strokeDasharray="4 3" strokeWidth="1" opacity="0.7" />
-                                                        {/* 연결선: HL9277 ②↔⑤, HL9695 ⑤↔⑨ / ⑥↔⑧ */}
-                                                        {selectedAc==='HL9277' && <>
-                                                            <line x1={xs(0.090)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#ef4444" strokeDasharray="5 5" strokeWidth="1" opacity="0.9"/>
-                                                        </>}
-                                                        {selectedAc==='HL9695' && <>
-                                                            <line x1={xs(-0.070)} y1={ys(6400)} x2={xs(0.145)} y2={ys(6400)} stroke="#ef4444" strokeDasharray="5 5" strokeWidth="1" opacity="0.9"/>
-                                                            <line x1={xs(-0.066)} y1={ys(6800)} x2={xs(0.134)} y2={ys(6800)} stroke="#ef4444" strokeDasharray="5 5" strokeWidth="1" opacity="0.9"/>
-                                                        </>}
-                                                        <path d={envD} fill="#f8fafc" fillOpacity="0.6" stroke="#94a3b8" strokeWidth="2" />
-                                                        {env.slice(0,-1).map((p, i) => (
-                                                            <circle key={i} cx={xs(p.x)} cy={ys(p.y)} r="3" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="1" />
-                                                        ))}
-                                                        {showLateralCoords && env.slice(0,-1).map((p, i) => {
-                                                            const cx = xs(p.x), cy = ys(p.y);
-                                                            const coordTxt = `(${p.x.toFixed(3)}, ${p.y.toLocaleString()})`;
-                                                            const aboveCenter = cy < M.t + CH / 2;
-                                                            const dy = aboveCenter ? -7 : 14;
-                                                            const anchor = cx < M.l + CW * 0.25 ? 'start' : cx > M.l + CW * 0.75 ? 'end' : 'middle';
-                                                            return (
-                                                                <g key={`lbl${i}`}>
-                                                                    <text x={cx} y={cy + dy} textAnchor={anchor} fontSize="6.5" fontWeight="bold" fill="#475569">{coordTxt}</text>
-                                                                </g>
-                                                            );
-                                                        })}
-                                                        {hoistD && <path d={hoistD} fill="none" stroke="#f87171" strokeWidth="2" strokeDasharray="5 4" />}
-                                                        {showLateralCoords && hoist && hoist.filter(p => p.label).map((p, i) => {
-                                                            const cx = xs(p.x), cy = ys(p.y);
-                                                            const coordTxt = `(${p.x.toFixed(3)}, ${p.y.toLocaleString()})`;
-                                                            const aboveCenter = cy < M.t + CH / 2;
-                                                            const dy = aboveCenter ? -7 : 14;
-                                                            const anchor = cx > M.l + CW * 0.75 ? 'end' : 'middle';
-                                                            return (
-                                                                <g key={`hlbl${i}`}>
-                                                                    <text x={cx} y={cy + dy} textAnchor={anchor} fontSize="6.5" fontWeight="bold" fill="#475569">{coordTxt}</text>
-                                                                </g>
-                                                            );
-                                                        })}
-                                                        <circle cx={cgX} cy={cgY} r="3" fill={lateralStats.isWithinLimit ? '#10b981' : '#ef4444'} stroke="white" strokeWidth="1" />
-                                                        <text x={M.l+CW/2} y={SH-6} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#64748b">BL (m)</text>
-                                                        <text x="10" y={M.t+CH/2} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#64748b" transform={`rotate(-90,10,${M.t+CH/2})`}>Weight (kg)</text>
-                                                    </svg>
-                                                );
-                                            })()}
-                                            </div>{/* flex-1 SVG wrapper */}
+                                            <div className="flex-1 relative min-h-[340px]">
+                                            <EnvelopeChart
+                                                fit
+                                                alert={!lateralStats.isWithinLimit}
+                                                xDomain={[-0.12, 0.22]} xStep={0.05} xLabel="BL (m)  − 좌(Port) / + 우(Stbd)"
+                                                xFmt={v => v === 0 ? '0' : v.toFixed(2)}
+                                                showCoords={showLateralCoords}
+                                                polygons={[
+                                                    { kind: 'env', pts: LATERAL_ENVELOPE[selectedAc].standard, closed: true },
+                                                    { kind: 'hoist', pts: LATERAL_ENVELOPE[selectedAc].hoistOps.map(p => p.label ? p : { ...p, noLabel: true }), closed: false },
+                                                ]}
+                                                lines={[
+                                                    { kind: 'ref', x1: 0, y1: 4200, x2: 0, y2: 7200 },
+                                                    ...(selectedAc === 'HL9277'
+                                                        ? [{ kind: 'hoist', x1: 0.090, y1: 6400, x2: 0.145, y2: 6400 }]
+                                                        : [{ kind: 'hoist', x1: -0.070, y1: 6400, x2: 0.145, y2: 6400 },
+                                                           { kind: 'hoist', x1: -0.066, y1: 6800, x2: 0.134, y2: 6800 }]),
+                                                ]}
+                                                marks={[{ kind: 'actual', x: lateralStats.lateralCG, y: stats.totalWeight, ok: lateralStats.isWithinLimit,
+                                                          title: `Lateral CG ${(lateralStats.lateralCG * 1000).toFixed(1)}mm / ${stats.totalWeight.toLocaleString()}kg` }]}
+                                            />
+                                            </div>
                                             {lateralStats.limits && (
                                                 <div className="mt-1 text-center text-[9px] text-slate-500 font-medium">
-                                                    현재 {stats.totalWeight.toLocaleString()}kg: 좌 {(lateralStats.limits.left * 1000).toFixed(0)}mm / 우 +{(lateralStats.limits.right * 1000).toFixed(0)}mm
+                                                    현재 {stats.totalWeight.toLocaleString()}kg: 좌 {(lateralStats.limits.left * 1000).toFixed(0)}mm / 우 +{(lateralStats.limits.right * 1000).toFixed(0)}mm{lateralStats.hoistOps ? ' (호이스트 운용 한계)' : ''}
                                                 </div>
                                             )}
                                         </div>
