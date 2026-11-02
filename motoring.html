@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" class="dark">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -151,101 +151,65 @@
         }
     </style>
 </head>
-<body id="appBody" class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between p-2 sm:p-3 transition-colors duration-200">
+<body id="appBody" class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between transition-colors duration-200">
 
     <!-- ================= 상단 통합 네비게이션 헤더 ================= -->
-    <header id="appHeader" class="w-full max-w-6xl mx-auto bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3 mb-2 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-        <div class="flex items-center justify-between gap-2 flex-wrap">
-            
-            <!-- 좌측: 유닛명 + 기체 선택 (모바일 줄바꿈 방지 whitespace-nowrap) -->
-            <div class="flex items-center gap-2 whitespace-nowrap">
-                <span class="text-xl">🚁</span>
+    <header id="appHeader" class="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="p-2 bg-blue-600 rounded-lg text-xl">⏱️</div>
                 <div>
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-xs font-black tracking-tight text-slate-800 dark:text-slate-200">인천119 AW139</span>
-                        <span class="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">PT6C-67C</span>
+                    <h1 class="text-base sm:text-xl font-black tracking-tight uppercase leading-none">AW139 Motoring Timer</h1>
+                    <div class="flex items-center gap-3 mt-1.5 font-bold">
+                        <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+                            <button id="btnAc9695" onclick="setAircraft('HL9695')" class="px-2 py-0.5 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow">
+                                HL9695<span class="hidden sm:inline">(2호기)</span>
+                            </button>
+                            <button id="btnAc9277" onclick="setAircraft('HL9277')" class="px-2 py-0.5 rounded-md text-[10px] font-black transition-all text-slate-400 hover:text-white">
+                                HL9277<span class="hidden sm:inline">(3호기)</span>
+                            </button>
+                        </div>
+                        <span class="hidden sm:inline text-[10px] text-slate-400 uppercase tracking-tighter font-bold whitespace-nowrap">Incheon 119 Fire Aviation Unit</span>
                     </div>
-                    <div class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-tight">
-                        모터링 타이머 & 듀티 사이클
-                    </div>
-                </div>
-
-                <!-- 기체 토글 (HL9695 2호기 / HL9277 3호기) -->
-                <div class="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 ml-1">
-                    <button id="btnAc9695" onclick="setAircraft('HL9695')" class="px-2 py-1 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow">
-                        HL9695<span class="hidden sm:inline">(2호기)</span>
-                    </button>
-                    <button id="btnAc9277" onclick="setAircraft('HL9277')" class="px-2 py-1 rounded-md text-[10px] font-black transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
-                        HL9277<span class="hidden sm:inline">(3호기)</span>
-                    </button>
                 </div>
             </div>
-
-            <!-- 우측: 상단 4단 토글 네비게이션 + 주야간 + 설정 (모바일 한 줄 유지) -->
-            <div class="flex items-center gap-1.5 flex-nowrap whitespace-nowrap">
-                
-                <!-- 5단 네비게이션 링크 그룹 (데스크탑) -->
-                <div class="hidden sm:flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
-                    <a href="index.html" class="px-2 py-1 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all flex items-center gap-0.5">
-                        <span>🚁</span><span>W&B</span>
-                    </a>
-                    <a href="index.html#pa" class="px-2 py-1 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all flex items-center gap-0.5">
-                        <span>📊</span><span>PA</span>
-                    </a>
-                    <a href="e6b.html" class="px-2 py-1 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all flex items-center gap-0.5">
-                        <span>🧮</span><span>E6B</span>
-                    </a>
-                    <span class="px-2 py-1 rounded-md text-[10px] font-black bg-blue-600 text-white shadow flex items-center gap-0.5">
-                        <span>⏱️</span><span>모터링</span>
-                    </span>
-                    <a href="https://mcdu-sim.vercel.app" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded-md text-[10px] font-black text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all flex items-center gap-0.5">
-                        <span>🎛️</span><span>MCDU</span>
-                    </a>
+            <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                <div class="hidden sm:flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+                    <a href="index.html" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">🚁 W&B</a>
+                    <a href="index.html#pa" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">📊 Engine PA</a>
+                    <a href="e6b.html" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">🧮 E6B</a>
+                    <span class="px-3 py-1.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow flex items-center gap-1">⏱️ Motoring</span>
+                    <a href="https://mcdu-sim.vercel.app" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">🎛️ MCDU Sim</a>
                 </div>
-
-                <!-- 모바일 네비게이션 드롭다운 (sm 미만) -->
                 <div class="sm:hidden relative">
                     <select onchange="if(this.value.startsWith('http')) window.open(this.value,'_blank'); else window.location.href=this.value;"
-                        class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-white border border-slate-200 dark:border-slate-700 text-[11px] font-black px-2 py-1 rounded-lg outline-none shadow">
+                        class="bg-slate-800 text-white border border-slate-700 text-[11px] font-black px-2.5 py-1.5 rounded-lg outline-none shadow">
                         <option value="index.html">🚁 W&B</option>
                         <option value="index.html#pa">📊 Engine PA</option>
                         <option value="e6b.html">🧮 E6B</option>
-                        <option value="motoring.html" selected>⏱️ 모터링</option>
+                        <option value="motoring.html" selected>⏱️ Motoring</option>
                         <option value="https://mcdu-sim.vercel.app">🎛️ MCDU Sim</option>
                     </select>
                 </div>
-
-                <!-- 주/야간 모드 토글 버튼 -->
-                <button id="btnThemeToggle" onclick="toggleTheme()" title="주간/야간 모드 전환" class="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-700 dark:text-amber-400">
-                    <span id="txtThemeIcon">☀️</span>
-                </button>
-
-                <!-- 콜아웃 언어 토글 (EN / KO) -->
-                <button id="btnVoiceLang" onclick="toggleVoiceLang()" title="콜아웃 음성 언어" class="px-1.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                    🗣️<span id="txtVoiceLang">EN</span>
-                </button>
-
-                <!-- 사운드 테스트 -->
-                <button onclick="testAudio()" title="사운드 테스트" class="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[10px]">
-                    🔊
-                </button>
-
-                <!-- 화면 잠금 방지 상태 배지 -->
-                <span id="wakeLockBadge" title="화면 꺼짐 방지 상태" class="px-1.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">
-                    ⚡ON
-                </span>
-
-                <!-- 가로 전체 화면 토글 버튼 -->
-                <button id="btnHeaderFullscreen" onclick="toggleFullscreen()" title="가로형 전체 화면 집중 모드 (Cockpit Landscape)" class="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] sm:text-[11px] font-black flex items-center gap-1 shadow-sm transition-all active:scale-95">
-                    <span>⛶</span><span class="hidden sm:inline">가로 전체화면</span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button id="btnThemeToggle" onclick="toggleTheme()" title="주간/야간 모드 전환" class="px-2.5 py-2 bg-slate-800 text-amber-400 rounded-lg border border-slate-700 shadow-md text-xs transition-all active:scale-95">
+                        <span id="txtThemeIcon">☀️</span>
+                    </button>
+                    <button id="btnVoiceLang" onclick="toggleVoiceLang()" title="콜아웃 음성 언어" class="px-2.5 py-2 bg-slate-800 text-slate-200 rounded-lg border border-slate-700 shadow-md text-[10px] font-bold transition-all active:scale-95">
+                        🗣️<span id="txtVoiceLang">EN</span>
+                    </button>
+                    <button onclick="testAudio()" title="사운드 테스트" class="px-2.5 py-2 bg-slate-800 text-slate-200 rounded-lg border border-slate-700 shadow-md text-xs transition-all active:scale-95">🔊</button>
+                    <span id="wakeLockBadge" title="화면 꺼짐 방지 상태" class="hidden sm:inline px-2 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[9px] text-emerald-400 font-bold">⚡ON</span>
+                    <button id="btnHeaderFullscreen" onclick="toggleFullscreen()" title="가로형 전체 화면 집중 모드 (Cockpit Landscape)" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95">
+                        <span>⛶</span><span class="hidden sm:inline">가로 전체화면</span>
+                    </button>
+                </div>
             </div>
-
         </div>
     </header>
 
     <!-- ================= 상단 옵션 툴바 (목표시간 프리셋 + 모터링 모드) ================= -->
-    <section id="appToolbar" class="w-full max-w-6xl mx-auto bg-white dark:bg-slate-900 rounded-xl p-2 sm:p-2.5 mb-2 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-2 flex-wrap text-xs">
+    <section id="appToolbar" class="w-[calc(100%-1.5rem)] max-w-7xl mx-auto mt-3 bg-white dark:bg-slate-900 rounded-xl p-2 sm:p-2.5 mb-2 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-2 flex-wrap text-xs">
         
         <!-- 모터링 모드 토글 (Dry vs Wet) -->
         <div class="flex items-center gap-1.5 whitespace-nowrap">
@@ -308,7 +272,7 @@
     </section>
 
     <!-- ================= 전체화면 집중 모드 전용 상단 미니바 (Fullscreen Mini Bar) ================= -->
-    <div id="fullscreenBar" class="hidden w-full max-w-6xl mx-auto items-center justify-between py-1 px-2.5 mb-1.5 bg-slate-900/90 backdrop-blur rounded-lg border border-slate-700/80 text-[10px] sm:text-[11px] font-bold text-slate-300 shadow-md">
+    <div id="fullscreenBar" class="hidden w-full max-w-7xl mx-auto items-center justify-between py-1 px-2.5 mb-1.5 bg-slate-900/90 backdrop-blur rounded-lg border border-slate-700/80 text-[10px] sm:text-[11px] font-bold text-slate-300 shadow-md">
         <div class="flex items-center gap-1.5 sm:gap-2">
             <span class="text-emerald-400 font-black flex items-center gap-1"><span>⛶</span><span>가로 전체화면</span></span>
             <span class="text-slate-600">|</span>
@@ -332,7 +296,7 @@
     </div>
 
     <!-- ================= 메인: 좌우 독립 듀얼 엔진 대시보드 (모바일에서도 항상 좌우 2열 나란히 표시) ================= -->
-    <main id="mainDashboard" class="w-full max-w-6xl mx-auto flex-1 grid grid-cols-2 gap-1.5 sm:gap-3">
+    <main id="mainDashboard" class="w-[calc(100%-1.5rem)] max-w-7xl mx-auto flex-1 grid grid-cols-2 gap-1.5 sm:gap-3">
 
         <!-- =================== ENG 1 독립 제어 패널 =================== -->
         <div id="cardEng1" class="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2 sm:p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between relative overflow-hidden transition-all duration-200">
@@ -759,7 +723,7 @@
     </div>
 
     <!-- 하단 푸터 -->
-    <footer class="w-full max-w-6xl mx-auto text-center text-[10px] text-slate-400 py-2">
+    <footer class="w-full max-w-7xl mx-auto text-center text-[10px] text-slate-400 py-2">
         Incheon 119 Fire Aviation Unit • AW139 Dual-Engine Motoring Timer
     </footer>
 
@@ -800,7 +764,7 @@
 
         // 1. 테마 제어 (주간 / 야간 모드)
         function initTheme() {
-            const savedTheme = localStorage.getItem(KEY_THEME) || 'dark';
+            const savedTheme = localStorage.getItem(KEY_THEME) || 'light';
             appState.theme = savedTheme;
             applyTheme(savedTheme);
         }
@@ -1591,11 +1555,11 @@
             const b9695 = document.getElementById('btnAc9695');
             const b9277 = document.getElementById('btnAc9277');
             if (tail === 'HL9695') {
-                b9695.className = "px-2 py-1 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow";
-                b9277.className = "px-2 py-1 rounded-md text-[10px] font-black transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white";
+                b9695.className = "px-2 py-0.5 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow";
+                b9277.className = "px-2 py-0.5 rounded-md text-[10px] font-black transition-all text-slate-400 hover:text-white";
             } else {
-                b9695.className = "px-2 py-1 rounded-md text-[10px] font-black transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white";
-                b9277.className = "px-2 py-1 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow";
+                b9695.className = "px-2 py-0.5 rounded-md text-[10px] font-black transition-all text-slate-400 hover:text-white";
+                b9277.className = "px-2 py-0.5 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow";
             }
             saveState();
         }

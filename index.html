@@ -369,8 +369,6 @@
                 <line x1="-30" y1="0" x2="1410" y2="0" stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="10 8" />
                 <g fontSize="15" fill="#94a3b8" fontWeight="600">
                     <text x="-30" y="-8">FWD</text>
-                    <text x="700" y="-165">STBD +</text>
-                    <text x="700" y="178">PORT −</text>
                 </g>
                 {gauge && <LateralGaugeV {...gauge} />}
             </svg>
@@ -378,8 +376,9 @@
         // Lateral CG 세로 막대: 기수 앞에 세움. 위 = 우(Stbd +), 아래 = 좌(Port −). 범위 -0.12~+0.22 m를 확대해서 표시
         const LateralGaugeV = ({ cg, limits, ok, hoistOps, s = 0.35 }) => {
             const u = v => v / s, G = GAUGE_PX;
-            const X = -140, top = -140, bot = 150, v0 = -0.12, v1 = 0.22;
-            const ys = v => top + (v1 - Math.max(v0, Math.min(v1, v))) / (v1 - v0) * (bot - top);
+            const X = -140, top = -140, v0 = -0.12, v1 = 0.22;
+            const k = -top / v1, bot = -v0 * k;   // BL 0 = 기수 중심선(y=0)에 맞춤
+            const ys = v => -Math.max(v0, Math.min(v1, v)) * k;
             const ticks = [-0.10, -0.05, 0, 0.05, 0.10, 0.15, 0.20];
             const out = cg < v0 || cg > v1, triR = X - u(G.band / 2 + 1);
             return (
@@ -1134,12 +1133,21 @@
                 return prev.map(i => {
                     if (i.id === id) return { ...i, selectedIndex: idx, isActive: nowOn };
                     if (i.id === 'pump' && nowOn !== !!wasOn) return { ...i, isActive: nowOn };
+                    if (i.id === 'cargo' && nowOn) return { ...i, weight: 0 };   // 물탱크 장착 → 카고 0
                     return i;
                 });
             });
 
             const updateItem = (id, field, value) => {
-                setItems(items.map(item => item.id === id ? { ...item, [field]: value } : item));
+                // 카고에 무게 입력 → 물탱크·펌프 미장착 / 물탱크 장착 → 카고 0
+                const cargoLoaded = id === 'cargo' && field === 'weight' && value > 0;
+                const tankOn = id === 'watertank' && field === 'isActive' && value === true;
+                setItems(items.map(item => {
+                    if (item.id === id) return { ...item, [field]: value };
+                    if (cargoLoaded && (item.id === 'watertank' || item.id === 'pump')) return { ...item, isActive: false, ...(item.id === 'watertank' ? { selectedIndex: 0 } : {}) };
+                    if (tankOn && item.id === 'cargo') return { ...item, weight: 0 };
+                    return item;
+                }));
             };
 
             const moveItem = (index, direction) => {
@@ -1395,7 +1403,7 @@
                             <section className="overflow-hidden lg:flex-1 flex flex-col">
                                 <div className="overflow-x-auto custom-scrollbar flex-1 flex flex-col">
                                     <table className="w-full flex-1 text-left border-collapse min-w-[320px]">
-                                        <thead className="bg-slate-50 print:bg-white text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        <thead className="bg-slate-50 print:bg-white text-[11px] font-black text-slate-400 uppercase tracking-widest">
                                             <tr className="border-b border-slate-200">
                                                 <th className="px-3 py-2">Item</th>
                                                 <th className="px-3 py-2 text-right">Weight<br/><span className="font-normal normal-case">(kg)</span></th>
@@ -1403,7 +1411,7 @@
                                                 <th className="px-3 py-2 text-right">Moment<br/><span className="font-normal normal-case">(kgm)</span></th>
                                             </tr>
                                         </thead>
-                                        <tbody className="text-[10px] sm:text-[11px]">
+                                        <tbody className="text-[12px] sm:text-[13px]">
                                             {stats.tableData.map(item => (
                                                 <tr key={item.id} className={`border-b border-slate-100 ${item.isFixed ? '' : 'cursor-pointer hover:bg-slate-50 transition-colors'}`}
                                                     onClick={item.isFixed ? undefined : (e) => setLongPopup({ id: item.id, anchor: e.currentTarget })}>
@@ -1413,11 +1421,11 @@
                                                     <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{(item.weight * item.arm).toFixed(1)}</td>
                                                 </tr>
                                             ))}
-                                            <tr className={`font-black text-[11px] border-t-2 border-slate-300 ${stats.longOk ? 'bg-blue-50/50' : 'bg-rose-50'}`}>
+                                            <tr className={`font-black text-[13px] border-t-2 border-slate-300 ${stats.longOk ? 'bg-blue-50/50' : 'bg-rose-50'}`}>
                                                 <td className="px-3 py-2.5 text-slate-900">TOTAL GROSS</td>
                                                 <td className="px-3 py-2.5 text-right font-mono">{stats.totalWeight.toLocaleString()}</td>
                                                 <td className="px-3 py-2.5 text-right">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border whitespace-nowrap ${stats.longOk ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-rose-500 text-rose-700 bg-rose-50'}`}>
+                                                    <span className={`px-2 py-0.5 rounded-full text-[12px] font-black border whitespace-nowrap ${stats.longOk ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-rose-500 text-rose-700 bg-rose-50'}`}>
                                                         CG {stats.cg}m
                                                     </span>
                                                 </td>
@@ -1512,38 +1520,38 @@
                                     return (
                                         <div className={`mt-4 p-3 rounded-lg border min-h-[150px] print:min-h-0 print:bg-white print:mt-1 ${stats.longOk ? 'bg-slate-50 border-slate-200' : 'bg-red-50 border-red-200'}`}>
                                             <div className="flex items-center justify-between mb-1">
-                                                <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Summary</p>
-                                                <span className={`text-[10px] font-bold ${stats.longOk ? 'text-emerald-700' : 'text-red-700'}`}>{stats.longOk ? '한계 이내' : '한계 초과'}</span>
+                                                <p className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">Summary</p>
+                                                <span className={`text-[12px] font-bold ${stats.longOk ? 'text-emerald-700' : 'text-red-700'}`}>{stats.longOk ? '한계 이내' : '한계 초과'}</span>
                                             </div>
-                                            <p className="text-[11px] text-slate-600 leading-snug">
+                                            <p className="text-[13px] text-slate-600 leading-snug">
                                                 이륙 중량 {stats.totalWeight.toLocaleString()}kg, 이륙 CG {stats.cg}m.
                                                 연료 소진 시 {stats.zeroFuelWeight.toLocaleString()}kg, CG {stats.zeroFuelCG}m.
                                                 {c.weightOk && <> 최대이륙중량까지 {fmt(c.maxTow - c.to.W)}kg 남습니다.</>}
                                             </p>
                                             {problems.length > 0 && (
-                                                <ul className="mt-2 space-y-0.5 text-[11px] text-red-700">
+                                                <ul className="mt-2 space-y-0.5 text-[13px] text-red-700">
                                                     {problems.map((t, i) => <li key={i}>· {t}</li>)}
                                                 </ul>
                                             )}
                                             {!stats.longOk && (
                                                 <div className="mt-2 pt-2 border-t border-red-200">
-                                                    <p className="text-[10px] font-bold text-slate-700 mb-0.5">조정 제안</p>
+                                                    <p className="text-[12px] font-bold text-slate-700 mb-0.5">조정 제안</p>
                                                     {advice.reduce.length > 0 ? (
                                                         <>
-                                                            <ul className="space-y-0.5 text-[11px] text-slate-700">
+                                                            <ul className="space-y-0.5 text-[13px] text-slate-700">
                                                                 {advice.reduce.map(r => (
                                                                     <li key={r.id}>· {r.name} <span className="font-mono">{fmt(r.from)} → {fmt(r.to)}kg</span> <span className="text-slate-500">(−{fmt(r.from - r.to)}kg)</span></li>
                                                                 ))}
                                                             </ul>
-                                                            <p className="mt-1 text-[9px] text-slate-500">{advice.reduce.length > 1 ? '이 중 하나만 바꿔도 한계 안으로 들어옵니다. ' : ''}{advice.reduce.some(r => r.id === 'fuel') ? '연료를 줄일 때는 임무 필요 연료를 따로 확인하세요.' : ''}</p>
+                                                            <p className="mt-1 text-[11px] text-slate-500">{advice.reduce.length > 1 ? '이 중 하나만 바꿔도 한계 안으로 들어옵니다. ' : ''}{advice.reduce.some(r => r.id === 'fuel') ? '연료를 줄일 때는 임무 필요 연료를 따로 확인하세요.' : ''}</p>
                                                         </>
                                                     ) : (
-                                                        <p className="text-[11px] text-slate-700">연료·카고·수하물 하나만으로는 맞출 수 없습니다. 탑승자·장비 무게를 조정하세요.</p>
+                                                        <p className="text-[13px] text-slate-700">연료·카고·수하물 하나만으로는 맞출 수 없습니다. 탑승자·장비 무게를 조정하세요.</p>
                                                     )}
                                                 </div>
                                             )}
                                             {stats.longOk && advice.maxCargo && (
-                                                <p className="mt-1 text-[11px] text-slate-600">
+                                                <p className="mt-1 text-[13px] text-slate-600">
                                                     현재 연료 기준, 카고는 최대 <span className="font-mono font-bold">{fmt(advice.maxCargo.max)}kg</span>까지 실을 수 있습니다
                                                     <span className="text-slate-500"> (지금보다 +{fmt(advice.maxCargo.max - advice.maxCargo.from)}kg)</span>.
                                                 </p>
