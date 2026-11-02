@@ -2227,12 +2227,12 @@
                                 )}
                             </div>
                         </div>
-                        <div className="bg-white border-t border-slate-200 px-3 py-2.5 z-10 shrink-0 sticky bottom-0 no-print-sticky">
-                            <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-2 lg:gap-3 lg:items-stretch">
+                        <div className="bg-slate-50 px-3 sm:px-5 pb-3 pt-1 z-10 shrink-0 sticky bottom-0 no-print-sticky">
+                            <div className="max-w-6xl mx-auto bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex flex-col lg:flex-row gap-2 lg:gap-3 lg:items-stretch">
                                 {/* 입력값 */}
                                 <div className="grid grid-cols-3 lg:flex lg:flex-col gap-1.5 lg:w-44 lg:shrink-0">
                                     <EditableInputCard label="TQ" value={results.tq} unit="%" color="#a855f7" onCommit={setIn('tq')} min={90} max={105} step={0.1} />
-                                    <EditableInputCard label="PA" value={results.pa} unit="ft" color="#ef4444" onCommit={setIn('pa')} min={-1000} max={14000} step={100} />
+                                    <EditableInputCard comma label="PA" value={results.pa} unit="ft" color="#ef4444" onCommit={setIn('pa')} min={-1000} max={14000} step={100} />
                                     <EditableInputCard label="OAT" value={results.oat} unit="°C" color="#f97316" onCommit={setIn('oat')} min={-50} max={60} step={1} />
                                 </div>
                                 {/* 엔진별 결과 */}
@@ -2300,7 +2300,8 @@
             );
         };
 
-        const EditableInputCard = ({ label, value, unit, color, onCommit, min, max, step, tooltip }) => {
+        const commaFmt = (str) => { const m = /^(-?)(\d*)(\.\d*)?$/.exec(str); return m ? m[1] + m[2].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (m[3] || '') : str; };
+        const EditableInputCard = ({ label, value, unit, color, onCommit, min, max, step, tooltip, comma }) => {
             const [draft, setDraft] = React.useState(String(value));
             const [showTip, setShowTip] = React.useState(false);
             const focused = React.useRef(false);
@@ -2328,12 +2329,20 @@
                         )}
                     </div>
                     <div className="flex items-baseline gap-0.5">
-                        <input type="number" value={draft} min={min} max={max} step={step}
-                            onChange={e => setDraft(e.target.value)}
+                        <input type={comma ? 'text' : 'number'} inputMode={comma ? 'decimal' : undefined} value={comma ? commaFmt(draft) : draft} min={min} max={max} step={step}
+                            onChange={e => { const v = comma ? e.target.value.replace(/,/g, '') : e.target.value; if (!comma || /^-?\d*\.?\d*$/.test(v)) setDraft(v); }}
                             onFocus={() => { focused.current = true; }}
                             onBlur={() => { focused.current = false; commit(); }}
-                            onKeyDown={e => e.key === 'Enter' && commit()}
-                            className="text-sm font-bold font-mono text-slate-800 bg-transparent w-16 text-right outline-none" />
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') commit();
+                                else if (comma && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                                    e.preventDefault();
+                                    const n = (parseFloat(draft) || 0) + (e.key === 'ArrowUp' ? 1 : -1) * (step || 1);
+                                    const c = Math.min(max ?? n, Math.max(min ?? n, n));
+                                    setDraft(String(c)); onCommit(c);
+                                }
+                            }}
+                            className={`text-sm font-bold font-mono text-slate-800 bg-transparent text-right outline-none ${comma ? 'w-20' : 'w-16'}`} />
                         <span className="text-[9px] text-slate-400">{unit}</span>
                     </div>
                 </div>
