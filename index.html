@@ -81,11 +81,11 @@
             }, [dropdownOpen]);
 
             const navItems = [
-                { id: 'wb', label: 'W&B', icon: 'helicopter', type: 'mode' },
-                { id: 'pa', label: 'Engine PA', icon: 'gauge', type: 'mode' },
-                { id: 'e6b', label: 'E6B', icon: 'calculator', type: 'link', href: 'e6b.html' },
-                { id: 'motoring', label: 'Motoring', icon: 'timer', type: 'link', href: 'motoring.html' },
-                { id: 'mcdu', label: 'MCDU Sim', icon: 'terminal', type: 'link', href: 'https://mcdu-sim.vercel.app', external: true },
+                { id: 'wb', label: 'W&B', icon: '🚁', type: 'mode' },
+                { id: 'pa', label: 'Engine PA', icon: '📊', type: 'mode' },
+                { id: 'e6b', label: 'E6B', icon: '🧮', type: 'link', href: 'e6b.html' },
+                { id: 'motoring', label: 'Motoring', icon: '⏱️', type: 'link', href: 'motoring.html' },
+                { id: 'mcdu', label: 'MCDU Sim', icon: '🎛️', type: 'link', href: 'https://mcdu-sim.vercel.app', external: true },
             ];
 
             const currentItem = navItems.find(i => i.id === currentMode) || navItems[0];
@@ -114,7 +114,7 @@
                                 currentMode === 'wb' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
                             }`}
                         >
-                            <Icon name="helicopter" size={12} /> W&B
+                            <span>🚁</span> W&B
                         </button>
                         <button
                             type="button"
@@ -123,19 +123,19 @@
                                 currentMode === 'pa' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
                             }`}
                         >
-                            <Icon name="gauge" size={12} /> Engine PA
+                            <span>📊</span> Engine PA
                         </button>
                         <a
                             href="e6b.html"
                             className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"
                         >
-                            <Icon name="calculator" size={12} /> E6B
+                            <span>🧮</span> E6B
                         </a>
                         <a
                             href="motoring.html"
                             className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"
                         >
-                            <Icon name="timer" size={12} /> Motoring
+                            <span>⏱️</span> Motoring
                         </a>
                         <a
                             href="https://mcdu-sim.vercel.app"
@@ -144,7 +144,7 @@
                             className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"
                             title="AW139 MCDU Trainer (FMS Sim)"
                         >
-                            <Icon name="terminal" size={12} /> MCDU Sim
+                            <span>🎛️</span> MCDU Sim
                         </a>
                     </div>
 
@@ -155,7 +155,7 @@
                             onClick={() => setDropdownOpen(!dropdownOpen)}
                             className="flex items-center gap-1.5 bg-slate-800 text-white border border-slate-700 px-2.5 py-1.5 rounded-lg text-[11px] font-black shadow transition-all active:scale-95"
                         >
-                            <Icon name={currentItem.icon} size={12} className="text-blue-400" />
+                            <span>{currentItem.icon}</span>
                             <span>{currentItem.label}</span>
                             <Icon name="chevron-down" size={12} className={`text-slate-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
@@ -176,7 +176,7 @@
                                             }`}
                                         >
                                             <span className="flex items-center gap-2">
-                                                <Icon name={item.icon} size={13} className={isActive ? 'text-blue-400' : 'text-slate-400'} />
+                                                <span>{item.icon}</span>
                                                 <span>{item.label}</span>
                                             </span>
                                             {item.external && <Icon name="external-link" size={11} className="text-slate-500" />}
@@ -233,7 +233,7 @@
             { id: 'ems', label: 'EMS KIT', weight: 54.5, arm: 4.271, isFuel: false, isOptional: true, isActive: true },
             { id: 'fuel', label: 'FUEL', weight: 820, arm: 6.217, isFuel: true, isOptional: false, isActive: true },
             { id: 'hoist', label: 'HOIST', weight: 0, arm: 4.25, isFuel: false, isOptional: false, isActive: true },
-            { id: 'cargo', label: 'CARGO', weight: 0, arm: 5.3, isFuel: false, isOptional: false, isActive: true },
+            { id: 'cargo', label: 'CARGO', weight: 0, arm: 5.3, isFuel: false, isOptional: true, isActive: true },
             { id: 'watertank', label: 'WATER TANK', weight: 0, arm: 0, isFuel: false, isOptional: true, isActive: false, isDropdown: true, selectedIndex: 0 },
             { id: 'pump', label: 'REFILL PUMP', weight: 44.9, arm: 6.595, isFuel: false, isOptional: true, isActive: false },
         ];
@@ -1031,13 +1031,13 @@
                     const saved = JSON.parse(localStorage.getItem('aw139_wb_items_by_aircraft'));
                     if (saved && typeof saved === 'object') {
                         for (const ac of Object.keys(defaults)) {
-                            if (Array.isArray(saved[ac]) && saved[ac].length > 0) defaults[ac] = saved[ac];
+                            if (Array.isArray(saved[ac]) && saved[ac].length > 0) defaults[ac] = saved[ac].map(i => i.id === 'cargo' ? { ...i, isOptional: true } : i);   // 카고도 장착/미장착 항목
                         }
                         return defaults;
                     }
                     // The old shared save had no aircraft ID; migrate it to the selected aircraft only.
                     const legacy = JSON.parse(localStorage.getItem('aw139_wb_items'));
-                    if (Array.isArray(legacy) && legacy.length > 0) defaults[selectedAc] = legacy;
+                    if (Array.isArray(legacy) && legacy.length > 0) defaults[selectedAc] = legacy.map(i => i.id === 'cargo' ? { ...i, isOptional: true } : i);
                 } catch {}
                 return defaults;
             });
@@ -1133,19 +1133,19 @@
                 return prev.map(i => {
                     if (i.id === id) return { ...i, selectedIndex: idx, isActive: nowOn };
                     if (i.id === 'pump' && nowOn !== !!wasOn) return { ...i, isActive: nowOn };
-                    if (i.id === 'cargo' && nowOn) return { ...i, weight: 0 };   // 물탱크 장착 → 카고 0
+                    if (i.id === 'cargo' && nowOn !== !!wasOn) return nowOn ? { ...i, weight: 0, isActive: false } : { ...i, isActive: true };   // 물탱크 장착 → 카고 미장착·0 / 해제 → 카고 복귀
                     return i;
                 });
             });
 
             const updateItem = (id, field, value) => {
                 // 카고에 무게 입력 → 물탱크·펌프 미장착 / 물탱크 장착 → 카고 0
-                const cargoLoaded = id === 'cargo' && field === 'weight' && value > 0;
+                const cargoLoaded = id === 'cargo' && ((field === 'weight' && value > 0) || (field === 'isActive' && value === true));
                 const tankOn = id === 'watertank' && field === 'isActive' && value === true;
                 setItems(items.map(item => {
                     if (item.id === id) return { ...item, [field]: value };
                     if (cargoLoaded && (item.id === 'watertank' || item.id === 'pump')) return { ...item, isActive: false, ...(item.id === 'watertank' ? { selectedIndex: 0 } : {}) };
-                    if (tankOn && item.id === 'cargo') return { ...item, weight: 0 };
+                    if (tankOn && item.id === 'cargo') return { ...item, weight: 0, isActive: false };
                     return item;
                 }));
             };
@@ -1244,7 +1244,7 @@
                     <header className="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50 print:relative print:bg-white print:text-black print:shadow-none print:border-b-2 print:border-slate-800">
                         <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 w-full sm:w-auto">
-                                <div className="p-2 bg-blue-600 rounded-lg print:hidden"><Icon name="helicopter" size={24} /></div>
+                                <div className="p-2 bg-blue-600 rounded-lg text-xl print:hidden">🚁</div>
                                 <div>
                                     <h1 className="text-base sm:text-xl font-black tracking-tight uppercase leading-none">AW139 Weight & Balance</h1>
                                     <div className="flex items-center gap-3 mt-1.5 font-bold">
@@ -2179,10 +2179,10 @@
             return (
                 <div className="min-h-screen flex flex-col">
                     {/* Header (CG와 통일된 다크 테마, 동일 높이) */}
-                    <header className="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg z-30 shrink-0 print:relative print:bg-white print:text-black print:shadow-none print:border-b-2 print:border-slate-800">
+                    <header className="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50 print:relative print:bg-white print:text-black print:shadow-none print:border-b-2 print:border-slate-800">
                         <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 w-full sm:w-auto">
-                                <div className="p-2 bg-blue-600 rounded-lg print:hidden"><Icon name="gauge" size={24} /></div>
+                                <div className="p-2 bg-blue-600 rounded-lg text-xl print:hidden">📊</div>
                                 <div>
                                     <h1 className="text-base sm:text-xl font-black tracking-tight uppercase leading-none">AW139 Engine Performance</h1>
                                     <div className="flex items-center gap-3 mt-1.5 font-bold">
