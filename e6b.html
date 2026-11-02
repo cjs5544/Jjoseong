@@ -43,15 +43,43 @@ const norm360 = d => ((d % 360) + 360) % 360;
 const fmtHdr = v => String(Math.round(norm360(v))).padStart(3,'0') + '°';
 
 // ── Shared UI ─────────────────────────────────────────────────────
-function NumInput({ label, value, onChange, unit, min, max, step=1, note }) {
+const commaFmt = (str) => { const m = /^(-?)(\d*)(\.\d*)?$/.exec(str); return m ? m[1] + m[2].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (m[3] || '') : str; };
+
+function NumInput({ label, value, onChange, unit, min, max, step=1, note, comma }) {
+    const [draft, setDraft] = useState(String(value));
+    const focused = useRef(false);
+    useEffect(() => { if (comma && !focused.current) setDraft(String(value)); }, [value]);
+    const handleComma = e => {
+        const el = e.target;
+        const digitsBefore = el.value.slice(0, el.selectionStart).replace(/[^0-9.\-]/g, '').length;
+        const raw = el.value.replace(/,/g, '');
+        if (!/^-?\d*\.?\d*$/.test(raw)) { el.value = commaFmt(draft); return; }
+        setDraft(raw);
+        onChange(parseFloat(raw) || 0);
+        const f = commaFmt(raw); el.value = f;
+        let n = 0, pos = 0;
+        while (pos < f.length && n < digitsBefore) { if (/[0-9.\-]/.test(f[pos])) n++; pos++; }
+        el.setSelectionRange(pos, pos);
+    };
+    const handleKey = e => {
+        if (!comma || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+        e.preventDefault();
+        const n = (parseFloat(draft) || 0) + (e.key === 'ArrowUp' ? 1 : -1) * step;
+        const c = Math.min(max ?? n, Math.max(min ?? n, n));
+        setDraft(String(c)); onChange(c);
+    };
     return html`
     <div class="flex flex-col gap-0.5">
         <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${label}</label>
         <div class="relative flex items-center">
-            <input type="number" value=${value}
+            ${comma ? html`<input type="text" inputMode="decimal" value=${commaFmt(draft)}
+                onInput=${handleComma} onKeyDown=${handleKey}
+                onFocus=${() => { focused.current = true; }} onBlur=${() => { focused.current = false; setDraft(String(value)); }}
+                class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all pr-10" />`
+            : html`<input type="number" value=${value}
                 onInput=${e => onChange(parseFloat(e.target.value) || 0)}
                 min=${min} max=${max} step=${step}
-                class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all pr-10" />
+                class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all pr-10" />`}
             ${unit && html`<span class="absolute right-3 text-[10px] text-slate-400 font-bold pointer-events-none">${unit}</span>`}
         </div>
         ${note && html`<span class="text-[9px] text-slate-400">${note}</span>`}
@@ -421,10 +449,10 @@ function DensityAlt() {
                         <button onClick=${()=>setUseQnh(true)}  class=${'px-3 py-1 text-xs font-black rounded ' + (useQnh?'bg-blue-600 text-white':'bg-white text-slate-500')}>QNH→PA</button>
                     </div>
                     ${useQnh ? html`
-                        <${NumInput} label="지시 고도" value=${altInd} onChange=${setAltInd} unit="ft" min=-1500 max=60000 step=100 />
+                        <${NumInput} comma label="지시 고도" value=${altInd} onChange=${setAltInd} unit="ft" min=-1500 max=60000 step=100 />
                         <${NumInput} label="QNH" value=${qnh} onChange=${setQnh} unit="hPa" min=900 max=1100 step=0.25 />
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-2 text-xs text-blue-600 font-black">계산된 PA: ${compPA.toLocaleString()} ft</div>
-                    ` : html`<${NumInput} label="압력 고도 PA" value=${pa} onChange=${setPa} unit="ft" min=-1500 max=60000 step=100 />`}
+                    ` : html`<${NumInput} comma label="압력 고도 PA" value=${pa} onChange=${setPa} unit="ft" min=-1500 max=60000 step=100 />`}
                     <${NumInput} label="외기온도 OAT" value=${oat} onChange=${setOat} unit="°C" min=-80 max=60 />
                     <div class="border-t border-slate-100 pt-3">
                         <${NumInput} label="IAS (TAS 계산용)" value=${ias} onChange=${setIas} unit="kt" min=1 max=600 />
@@ -1253,8 +1281,8 @@ function AltimeterConv() {
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <${SectionHeader} icon="gauge" title="상세 고도 계산" badge="ALT" />
                 <div class="p-4 space-y-3">
-                    <${NumInput} label="지시 고도 (Indicated Alt)" value=${indAlt} onChange=${setIndAlt} unit="ft" min=-2000 max=60000 step=100 />
-                    <${NumInput} label="비행장 표고 (Aerodrome Elev)" value=${elev} onChange=${setElev} unit="ft" min=0 max=15000 step=1 note="RKSI=23, RKSS=18, RKPC=35, RKTN=116" />
+                    <${NumInput} comma label="지시 고도 (Indicated Alt)" value=${indAlt} onChange=${setIndAlt} unit="ft" min=-2000 max=60000 step=100 />
+                    <${NumInput} comma label="비행장 표고 (Aerodrome Elev)" value=${elev} onChange=${setElev} unit="ft" min=0 max=15000 step=1 note="RKSI=23, RKSS=18, RKPC=35, RKTN=116" />
                     <${NumInput} label="외기온도 OAT" value=${oat} onChange=${setOat} unit="°C" min=-80 max=60 />
                 </div>
             </div>
