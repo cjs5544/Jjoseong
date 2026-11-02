@@ -22,6 +22,9 @@
             touch-action: manipulation;
         }
 
+        /* 다른 페이지(W&B·PA·E6B)와 같은 배율의 헤더 */
+        @media screen { #appHeader { zoom: 0.85; } }
+
         /* SVG 게이지 회전 보정 */
         .gauge-svg {
             transform: rotate(-90deg);
@@ -57,9 +60,6 @@
         }
 
         /* 스크롤바 얇게 */
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #64748b; border-radius: 4px; }
 
         /* 전체화면 가로형 집중 모드 (Cockpit Landscape Fullscreen View) */
         body.fullscreen-mode {
@@ -155,13 +155,13 @@
 
     <!-- ================= 상단 통합 네비게이션 헤더 ================= -->
     <header id="appHeader" class="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4 sm:min-h-[56px]">
             <div class="flex items-center gap-3 w-full sm:w-auto">
                 <div class="p-2 bg-blue-600 rounded-lg text-xl">⏱️</div>
                 <div>
                     <h1 class="text-base sm:text-xl font-black tracking-tight uppercase leading-none">AW139 Motoring Timer</h1>
                     <div class="flex items-center gap-3 mt-1.5 font-bold">
-                        <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+                        <div class="flex bg-slate-800 rounded">
                             <button id="btnAc9695" onclick="setAircraft('HL9695')" class="px-2 py-0.5 rounded-md text-[10px] font-black transition-all bg-blue-600 text-white shadow">
                                 HL9695<span class="hidden sm:inline">(2호기)</span>
                             </button>
@@ -192,15 +192,15 @@
                     </select>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="btnThemeToggle" onclick="toggleTheme()" title="주간/야간 모드 전환" class="px-2.5 py-2 bg-slate-800 text-amber-400 rounded-lg border border-slate-700 shadow-md text-xs transition-all active:scale-95">
+                    <button id="btnThemeToggle" onclick="toggleTheme()" title="주간/야간 모드 전환" class="px-2.5 py-1.5 bg-slate-800 text-amber-400 rounded-lg border border-slate-700 shadow-md text-xs transition-all active:scale-95">
                         <span id="txtThemeIcon">☀️</span>
                     </button>
-                    <button id="btnVoiceLang" onclick="toggleVoiceLang()" title="콜아웃 음성 언어" class="px-2.5 py-2 bg-slate-800 text-slate-200 rounded-lg border border-slate-700 shadow-md text-[10px] font-bold transition-all active:scale-95">
+                    <button id="btnVoiceLang" onclick="toggleVoiceLang()" title="콜아웃 음성 언어" class="px-2.5 py-1.5 bg-slate-800 text-slate-200 rounded-lg border border-slate-700 shadow-md text-[10px] font-bold transition-all active:scale-95">
                         🗣️<span id="txtVoiceLang">EN</span>
                     </button>
-                    <button onclick="testAudio()" title="사운드 테스트" class="px-2.5 py-2 bg-slate-800 text-slate-200 rounded-lg border border-slate-700 shadow-md text-xs transition-all active:scale-95">🔊</button>
+                    <button onclick="testAudio()" title="사운드 테스트" class="px-2.5 py-1.5 bg-slate-800 text-slate-200 rounded-lg border border-slate-700 shadow-md text-xs transition-all active:scale-95">🔊</button>
                     <span id="wakeLockBadge" title="화면 꺼짐 방지 상태" class="hidden sm:inline px-2 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[9px] text-emerald-400 font-bold">⚡ON</span>
-                    <button id="btnHeaderFullscreen" onclick="toggleFullscreen()" title="가로형 전체 화면 집중 모드 (Cockpit Landscape)" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95">
+                    <button id="btnHeaderFullscreen" onclick="toggleFullscreen()" title="가로형 전체 화면 집중 모드 (Cockpit Landscape)" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95">
                         <span>⛶</span><span class="hidden sm:inline">가로 전체화면</span>
                     </button>
                 </div>
