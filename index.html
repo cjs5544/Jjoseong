@@ -57,7 +57,7 @@
             return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
         };
 
-        const AppNav = ({ currentMode, onSwitchMode }) => {
+        const AppNav = ({ currentMode, onSwitchMode }) => {   // onSwitchMode(id): 'wb' | 'perf' — 같은 창, 헤더 그대로
             const [dropdownOpen, setDropdownOpen] = useState(false);
             const dropdownRef = useRef(null);
 
@@ -84,7 +84,7 @@
                 { id: 'wb', label: 'W&B', icon: '🚁', type: 'mode' },
                 { id: 'e6b', label: 'E6B', icon: '🧮', type: 'link', href: 'e6b.html' },
                 { id: 'motoring', label: 'Motoring', icon: '⏱️', type: 'link', href: 'motoring.html' },
-                { id: 'perf', label: 'PERF', icon: '📈', type: 'link', href: 'https://aw139-perf.vercel.app', external: true },
+                { id: 'perf', label: 'PERF', icon: '📈', type: 'mode' },
                 { id: 'mcdu', label: 'MCDU Sim', icon: '🎛️', type: 'link', href: 'https://mcdu-sim.vercel.app', external: true },
             ];
 
@@ -94,7 +94,7 @@
                 setDropdownOpen(false);
                 if (item.type === 'mode') {
                     if (item.id !== currentMode && onSwitchMode) {
-                        onSwitchMode();
+                        onSwitchMode(item.id);
                     }
                 } else if (item.external) {
                     window.open(item.href, '_blank', 'noopener,noreferrer');
@@ -109,7 +109,7 @@
                     <div className="hidden sm:flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
                         <button
                             type="button"
-                            onClick={currentMode === 'wb' ? undefined : onSwitchMode}
+                            onClick={currentMode === 'wb' ? undefined : () => onSwitchMode('wb')}
                             className={`px-3 py-1.5 rounded-md text-[10px] font-black flex items-center gap-1 transition-all ${
                                 currentMode === 'wb' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
                             }`}
@@ -128,15 +128,16 @@
                         >
                             <span>⏱️</span> Motoring
                         </a>
-                        <a
-                            href="https://aw139-perf.vercel.app"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"
+                        <button
+                            type="button"
+                            onClick={currentMode === 'perf' ? undefined : () => onSwitchMode('perf')}
+                            className={`px-3 py-1.5 rounded-md text-[10px] font-black flex items-center gap-1 transition-all ${
+                                currentMode === 'perf' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                            }`}
                             title="AW139 성능 계산기 (RFM 차트)"
                         >
                             <span>📈</span> PERF
-                        </a>
+                        </button>
                         <a
                             href="https://mcdu-sim.vercel.app"
                             target="_blank"
@@ -929,8 +930,57 @@
             );
         };
 
+        // ======================= PERF (성능 계산기 끼워 넣기) =======================
+        // 성능 앱(Vercel, 비밀번호 잠금)을 헤더 아래에 띄움 — ?embed=1 로 성능 앱 자체 제목은 숨김. 기체·이륙 총무게는 postMessage로 넘김.
+        // 시험용: W&B 주소에 ?perf=http://... 를 붙이면 그 주소의 성능 앱을 띄움.
+        const PERF_URL = (() => { try { const q = new URLSearchParams(location.search).get('perf'); if (q && /^https?:\/\//.test(q)) return q.replace(/\/$/, ''); } catch {} return 'https://aw139-perf.vercel.app'; })();
+        const PERF_ORIGIN = new URL(PERF_URL).origin;
+        const PerfFrame = ({ ac, w, height }) => {
+            const ref = useRef(null);
+            const [src] = useState(() => `${PERF_URL}/app/index.html?embed=1&ac=${ac}&w=${Math.round(w)}`);
+            const send = () => { try { ref.current && ref.current.contentWindow.postMessage({ type: 'aw139wb', ac, w: Math.round(w) }, PERF_ORIGIN); } catch {} };
+            useEffect(send, [ac, w]);
+            useEffect(() => {
+                const on = (e) => { if (e.origin === PERF_ORIGIN && e.data && e.data.type === 'aw139perf-ready') send(); };
+                window.addEventListener('message', on);
+                return () => window.removeEventListener('message', on);
+            }, [ac, w]);
+            return (
+                <iframe ref={ref} src={src} title="AW139 Performance" onLoad={send}
+                    className="w-full block border-0 bg-slate-50 no-print" style={{ height: `${height}px` }} />
+            );
+        };
+
         // ======================= CG (W&B) APP =======================
-        const CGApp = ({ onSwitchMode }) => {
+        const CGApp = () => {
+            // 화면: W&B 또는 PERF(같은 창, 헤더 공유). 주소 #perf 로 기억(E6B·Motoring의 PERF 링크도 index.html#perf)
+            const [view, setView] = useState(() => location.hash === '#perf' ? 'perf' : 'wb');
+            const [perfOpened, setPerfOpened] = useState(view === 'perf');
+            const onSwitchMode = (id) => {
+                setView(id); if (id === 'perf') setPerfOpened(true);
+                try { history.replaceState(null, '', id === 'perf' ? '#perf' : location.pathname + location.search); } catch {}
+                window.scrollTo(0, 0);
+            };
+            useEffect(() => {
+                const on = () => { const v = location.hash === '#perf' ? 'perf' : 'wb'; setView(v); if (v === 'perf') setPerfOpened(true); };
+                window.addEventListener('hashchange', on);
+                return () => window.removeEventListener('hashchange', on);
+            }, []);
+            const hdrRef = useRef(null);
+            // PERF 칸 높이 = 화면 높이 − 헤더 (휴대폰은 body zoom 이 걸려 있어 CSS px 로 환산)
+            const [frameH, setFrameH] = useState(700);
+            useEffect(() => {
+                const fit = () => {
+                    const h = hdrRef.current; if (!h) return;
+                    const r = h.getBoundingClientRect(), z = h.offsetHeight ? r.height / h.offsetHeight : 1;
+                    setFrameH(Math.max(300, (window.innerHeight - r.height) / (z || 1)));
+                };
+                fit();
+                const ro = window.ResizeObserver ? new ResizeObserver(fit) : null;
+                if (ro && hdrRef.current) ro.observe(hdrRef.current);
+                window.addEventListener('resize', fit);
+                return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', fit); };
+            }, [view]);
             const [selectedAc, setSelectedAc] = useState(() => {
                 try {
                     const saved = localStorage.getItem('aw139_selected_ac');
@@ -1241,7 +1291,7 @@
                         </div>
                     )}
 
-                    <header className="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50 print:relative print:bg-white print:text-black print:shadow-none print:border-b-2 print:border-slate-800">
+                    <header ref={hdrRef} className="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50 print:relative print:bg-white print:text-black print:shadow-none print:border-b-2 print:border-slate-800">
                         <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4 sm:min-h-[56px]">
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                                 <div className="p-2 bg-blue-600 rounded-lg text-xl print:hidden">🚁</div>
@@ -1259,8 +1309,12 @@
                                 </div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto no-print">
-                                <AppNav currentMode="wb" onSwitchMode={onSwitchMode} />
-                                <div className="flex gap-2">
+                                <AppNav currentMode={view} onSwitchMode={onSwitchMode} />
+                                {view === 'perf' && (
+                                    <a href={`${PERF_URL}/app/index.html?ac=${selectedAc}&w=${Math.round(stats.totalWeight)}`} target="_blank" rel="noopener noreferrer"
+                                        title="성능 계산기를 새 탭으로 열기 (비밀번호 창이 안 뜨면)" className="p-2 bg-slate-800 text-slate-300 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="external-link" size={18} /></a>
+                                )}
+                                <div className={`flex gap-2 ${view === 'perf' ? 'hidden' : ''}`}>
                                     <button onClick={saveItemsToLocal} title="입력값은 기체별로 자동 저장됩니다. 클릭하면 현재 값을 다시 저장합니다." className="p-2 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="save" size={18} /></button>
                                     <button onClick={resetWbToDefaults} title="현재 기체의 입력값을 원래 기본값으로 초기화합니다." className="p-2 bg-slate-800 text-blue-400 rounded-lg border border-slate-700 shadow-md transition-all active:scale-95"><Icon name="rotate-ccw" size={18} /></button>
                                     <button onClick={handlePrint} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black shadow-md transition-all active:scale-95"><Icon name="file-text" size={16} /><span className="hidden sm:inline">PDF 저장</span></button>
@@ -1269,7 +1323,8 @@
                         </div>
                     </header>
 
-                    <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4 sm:space-y-6 print:p-0 print:space-y-4">
+                    {perfOpened && <div className={view === 'perf' ? '' : 'hidden'}><PerfFrame ac={selectedAc} w={stats.totalWeight} height={frameH} /></div>}
+                    <main className={`flex-1 max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4 sm:space-y-6 print:p-0 print:space-y-4 ${view === 'perf' ? 'hidden' : ''}`}>
                         {/* Long CG 큰 카드 (Lateral 카드와 같은 틀) */}
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-0 print:shadow-none print:rounded-none">
                             <div className="no-print w-full px-5 py-3 bg-slate-50 border-b flex items-center gap-3">
