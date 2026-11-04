@@ -19,9 +19,13 @@
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+        .print-only { display: none; }
         @media print {
             @page { size: A4 landscape; margin: 5mm; }
-            .no-print { display: none !important; }
+            .no-print, .screen-only { display: none !important; }
+            .print-only { display: block !important; }
+            .print-page { height: 196mm; overflow: hidden; break-inside: avoid; }
+            .print-page + .print-page { break-before: page; }
             body { background-color: white !important; padding: 0 !important; }
             html, body { overflow: visible !important; height: auto !important; }
             .shadow-lg, .shadow-md, .shadow-xl, .shadow-2xl, .shadow-sm, .shadow { box-shadow: none !important; }
@@ -951,6 +955,58 @@
             );
         };
 
+        // ======================= 출력용 (표 왼쪽 · 차트 오른쪽, 페이지마다 헤더) =======================
+        const PrintPage = ({ title, ac, date, page, pages, children }) => (
+            <div className="print-page">
+                <div className="flex items-end justify-between border-b-2 border-slate-800 pb-2 mb-3">
+                    <div>
+                        <h1 className="text-xl font-black uppercase tracking-tight text-slate-900 leading-none">AW139 Weight & Balance</h1>
+                        <p className="text-sm font-bold text-slate-600 mt-1">{title}</p>
+                    </div>
+                    <div className="text-right text-[11px] font-bold text-slate-600 leading-snug">
+                        <div className="text-base font-black text-slate-900">{ac}</div>
+                        <div>{date} · Incheon 119 Fire Aviation Unit</div>
+                        {pages > 1 && <div>{page} / {pages}</div>}
+                    </div>
+                </div>
+                <div className="grid grid-cols-[1fr_1.1fr] gap-4 items-start">{children}</div>
+            </div>
+        );
+        const PrintTable = ({ armHead, rows, total, summary, ok }) => (
+            <div>
+                <table className="w-full text-left border-collapse text-[12px]">
+                    <thead>
+                        <tr className="border-b-2 border-slate-700 text-[10px] font-black text-slate-600 uppercase">
+                            <th className="py-1.5 pr-2">Item</th>
+                            <th className="py-1.5 px-2 text-right">Weight<br/><span className="font-normal normal-case">(kg)</span></th>
+                            <th className="py-1.5 px-2 text-right">{armHead[0]}<br/><span className="font-normal normal-case">({armHead[1]})</span></th>
+                            <th className="py-1.5 pl-2 text-right">Moment<br/><span className="font-normal normal-case">(kgm)</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((r, i) => (
+                            <tr key={i} className="border-b border-slate-300">
+                                <td className="py-1.5 pr-2 font-bold text-slate-800">{r.label}</td>
+                                <td className="py-1.5 px-2 text-right font-mono">{r.w}</td>
+                                <td className="py-1.5 px-2 text-right font-mono">{r.arm}</td>
+                                <td className="py-1.5 pl-2 text-right font-mono">{r.m}</td>
+                            </tr>
+                        ))}
+                        <tr className="border-t-2 border-slate-700 font-black">
+                            <td className="py-1.5 pr-2">{total.label}</td>
+                            <td className="py-1.5 px-2 text-right font-mono">{total.w}</td>
+                            <td className="py-1.5 px-2 text-right font-mono">{total.arm}</td>
+                            <td className="py-1.5 pl-2 text-right font-mono">{total.m}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div className={`mt-3 p-2 rounded border text-[12px] leading-snug ${ok ? 'border-emerald-600' : 'border-rose-600'}`}>
+                    <p className={`font-black ${ok ? 'text-emerald-700' : 'text-rose-700'}`}>{ok ? '한계 이내 (WITHIN LIMIT)' : '한계 초과 (LIMIT EXCEEDED)'}</p>
+                    {summary.map((t, i) => <p key={i} className="text-slate-700">{t}</p>)}
+                </div>
+            </div>
+        );
+
         // ======================= CG (W&B) APP =======================
         const CGApp = () => {
             // 화면: W&B 또는 PERF(같은 창, 헤더 공유). 주소 #perf 로 기억(E6B·Motoring의 PERF 링크도 index.html#perf)
@@ -1291,7 +1347,7 @@
                         </div>
                     )}
 
-                    <header ref={hdrRef} className="bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50 print:relative print:bg-white print:text-black print:shadow-none print:border-b-2 print:border-slate-800">
+                    <header ref={hdrRef} className="screen-only bg-slate-900 text-white px-4 sm:px-6 py-4 shadow-lg sticky top-0 z-50 print:relative print:bg-white print:text-black print:shadow-none print:border-b-2 print:border-slate-800">
                         <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4 sm:min-h-[56px]">
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                                 <div className="p-2 bg-blue-600 rounded-lg text-xl print:hidden">🚁</div>
@@ -1323,8 +1379,8 @@
                         </div>
                     </header>
 
-                    {perfOpened && <div className={view === 'perf' ? '' : 'hidden'}><PerfFrame ac={selectedAc} w={stats.totalWeight} height={frameH} /></div>}
-                    <main className={`flex-1 max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4 sm:space-y-6 print:p-0 print:space-y-4 ${view === 'perf' ? 'hidden' : ''}`}>
+                    {perfOpened && <div className={`screen-only ${view === 'perf' ? '' : 'hidden'}`}><PerfFrame ac={selectedAc} w={stats.totalWeight} height={frameH} /></div>}
+                    <main className={`screen-only flex-1 max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4 sm:space-y-6 print:p-0 print:space-y-4 ${view === 'perf' ? 'hidden' : ''}`}>
                         {/* Long CG 큰 카드 (Lateral 카드와 같은 틀) */}
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:border-0 print:shadow-none print:rounded-none">
                             <div className="no-print w-full px-5 py-3 bg-slate-50 border-b flex items-center gap-3">
@@ -1982,6 +2038,92 @@
                             )}
                         </section>
                     </main>
+
+                    {/* ── 출력 전용: 화면에는 안 보이고 인쇄할 때만 나옴 ── */}
+                    {printState && (() => {
+                        const fm = (v, d = 1) => (v || 0).toFixed(d);
+                        const ac = AIRCRAFT_DEFAULTS[selectedAc].name;
+                        const withLat = printState === 'lateral';
+                        const pages = withLat ? 2 : 1;
+                        // Long 표
+                        const longRows = stats.tableData.map(i => ({ label: i.label, w: i.weight.toLocaleString(), arm: i.arm.toFixed(3), m: fm(i.weight * i.arm) }));
+                        // Lateral 표
+                        const latRows = [];
+                        const pushLat = (label, w, arm) => latRows.push({ label, w: w ? w.toLocaleString() : '—', arm: (arm >= 0 ? '+' : '') + Math.round(arm * 1000), m: fm(w * arm) });
+                        const bewI = stats.tableData.find(i => i.id === 'bew');
+                        if (bewI) pushLat('B.E.W', bewI.weight, bewI.lateralArm || 0);
+                        pushLat('PLT (정조종사)', lateralPilotWeights.plt, pilotArms.plt);
+                        pushLat('COPT (부조종사)', lateralPilotWeights.cpt, pilotArms.cpt);
+                        (visibleSeats[selectedAc] || []).forEach(id => { const w = seatWeights[id]; if (w) pushLat(id === 'HOIST' ? 'HOIST' : `Seat ${id}`, w, SEAT_CONFIG[id].bl); });
+                        stats.tableData.filter(i => !['bew', 'pilot', 'pax1', 'pax2', 'pax3'].includes(i.id) && !i.isFuel && i.weight > 0)
+                            .forEach(i => pushLat(i.label, i.weight, i.lateralArm || 0));
+                        const fuelI = stats.tableData.find(i => i.isFuel);
+                        if (fuelI) pushLat(fuelI.label, fuelI.weight, fuelI.lateralArm || 0);
+                        customLateralItems.forEach(ci => pushLat(ci.label || '추가 항목', ci.weight || 0, ci.arm || 0));
+                        return (
+                            <div className="print-only bg-white text-slate-900">
+                                <PrintPage title="1. Longitudinal CG" ac={ac} date={currentDate} page={1} pages={pages}>
+                                    <PrintTable armHead={['ARM', 'm']} rows={longRows} ok={stats.longOk}
+                                        total={{ label: 'TOTAL GROSS', w: stats.totalWeight.toLocaleString(), arm: `CG ${stats.cg}`, m: fm(stats.totalMoment) }}
+                                        summary={[`이륙 중량 ${stats.totalWeight.toLocaleString()}kg · 이륙 CG ${stats.cg}m`, `연료 소진 시 ${stats.zeroFuelWeight.toLocaleString()}kg · CG ${stats.zeroFuelCG}m`, `최대 이륙 중량 ${AIRCRAFT_DEFAULTS[selectedAc].maxTow.toLocaleString()}kg`]} />
+                                    <div>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Longitudinal CG Envelope</p>
+                                            <div className="flex items-center gap-3"><LegendDot kind="actual" label="Actual" /><LegendDot kind="zero" label="Zero Fuel" /></div>
+                                        </div>
+                                        <EnvelopeChart
+                                            alert={!stats.longOk}
+                                            xDomain={[4.95, 5.65]} xStep={0.1} xLabel="STA (m)"
+                                            showCoords={showCoords}
+                                            polygons={[{ kind: 'env', pts: envelope, closed: false }]}
+                                            lines={[
+                                                ...(dottedLines.line59.length ? [{ kind: 'ref', x1: dottedLines.line59[0].x, y1: dottedLines.line59[0].y, x2: dottedLines.line59[1].x, y2: dottedLines.line59[1].y }] : []),
+                                                ...(dottedLines.line410.length ? [{ kind: 'ref', x1: dottedLines.line410[0].x, y1: dottedLines.line410[0].y, x2: dottedLines.line410[1].x, y2: dottedLines.line410[1].y }] : []),
+                                                { kind: 'zero', x1: parseFloat(stats.cg), y1: stats.totalWeight, x2: parseFloat(stats.zeroFuelCG), y2: stats.zeroFuelWeight },
+                                            ]}
+                                            marks={[
+                                                { kind: 'zero', x: parseFloat(stats.zeroFuelCG), y: stats.zeroFuelWeight, ok: stats.zeroFuelSafe },
+                                                { kind: 'actual', x: parseFloat(stats.cg), y: stats.totalWeight, ok: stats.cgSafe },
+                                            ]}
+                                        />
+                                    </div>
+                                </PrintPage>
+                                {withLat && (
+                                    <PrintPage title="2. Lateral CG" ac={ac} date={currentDate} page={2} pages={pages}>
+                                        <PrintTable armHead={['BL Arm', 'mm']} rows={latRows} ok={lateralStats.isWithinLimit}
+                                            total={{ label: 'TOTAL WEIGHT', w: stats.totalWeight.toLocaleString(), arm: `${lateralStats.lateralCG >= 0 ? '+' : ''}${(lateralStats.lateralCG * 1000).toFixed(1)}mm`, m: fm(lateralStats.totalLateralMoment) }}
+                                            summary={[`Lateral CG ${lateralStats.lateralCG >= 0 ? '우(R) ' : '좌(L) '}${Math.abs(lateralStats.lateralCG * 1000).toFixed(1)}mm · ${stats.totalWeight.toLocaleString()}kg`,
+                                                      ...(lateralStats.limits ? [`현재 중량 한계: 좌 ${(lateralStats.limits.left * 1000).toFixed(0)}mm / 우 +${(lateralStats.limits.right * 1000).toFixed(0)}mm${lateralStats.hoistOps ? ' (호이스트 운용)' : ''}`] : []),
+                                                      '+ = 우(Stbd) / − = 좌(Port)']} />
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Lateral CG Envelope</p>
+                                                <div className="flex items-center gap-3"><LegendDot kind="actual" label="Actual" /><LegendDot kind="hoist" label={lateralStats.hoistOps ? 'Hoist (적용 중)' : 'Hoist'} /></div>
+                                            </div>
+                                            <EnvelopeChart
+                                                alert={!lateralStats.isWithinLimit}
+                                                xDomain={[-0.12, 0.22]} xStep={0.05} xLabel="BL (m)  − 좌(Port) / + 우(Stbd)"
+                                                xFmt={v => v === 0 ? '0' : v.toFixed(2)}
+                                                showCoords={showLateralCoords}
+                                                polygons={[
+                                                    { kind: 'env', pts: LATERAL_ENVELOPE[selectedAc].standard, closed: true },
+                                                    { kind: 'hoist', pts: LATERAL_ENVELOPE[selectedAc].hoistOps.map(p => p.label ? p : { ...p, noLabel: true }), closed: false },
+                                                ]}
+                                                lines={[
+                                                    { kind: 'ref', x1: 0, y1: 4200, x2: 0, y2: 7200 },
+                                                    ...(selectedAc === 'HL9277'
+                                                        ? [{ kind: 'hoist', x1: 0.090, y1: 6400, x2: 0.145, y2: 6400 }]
+                                                        : [{ kind: 'hoist', x1: -0.070, y1: 6400, x2: 0.145, y2: 6400 },
+                                                           { kind: 'hoist', x1: -0.066, y1: 6800, x2: 0.134, y2: 6800 }]),
+                                                ]}
+                                                marks={[{ kind: 'actual', x: lateralStats.lateralCG, y: stats.totalWeight, ok: lateralStats.isWithinLimit }]}
+                                            />
+                                        </div>
+                                    </PrintPage>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
             );
         };
