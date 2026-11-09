@@ -102,7 +102,7 @@
                         onSwitchMode(item.id);
                     }
                 } else if (item.external) {
-                    window.open(item.href, '_blank', 'noopener,noreferrer');
+                    { const w=window.open(item.href,'_blank'); if(w) w.opener=null; else window.location.href=item.href; }  // 팝업 막히면(앱 안 브라우저) 같은 탭으로
                 } else {
                     window.location.href = item.href;
                 }

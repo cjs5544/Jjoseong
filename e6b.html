@@ -1372,7 +1372,7 @@ function App() {
                             <a href="https://aw139syssim-alpha.vercel.app" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1" title="AW139 계통 시뮬레이터 (비밀번호)">🛠️ SYS SIM</a>
                         </div>
                         <div class="sm:hidden relative">
-                            <select onChange=${(e)=>{ const v = e.target.value; if(v.startsWith('http')) window.open(v,'_blank'); else window.location.href=v; }}
+                            <select onChange=${(e)=>{ const v = e.target.value; if(v.startsWith('http')) { const w=window.open(v,'_blank'); if(w) w.opener=null; else window.location.href=v; } else window.location.href=v; }}
                                 class="bg-slate-800 text-white border border-slate-700 text-[11px] font-black px-2.5 py-1.5 rounded-lg outline-none shadow">
                                 <option value="index.html">🚁 W&B</option>
                                 <option value="e6b.html" selected>🧮 E6B</option>
