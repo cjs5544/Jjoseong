@@ -1369,6 +1369,7 @@ function App() {
                             <a href="motoring.html" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">⏱️ Motoring</a>
                             <a href="index.html#perf" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1" title="AW139 성능 계산기 (RFM 차트)">📈 PERF</a>
                             <a href="https://mcdu-sim.vercel.app" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1">🎛️ MCDU Sim</a>
+                            <a href="https://aw139syssim-alpha.vercel.app" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1" title="AW139 계통 시뮬레이터 (비밀번호)">🛠️ SYS SIM</a>
                         </div>
                         <div class="sm:hidden relative">
                             <select onChange=${(e)=>{ const v = e.target.value; if(v.startsWith('http')) window.open(v,'_blank'); else window.location.href=v; }}
@@ -1378,6 +1379,7 @@ function App() {
                                 <option value="motoring.html">⏱️ Motoring</option>
                                 <option value="index.html#perf">📈 PERF</option>
                                 <option value="https://mcdu-sim.vercel.app">🎛️ MCDU Sim</option>
+                                <option value="https://aw139syssim-alpha.vercel.app">🛠️ SYS SIM</option>
                             </select>
                         </div>
                     </div>

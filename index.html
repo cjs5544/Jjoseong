@@ -90,6 +90,7 @@
                 { id: 'motoring', label: 'Motoring', icon: '⏱️', type: 'link', href: 'motoring.html' },
                 { id: 'perf', label: 'PERF', icon: '📈', type: 'mode' },
                 { id: 'mcdu', label: 'MCDU Sim', icon: '🎛️', type: 'link', href: 'https://mcdu-sim.vercel.app', external: true },
+                { id: 'sys', label: 'SYS SIM', icon: '🛠️', type: 'link', href: 'https://aw139syssim-alpha.vercel.app', external: true },
             ];
 
             const currentItem = navItems.find(i => i.id === currentMode) || navItems[0];
@@ -150,6 +151,15 @@
                             title="AW139 MCDU Trainer (FMS Sim)"
                         >
                             <span>🎛️</span> MCDU Sim
+                        </a>
+                        <a
+                            href="https://aw139syssim-alpha.vercel.app"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-md text-[10px] font-black text-slate-400 hover:text-white transition-all flex items-center gap-1"
+                            title="AW139 계통 시뮬레이터 (비밀번호)"
+                        >
+                            <span>🛠️</span> SYS SIM
                         </a>
                     </div>
 
